@@ -71,7 +71,7 @@ body{font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;backgro
 .tbox-sm-lbl{font-size:10px;color:#64748b;margin-bottom:2px;font-weight:700;}
 .tbox-sm-val{font-size:13px;font-weight:700;color:#e2e8f0;font-family:monospace;line-height:1.3;word-break:break-all;}
 .tbox-sm-val.multi{font-size:11px;}
-.kyu{color:#ef4444 !important;}
+.tbox-sm-val.kyu{color:#ef4444 !important;}
 .note-sm{font-size:10px;color:#64748b;margin-top:4px;line-height:1.5;font-style:italic;}
 .teiire-badge{margin:0 0 6px;padding:4px 8px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);border-radius:6px;font-size:10px;color:#fbbf24;font-weight:700;}
 .empty{text-align:center;padding:50px 20px;color:#374151;font-size:13px;line-height:2;}
@@ -258,7 +258,9 @@ function render(rows){
   setTimeout(()=>el.querySelector('.res-area')?.scrollIntoView({behavior:'smooth',block:'start'}),80);
 }
 
+// ── ページロード時の初期化 ──
 initSel();
+// 今日のダイヤ番号を自動計算して、プレースホルダーに表示
 const autoDialNum=((BASE_DIAL-1+Math.round((new Date()-BASE_DATE)/86400000))%92+92)%92+1;
 document.getElementById('d1').placeholder=autoDialNum;
 document.getElementById('d2').placeholder=autoDialNum;
