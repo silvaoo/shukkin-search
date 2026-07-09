@@ -8,22 +8,24 @@
 :root {
   --bg: #0b0f1c;
   --bg-card: #111827;
-  --bg-card2: #1c2438;
+  --bg-input: #1c2438;
   --border: #1e2d47;
   --text: #e2e8f0;
   --dim: #94a3b8;
   --cyan: #06b6d4;
+  --orange: #f59e0b;
   --green: #22c55e;
   --warn: #f97316;
 }
 html.light {
   --bg: #f8fafc;
   --bg-card: #f1f5f9;
-  --bg-card2: #e2e8f0;
+  --bg-input: #e2e8f0;
   --border: #cbd5e1;
   --text: #1e293b;
   --dim: #64748b;
   --cyan: #0891b2;
+  --orange: #d97706;
   --green: #16a34a;
   --warn: #ea580c;
 }
@@ -35,26 +37,26 @@ body{font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;backgro
 .hdr-chip{display:inline-block;background:var(--cyan);color:#000;font-size:8px;font-weight:900;letter-spacing:1.2px;padding:2px 8px;border-radius:2px;margin-bottom:4px;}
 .hdr h1{font-size:15px;font-weight:900;color:var(--text);letter-spacing:.2px;}
 .hdr-sub{font-size:9px;color:var(--dim);margin-top:2px;font-family:monospace;}
-.theme-toggle{background:var(--bg-card2);border:1px solid var(--border);color:var(--text);width:36px;height:36px;border-radius:8px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.theme-toggle{background:var(--bg-input);border:1px solid var(--border);color:var(--text);width:36px;height:36px;border-radius:8px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
 .theme-toggle:active{opacity:.7;transform:scale(.95);}
 .block{padding:14px 16px 0;}
 .card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:14px;transition:background .3s,border-color .3s;}
-.sect-lbl{font-size:9px;font-weight:900;color:var(--cyan);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
-.sect-lbl::before{content:'';width:3px;height:12px;background:var(--cyan);border-radius:1px;display:inline-block;}
+.sect-lbl{font-size:9px;font-weight:900;color:var(--orange);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.sect-lbl::before{content:'';width:3px;height:12px;background:var(--orange);border-radius:1px;display:inline-block;}
 .dual-input-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
 .person-input{display:flex;flex-direction:column;gap:6px;}
 .person-label{font-size:9px;font-weight:900;letter-spacing:.8px;color:var(--dim);}
 .person-label.p1{color:#3b82f6;}
 .person-label.p2{color:#a855f7;}
 .dial-input-box{display:flex;align-items:center;gap:6px;}
-.dial-num{width:60px;height:48px;font-size:26px;font-weight:900;text-align:center;background:var(--bg-card2);border:2px solid var(--border);border-radius:8px;color:var(--cyan);font-family:monospace;-webkit-appearance:none;appearance:none;outline:none;transition:background .3s,border-color .3s,color .3s;}
+.dial-num{width:60px;height:48px;font-size:26px;font-weight:900;text-align:center;background:var(--bg-input);border:2px solid var(--orange);border-radius:8px;color:var(--orange);font-family:monospace;-webkit-appearance:none;appearance:none;outline:none;transition:all .3s;}
 .dial-num.p1{border-color:#3b82f6;}
 .dial-num.p2{border-color:#a855f7;}
 .dial-num:focus{box-shadow:0 0 12px rgba(6,182,212,.3);}
-.dial-num::placeholder{color:var(--dim);font-size:16px;opacity:0.5;}
+.dial-num::placeholder{color:var(--border);font-size:18px;opacity:0.2;}
 .dial-unit{font-size:11px;color:var(--dim);font-weight:700;}
-.prev-box{width:100%;background:var(--bg-card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:10px;line-height:1.5;color:var(--dim);min-height:40px;font-family:monospace;transition:background .3s,border-color .3s,color .3s;}
-.prev-box b{color:var(--cyan);font-weight:700;}
+.prev-box{width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:10px;line-height:1.5;color:var(--dim);min-height:40px;font-family:monospace;transition:all .3s;}
+.prev-box b{color:var(--orange);font-weight:700;}
 .prev-box .ok{color:var(--green);}
 .prev-box .warn{color:var(--warn);}
 .quick-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
@@ -62,15 +64,15 @@ body{font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;backgro
 .qbtn:active{background:var(--cyan);color:#000;transform:scale(.96);}
 .form-row{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center;margin-bottom:10px;}
 .date-label{font-size:9px;font-weight:900;color:var(--dim);white-space:nowrap;}
-.date-sel{background:var(--bg-card2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;font-weight:700;font-family:-apple-system,'Hiragino Sans',sans-serif;-webkit-appearance:none;appearance:none;outline:none;transition:background .3s,border-color .3s,color .3s;}
-.date-sel:focus{border-color:var(--cyan);}
-.search-btn{width:100%;background:var(--cyan);color:#000;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:900;font-family:-apple-system,'Hiragino Sans',sans-serif;letter-spacing:.3px;cursor:pointer;margin-top:2px;transition:opacity .15s,transform .1s;}
+.date-sel{background:var(--bg-input);border:1px solid var(--cyan);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;font-weight:700;font-family:-apple-system,'Hiragino Sans',sans-serif;-webkit-appearance:none;appearance:none;outline:none;transition:all .3s;}
+.date-sel:focus{border-color:var(--orange);}
+.search-btn{width:100%;background:var(--orange);color:#000;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:900;font-family:-apple-system,'Hiragino Sans',sans-serif;letter-spacing:.3px;cursor:pointer;margin-top:2px;transition:opacity .15s,transform .1s;}
 .search-btn:active{opacity:.82;transform:scale(.97);}
 .res-area{padding:14px 16px 0;}
 .res-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
 .res-hd-t{font-size:9px;font-weight:900;color:var(--dim);letter-spacing:.8px;text-transform:uppercase;}
-.res-cnt{font-size:9px;color:var(--cyan);font-family:monospace;background:rgba(6,182,212,.1);padding:3px 8px;border-radius:6px;border:1px solid rgba(6,182,212,.2);}
-.day-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;transition:background .3s,border-color .3s;}
+.res-cnt{font-size:9px;color:var(--orange);font-family:monospace;background:rgba(245,158,11,.1);padding:3px 8px;border-radius:6px;border:1px solid rgba(245,158,11,.2);}
+.day-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;transition:all .3s;}
 .day-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border);}
 .day-date{font-size:16px;font-weight:900;color:var(--text);}
 .day-badge{font-size:10px;font-weight:900;padding:3px 8px;border-radius:6px;background:rgba(6,182,212,.15);color:var(--cyan);border:1px solid rgba(6,182,212,.25);}
@@ -80,7 +82,7 @@ body{font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;backgro
 .p-name{font-size:8px;font-weight:900;letter-spacing:.6px;margin-bottom:6px;color:var(--dim);}
 .p-name.p1{color:#3b82f6;}
 .p-name.p2{color:#a855f7;}
-.p-dial{font-size:18px;font-weight:900;color:var(--cyan);font-family:monospace;margin-bottom:4px;}
+.p-dial{font-size:18px;font-weight:900;color:var(--orange);font-family:monospace;margin-bottom:4px;}
 .p-dial sub{font-size:9px;color:var(--dim);font-weight:400;}
 .p-time{font-size:9px;color:var(--text);line-height:1.4;font-family:monospace;}
 .p-time.kyu{color:var(--green);font-weight:700;}
@@ -301,9 +303,9 @@ document.getElementById('d2').addEventListener('input',()=>updatePrev('d2','prev
 function fmtT(t){if(!t)return '';t=t.trim();const m=t.match(/^(\d+):(\d+)$/);if(!m)return t;const h=parseInt(m[1]);const min=m[2];if(h>=24)return `翌${h-24}時${min==='00'?'':min+'分'}`;return `${h}時${min==='00'?'':min+'分'}`;}
 function timeToSpeech(o,w){if(!o||o==='—')return '要確認';if(!o.includes('/')){const[start,end]=o.split('〜');const ws=w?w.replace(':','時間')+'分':'';return `${fmtT(start)}から${fmtT(end)}、${ws}`;}const tildeSplit=o.split('〜');if(tildeSplit.length===2){const starts=tildeSplit[0].split('/');const ends=tildeSplit[1].split('/');const wParts=w?w.split('/'):[];if(starts.length>=2&&ends.length>=2){let text='';text+=`前半${fmtT(starts[0])}から${fmtT(ends[0])}`;if(wParts[0])text+=`${wParts[0]}`;text+=`、後半${fmtT(starts[1])}から${fmtT(ends[1])}`;if(wParts[1])text+=`${wParts[1]}`;return text;}}return o.replace(/〜/g,'から');}
 function personSpeechText(dn,slot,rec){if(!rec||!slot){return '公休';}if(slot.o==='—'){return '要確認';}return timeToSpeech(slot.o,slot.w);}
-function speakText(text){if(!('speechSynthesis' in window)){alert('読み上げに対応していません');return;}if(window.speechSynthesis.speaking){window.speechSynthesis.cancel();document.getElementById('speakTodayBtn').classList.remove('speaking');document.getElementById('speakTodayBtn').textContent='🔊 今日の勤務を読み上げ（2人分）';return;}const utter=new SpeechSynthesisUtterance(text);utter.lang='ja-JP';utter.rate=0.95;const v=window.speechSynthesis.getVoices();const jp=v.find(x=>x.lang.startsWith('ja'));if(jp)utter.voice=jp;if(window.speechSynthesis.getVoices().length===0)window.speechSynthesis.onvoiceschanged=()=>{};window.speechSynthesis.speak(utter);utter.onend=()=>{if(document.getElementById('speakTodayBtn'))document.getElementById('speakTodayBtn').classList.remove('speaking');};utter.onerror=()=>{if(document.getElementById('speakTodayBtn'))document.getElementById('speakTodayBtn').classList.remove('speaking');};}
-function handleSpeakToday(){const v1=parseInt(document.getElementById('d1').value);const v2=parseInt(document.getElementById('d2').value);if((!v1||v1<1||v1>92)&&(!v2||v2<1||v2>92)){speakText('ダイヤ番号を入力してください');return;}const today=new Date();const m=today.getMonth()+1;const d=today.getDate();const dw=['日','月','火','水','木','金','土'][today.getDay()];const dt=dayType(today);let text=`${m}月${d}日${dw}曜日。`;if(v1&&v1>=1&&v1<=92){const rec1=DB[v1];const slot1=rec1?rec1[dt]:null;text+=`人1、${v1}番、${personSpeechText(v1,slot1,rec1)}。`;}if(v2&&v2>=1&&v2<=92){const rec2=DB[v2];const slot2=rec2?rec2[dt]:null;text+=`人2、${v2}番、${personSpeechText(v2,slot2,rec2)}`;}const btn=document.getElementById('speakTodayBtn');if(btn){btn.classList.add('speaking');btn.textContent='⏹ 停止';}speakText(text);}
-function handleSpeakResults(){const rows=window._lastRows;if(!rows||!rows.length){speakText('先に検索してください');return;}let text=`${rows.length}日間の検索結果。`;rows.forEach(r=>{text+=`${r.m}月${r.d}日${r.dw}曜。人1、${r.p1.dn}番、${personSpeechText(r.p1.dn,r.p1.slot,r.p1.rec)}。人2、${r.p2.dn}番、${personSpeechText(r.p2.dn,r.p2.slot,r.p2.rec)}。`;});const btn=document.getElementById('speakResBtn');if(btn){btn.classList.add('speaking');btn.textContent='⏹ 停止';}speakText(text);}
+function speakText(text){if(!('speechSynthesis' in window)){alert('読み上げに対応していません');return;}if(window.speechSynthesis.speaking){window.speechSynthesis.cancel();if(document.getElementById('speakTodayBtn'))document.getElementById('speakTodayBtn').classList.remove('speaking');if(document.getElementById('speakResBtn'))document.getElementById('speakResBtn').classList.remove('speaking');return;}const utter=new SpeechSynthesisUtterance(text);utter.lang='ja-JP';utter.rate=0.95;const v=window.speechSynthesis.getVoices();const jp=v.find(x=>x.lang.startsWith('ja'));if(jp)utter.voice=jp;if(window.speechSynthesis.getVoices().length===0)window.speechSynthesis.onvoiceschanged=()=>{};window.speechSynthesis.speak(utter);utter.onend=()=>{if(document.getElementById('speakTodayBtn'))document.getElementById('speakTodayBtn').classList.remove('speaking');if(document.getElementById('speakResBtn'))document.getElementById('speakResBtn').classList.remove('speaking');};utter.onerror=()=>{if(document.getElementById('speakTodayBtn'))document.getElementById('speakTodayBtn').classList.remove('speaking');if(document.getElementById('speakResBtn'))document.getElementById('speakResBtn').classList.remove('speaking');};}
+function handleSpeakToday(){const v1=parseInt(document.getElementById('d1').value);const v2=parseInt(document.getElementById('d2').value);if((!v1||v1<1||v1>92)&&(!v2||v2<1||v2>92)){speakText('ダイヤ番号を入力してください');return;}const today=new Date();const m=today.getMonth()+1;const d=today.getDate();const dw=['日','月','火','水','木','金','土'][today.getDay()];const dt=dayType(today);let text=`${m}月${d}日${dw}曜日。`;if(v1&&v1>=1&&v1<=92){const rec1=DB[v1];const slot1=rec1?rec1[dt]:null;text+=`人1、${v1}番、${personSpeechText(v1,slot1,rec1)}。`;}if(v2&&v2>=1&&v2<=92){const rec2=DB[v2];const slot2=rec2?rec2[dt]:null;text+=`人2、${v2}番、${personSpeechText(v2,slot2,rec2)}`;}const btn=document.getElementById('speakTodayBtn');if(btn){btn.classList.add('speaking');}speakText(text);}
+function handleSpeakResults(){const rows=window._lastRows;if(!rows||!rows.length){speakText('先に検索してください');return;}let text=`${rows.length}日間の検索結果。`;rows.forEach(r=>{text+=`${r.m}月${r.d}日${r.dw}曜。人1、${r.p1.dn}番、${personSpeechText(r.p1.dn,r.p1.slot,r.p1.rec)}。人2、${r.p2.dn}番、${personSpeechText(r.p2.dn,r.p2.slot,r.p2.rec)}。`;});const btn=document.getElementById('speakResBtn');if(btn){btn.classList.add('speaking');}speakText(text);}
 </script>
 </body>
 </html>
