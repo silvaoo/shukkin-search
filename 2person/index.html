@@ -51,7 +51,7 @@ body{font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;backgro
 .dial-num.p1{border-color:#3b82f6;}
 .dial-num.p2{border-color:#a855f7;}
 .dial-num:focus{box-shadow:0 0 12px rgba(6,182,212,.3);}
-.dial-num::placeholder{color:var(--border);font-size:16px;}
+.dial-num::placeholder{color:var(--dim);font-size:16px;opacity:0.5;}
 .dial-unit{font-size:11px;color:var(--dim);font-weight:700;}
 .prev-box{width:100%;background:var(--bg-card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:10px;line-height:1.5;color:var(--dim);min-height:40px;font-family:monospace;transition:background .3s,border-color .3s,color .3s;}
 .prev-box b{color:var(--cyan);font-weight:700;}
@@ -113,7 +113,7 @@ footer{position:fixed;bottom:0;left:0;right:0;height:60px;background:var(--bg-ca
       <div class="person-input">
         <div class="person-label p1">👤 人１</div>
         <div class="dial-input-box">
-          <input type="number" id="d1" class="dial-num p1" min="1" max="92" placeholder="9" inputmode="numeric">
+          <input type="number" id="d1" class="dial-num p1" min="1" max="92" placeholder="11" inputmode="numeric">
           <span class="dial-unit">番</span>
         </div>
         <div class="prev-box" id="prev1">番号を入力</div>
@@ -121,7 +121,7 @@ footer{position:fixed;bottom:0;left:0;right:0;height:60px;background:var(--bg-ca
       <div class="person-input">
         <div class="person-label p2">👤 人２</div>
         <div class="dial-input-box">
-          <input type="number" id="d2" class="dial-num p2" min="1" max="92" placeholder="9" inputmode="numeric">
+          <input type="number" id="d2" class="dial-num p2" min="1" max="92" placeholder="11" inputmode="numeric">
           <span class="dial-unit">番</span>
         </div>
         <div class="prev-box" id="prev2">番号を入力</div>
