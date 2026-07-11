@@ -360,9 +360,8 @@ const DW=['日','月','火','水','木','金','土'];
 const BASE_DATE=new Date(2026,4,3);
 const BASE_DIAL=36;
 
-function applyTheme(isLight){const html=document.documentElement;if(isLight){html.classList.add('light');document.getElementById('themeToggle').textContent='☀️';}else{html.classList.remove('light');document.getElementById('themeToggle').textContent='🌙';}}
-function toggleTheme(){const html=document.documentElement;const isLight=html.classList.contains('light');isLight?html.classList.remove('light'):html.classList.add('light');localStorage.setItem('shukkin_theme',isLight?'dark':'light');document.getElementById('themeToggle').textContent=isLight?'🌙':'☀️';}
-function initTheme(){const saved=localStorage.getItem('shukkin_theme');const isLight=saved==='light'||false;applyTheme(isLight);}
+function toggleTheme(){const html=document.documentElement;html.classList.toggle('light');document.getElementById('themeToggle').textContent=html.classList.contains('light')?'☀️':'🌙';}
+function initTheme(){document.documentElement.classList.remove('light');document.getElementById('themeToggle').textContent='🌙';}
 function beep(freq,duration,delay){const ctx=new(window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.connect(gain);gain.connect(ctx.destination);osc.frequency.value=freq;gain.gain.setValueAtTime(0.3,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+duration/1000);osc.start(ctx.currentTime+delay/1000);osc.stop(ctx.currentTime+(delay+duration)/1000);}
 function feedbackQuick(){try{beep(880,90,0);}catch(e){}if(navigator.vibrate)navigator.vibrate(40);}
 function feedbackRange(){try{beep(600,80,0);beep(950,110,0.11);}catch(e){}if(navigator.vibrate)navigator.vibrate([40,60,40]);}
