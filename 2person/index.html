@@ -374,7 +374,7 @@ function triggerFireworks(){
   try{
     if(!fwc||!fwx)return;
     fwc.width=window.innerWidth;fwc.height=window.innerHeight;particles=[];
-    for(let i=0;i<5;i++){const x=Math.random()*fwc.width,y=Math.random()*fwc.height*0.5;const colors=['#ff0000','#00ff00','#0000ff','#ffff00','#ff00ff','#00ffff'];for(let j=0;j<30;j++){const a=Math.random()*Math.PI*2,sp=Math.random()*5+3;const c=colors[Math.floor(Math.random()*colors.length)];particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,c,life:75});}}
+    for(let i=0;i<2;i++){const x=Math.random()*fwc.width,y=Math.random()*fwc.height*0.5;const colors=['#ff0000','#00ff00','#0000ff','#ffff00','#ff00ff','#00ffff'];for(let j=0;j<30;j++){const a=Math.random()*Math.PI*2,sp=Math.random()*5+3;const c=colors[Math.floor(Math.random()*colors.length)];particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,c,life:75});}}
     drawFireworks();
   }catch(e){console.log('花火エラー:',e);}
 }
@@ -388,7 +388,7 @@ function drawFireworks(){
 
 function spaceBeep(){
   try{
-    const ctx=new(window.AudioContext||window.webkitAudioContext)();const now=ctx.currentTime;const osc1=ctx.createOscillator(),osc2=ctx.createOscillator(),gain=ctx.createGain();osc1.connect(gain);osc2.connect(gain);gain.connect(ctx.destination);osc1.frequency.setValueAtTime(200,now);osc1.frequency.exponentialRampToValueAtTime(400,now+0.3);osc2.frequency.setValueAtTime(300,now);osc2.frequency.exponentialRampToValueAtTime(150,now+0.3);gain.gain.setValueAtTime(0.2,now);gain.gain.exponentialRampToValueAtTime(0,now+0.5);osc1.start(now);osc2.start(now);osc1.stop(now+0.5);osc2.stop(now+0.5);
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();const now=ctx.currentTime;const osc1=ctx.createOscillator(),osc2=ctx.createOscillator(),gain=ctx.createGain();osc1.connect(gain);osc2.connect(gain);gain.connect(ctx.destination);osc1.type='sine';osc2.type='sine';osc1.frequency.setValueAtTime(200,now);osc1.frequency.exponentialRampToValueAtTime(400,now+0.3);osc2.frequency.setValueAtTime(300,now);osc2.frequency.exponentialRampToValueAtTime(150,now+0.3);gain.gain.setValueAtTime(0.2,now);gain.gain.exponentialRampToValueAtTime(0.001,now+0.5);osc1.start(now);osc2.start(now);osc1.stop(now+0.5);osc2.stop(now+0.5);
   }catch(e){console.log('音声エラー:',e);}
 }
 
