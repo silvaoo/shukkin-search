@@ -20,7 +20,7 @@
   --dim: #5a5a90;
   --border: rgba(0,245,255,0.2);
 }
-body.light {
+html.light {
   --bg: #eeeef8;
   --bg-card: #ffffff;
   --bg-card2: #f0f0ff;
@@ -61,6 +61,7 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
   border-radius: 6px;
   cursor: pointer;
   font-size: 16px;
+  transition: all 0.3s;
 }
 .card {
   background: var(--bg-card);
@@ -68,6 +69,7 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 14px;
+  transition: background 0.3s, border-color 0.3s;
 }
 .card h2 {
   font-size: 13px;
@@ -104,6 +106,7 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
   color: var(--text);
   font-size: 16px;
   font-weight: bold;
+  transition: all 0.3s;
 }
 .input-group input::placeholder {
   color: #9a9ab0;
@@ -123,6 +126,7 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
   color: var(--dim);
   min-height: 40px;
   margin-bottom: 10px;
+  transition: all 0.3s;
 }
 .preview-box.empty {
   background: none;
@@ -151,8 +155,9 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
   font-size: 12px;
   font-weight: bold;
   cursor: pointer;
-  margin-bottom: 12px;
+  margin-bottom: 0;
   font-family: 'Noto Sans JP', sans-serif;
+  transition: all 0.3s;
 }
 .speak-btn:active {
   background: rgba(34, 197, 94, 0.25);
@@ -172,6 +177,7 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
   font-size: 12px;
   font-weight: bold;
   cursor: pointer;
+  transition: all 0.3s;
 }
 .quick-search button:active {
   background: var(--orange);
@@ -202,6 +208,7 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
   border-radius: 6px;
   color: var(--text);
   font-size: 12px;
+  transition: all 0.3s;
 }
 .date-row select:focus {
   outline: none;
@@ -217,6 +224,7 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
+  transition: all 0.3s;
 }
 .search-btn:active {
   opacity: 0.8;
@@ -230,6 +238,7 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
   border-radius: 10px;
   padding: 12px;
   margin-bottom: 10px;
+  transition: all 0.3s;
 }
 .result-date {
   font-size: 14px;
@@ -352,8 +361,8 @@ const DW=['日','月','火','水','木','金','土'];
 const BASE_DATE=new Date(2026,4,3);
 const BASE_DIAL=36;
 
-function toggleTheme(){document.documentElement.classList.toggle('light');localStorage.setItem('theme',document.documentElement.classList.contains('light')?'light':'dark');document.getElementById('themeToggle').textContent=document.documentElement.classList.contains('light')?'☀️':'🌙';}
-function initTheme(){if(localStorage.getItem('theme')==='light'){document.documentElement.classList.add('light');document.getElementById('themeToggle').textContent='☀️';}}
+function toggleTheme(){const html=document.documentElement;html.classList.toggle('light');if(html.classList.contains('light')){localStorage.setItem('theme','light');document.getElementById('themeToggle').textContent='☀️';}else{localStorage.setItem('theme','dark');document.getElementById('themeToggle').textContent='🌙';}}
+function initTheme(){if(localStorage.getItem('theme')==='light'){document.documentElement.classList.add('light');document.getElementById('themeToggle').textContent='☀️';}else{document.documentElement.classList.remove('light');document.getElementById('themeToggle').textContent='🌙';}}
 function beep(freq,duration,delay){const ctx=new(window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.connect(gain);gain.connect(ctx.destination);osc.frequency.value=freq;gain.gain.setValueAtTime(0.3,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+duration/1000);osc.start(ctx.currentTime+delay/1000);osc.stop(ctx.currentTime+(delay+duration)/1000);}
 function feedbackQuick(){try{beep(880,90,0);}catch(e){}if(navigator.vibrate)navigator.vibrate(40);}
 function feedbackRange(){try{beep(600,80,0);beep(950,110,0.11);}catch(e){}if(navigator.vibrate)navigator.vibrate([40,60,40]);}
@@ -375,8 +384,11 @@ function quickSearch(days){const d1=parseInt(document.getElementById('dial1').va
 function doSearch(){const d1=parseInt(document.getElementById('dial1').value);const d2=parseInt(document.getElementById('dial2').value);if(!d1||!d2){alert('両方のダイヤ番号を入力してください');return;}feedbackRange();const sm=parseInt(document.getElementById('fromMonth').value);const sd=parseInt(document.getElementById('fromDay').value);const em=parseInt(document.getElementById('toMonth').value);const ed=parseInt(document.getElementById('toDay').value);const s=new Date(2026,sm-1,sd);const e=new Date(2026,em-1,ed);doSearchRange(s,e,d1,d2);}
 function doSearchRange(start,end,d1,d2){const rows=[];let cur=new Date(start);while(cur<=end){const dn1=calcDial(cur,d1);const dn2=calcDial(cur,d2);const dt=dayType(cur);const rec1=DB[dn1];const rec2=DB[dn2];rows.push({m:cur.getMonth()+1,d:cur.getDate(),dw:DW[cur.getDay()],dt,hol:isHol(cur),p1:{dn:dn1,rec:rec1,slot:rec1?rec1[dt]:null},p2:{dn:dn2,rec:rec2,slot:rec2?rec2[dt]:null}});cur.setDate(cur.getDate()+1);}render(rows);}
 function getTimeStr(slot,rec){if(!rec||!slot)return '公休';if(slot.o==='—')return '要確認';return slot.o+'（'+slot.w+'h）';}
-function render(rows){const el=document.getElementById('results');if(!rows.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--dim);">該当する日がありません</div>';return;}let html='';rows.forEach(r=>{html+='<div class="result-card"><div class="result-date">'+r.m+'/'+r.d+'（'+r.dw+'）'+(r.hol?'祝':'')+'</div><div class="result-dual"><div class="result-person"><div class="label">1人目 / '+r.p1.dn+'番</div><div class="dial">'+r.p1.dn+'</div><div class="time'+((!r.p1.rec||!r.p1.slot)?' holiday':'')+'">'+getTimeStr(r.p1.slot,r.p1.rec)+'</div></div><div class="result-person"><div class="label">二人目 / '+r.p2.dn+'番</div><div class="dial">'+r.p2.dn+'</div><div class="time'+((!r.p2.rec||!r.p2.slot)?' holiday':'')+'">'+getTimeStr(r.p2.slot,r.p2.rec)+'</div></div></div></div>';});el.innerHTML=html;}
-initTheme();buildMonths('fromMonth');buildMonths('toMonth');const today=new Date();const end=new Date(today.getTime()+86400000*30);document.getElementById('fromMonth').value=today.getMonth()+1;updateFromDays();document.getElementById('fromDay').value=today.getDate();document.getElementById('toMonth').value=end.getMonth()+1;updateToDays();document.getElementById('toDay').value=end.getDate();const autoDial=((BASE_DIAL-1+Math.round((new Date()-BASE_DATE)/86400000))%92+92)%92+1;document.getElementById('dial1').placeholder=autoDial;document.getElementById('dial2').placeholder=autoDial;document.getElementById('dial1').addEventListener('input',()=>updatePreview('dial1','preview1'));document.getElementById('dial2').addEventListener('input',()=>updatePreview('dial2','preview2'));
+function render(rows){const el=document.getElementById('results');if(!rows.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--dim);">該当する日がありません</div>';return;}let html='';rows.forEach(r=>{html+='<div class="result-card"><div class="result-date">'+r.m+'/'+r.d+'（'+r.dw+'）'+(r.hol?'祝':'')+'</div><div class="result-dual"><div class="result-person"><div class="label">1人目 / '+r.p1.dn+'番</div><div class="dial">'+r.p1.dn+'</div><div class="time'+((!r.p1.rec||!r.p1.slot)?' holiday':'')+'">'+getTimeStr(r.p1.slot,r.p1.rec)+'</div></div><div class="result-person"><div class="label">二人目 / '+r.p2.dn+'番</div><div class="dial">'+r.p2.dn+'</div><div class="time'+((!r.p2.rec||!r.p2.slot)?' holiday':'')+'">'+getTimeStr(r.p2.slot,r.p2.rec)+'</div></div></div></div>';});html+='<button class="speak-btn" onclick="handleSpeakResults()">🔊 検索結果を読み上げ</button>';el.innerHTML=html;}
+
+function handleSpeakResults(){const rows=window._lastRows;if(!rows||!rows.length){speakText('先に検索してください');return;}let text=`${rows.length}日間の検索結果。`;rows.forEach(r=>{text+=`${r.m}月${r.d}日${r.dw}曜。1人目、${r.p1.dn}番、${getTimeStr(r.p1.slot,r.p1.rec)}。2人目、${r.p2.dn}番、${getTimeStr(r.p2.slot,r.p2.rec)}。`;});speakText(text);}
+
+initTheme();buildMonths('fromMonth');buildMonths('toMonth');const today=new Date();const end=new Date(today.getTime()+86400000*30);document.getElementById('fromMonth').value=today.getMonth()+1;updateFromDays();document.getElementById('fromDay').value=today.getDate();document.getElementById('toMonth').value=end.getMonth()+1;updateToDays();document.getElementById('toDay').value=end.getDate();const autoDial=13;document.getElementById('dial1').placeholder=autoDial;document.getElementById('dial2').placeholder=autoDial;document.getElementById('dial1').addEventListener('input',()=>updatePreview('dial1','preview1'));document.getElementById('dial2').addEventListener('input',()=>updatePreview('dial2','preview2'));window._lastRows=null;
 </script>
 
 </body>
