@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>出退勤検索くん（2人版）</title>
+<title>出退勤検索くん（2人同時検索版）</title>
 <style>
 :root {
   --bg: #0a0e27;
@@ -41,7 +41,7 @@ body {
   color: var(--text);
   font-family: 'Noto Sans JP', sans-serif;
   min-height: 100vh;
-  padding: 14px 12px 50px;
+  padding: 14px 12px 80px;
   transition: background 0.3s, color 0.3s;
 }
 header {
@@ -96,7 +96,7 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
   width: 100%;
   padding: 12px;
   background: var(--bg-card2);
-  border: 1px solid var(--border);
+  border: 2px solid var(--orange);
   border-radius: 8px;
   color: var(--text);
   font-size: 16px;
@@ -119,15 +119,15 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
 .quick-search button {
   padding: 10px;
   background: transparent;
-  border: 1px solid var(--cyan);
-  color: var(--cyan);
+  border: 2px solid var(--orange);
+  color: var(--orange);
   border-radius: 8px;
   font-size: 12px;
   font-weight: bold;
   cursor: pointer;
 }
 .quick-search button:active {
-  background: var(--cyan);
+  background: var(--orange);
   color: var(--bg);
 }
 .date-inputs {
@@ -151,7 +151,7 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
 .date-row select {
   padding: 8px;
   background: var(--bg-card2);
-  border: 1px solid var(--border);
+  border: 2px solid var(--orange);
   border-radius: 6px;
   color: var(--text);
   font-size: 12px;
@@ -221,6 +221,16 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
 .result-person .time.holiday {
   color: var(--green);
 }
+.warning {
+  background: rgba(255, 152, 0, 0.1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--dim);
+  margin-bottom: 14px;
+}
 footer {
   position: fixed;
   bottom: 0;
@@ -228,7 +238,7 @@ footer {
   right: 0;
   background: var(--bg);
   border-top: 1px solid var(--border);
-  padding: 8px;
+  padding: 12px;
   text-align: center;
   font-size: 8px;
   color: var(--dim);
@@ -240,21 +250,21 @@ footer {
 <header>
   <div>
     <h1>🚌 出退勤検索くん</h1>
-    <h1 style="font-size: 13px; margin-top: 4px;">2人版</h1>
+    <h1 style="font-size: 13px; margin-top: 4px;">二人同時検索版</h1>
     <div class="subtitle">北大和・学園前 Aダイヤ ／ 1〜92番</div>
   </div>
   <button id="themeToggle" onclick="toggleTheme()">🌙</button>
 </header>
 
 <div class="card">
-  <h2>今日のダイヤ番号</h2>
+  <h2>本日7/12(土)のダイヤ番号を入力</h2>
   <div class="dual-inputs">
     <div class="input-group">
-      <label>👤 人１</label>
+      <label>1人目</label>
       <input type="number" id="dial1" min="1" max="92" inputmode="numeric" autocomplete="off">
     </div>
     <div class="input-group">
-      <label>👤 人２</label>
+      <label>二人目</label>
       <input type="number" id="dial2" min="1" max="92" inputmode="numeric" autocomplete="off">
     </div>
   </div>
@@ -288,6 +298,10 @@ footer {
 
 <div id="results"></div>
 
+<div class="warning">
+  ⚠️ 注意: このツールは同僚とも共有するため、特定の個人のダイヤ番号を「値」として自動入力してはいけない。あくまで「プレースホルダー(薄いヒント)」として見せるだけにし、実際の値は各自が必ず自分で入力する形にする。
+</div>
+
 <footer>by AIタケタニ</footer>
 
 <script>
@@ -299,6 +313,11 @@ const BASE_DIAL=36;
 
 function toggleTheme(){document.body.classList.toggle('light');localStorage.setItem('theme',document.body.classList.contains('light')?'light':'dark');document.getElementById('themeToggle').textContent=document.body.classList.contains('light')?'☀️':'🌙';}
 function initTheme(){if(localStorage.getItem('theme')==='light'){document.body.classList.add('light');document.getElementById('themeToggle').textContent='☀️';}}
+
+function beep(freq,duration,delay){const ctx=new(window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.connect(gain);gain.connect(ctx.destination);osc.frequency.value=freq;gain.gain.setValueAtTime(0.3,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+duration/1000);osc.start(ctx.currentTime+delay/1000);osc.stop(ctx.currentTime+(delay+duration)/1000);}
+function feedbackQuick(){try{beep(880,90,0);}catch(e){}if(navigator.vibrate)navigator.vibrate(40);}
+function feedbackRange(){try{beep(600,80,0);beep(950,110,0.11);}catch(e){}if(navigator.vibrate)navigator.vibrate([40,60,40]);}
+
 function toISO(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function isHol(d){return HOLIDAYS.has(toISO(d));}
 function dayType(d){const w=d.getDay();if(w===0||isHol(d))return '日祝';if(w===6)return '土';return '平';}
@@ -306,11 +325,11 @@ function calcDial(target,todayDial){const today=new Date();today.setHours(0,0,0,
 function buildMonths(id){const s=document.getElementById(id);for(let m=1;m<=12;m++){const o=document.createElement('option');o.value=m;o.textContent=m+'月';s.appendChild(o);}}
 function updateFromDays(){const m=parseInt(document.getElementById('fromMonth').value);const sel=document.getElementById('fromDay');sel.innerHTML='';const max=new Date(2026,m,0).getDate();for(let i=1;i<=max;i++){const o=document.createElement('option');o.value=i;o.textContent=i+'日';sel.appendChild(o);}}
 function updateToDays(){const m=parseInt(document.getElementById('toMonth').value);const sel=document.getElementById('toDay');sel.innerHTML='';const max=new Date(2026,m,0).getDate();for(let i=1;i<=max;i++){const o=document.createElement('option');o.value=i;o.textContent=i+'日';sel.appendChild(o);}}
-function quickSearch(days){const d1=parseInt(document.getElementById('dial1').value);const d2=parseInt(document.getElementById('dial2').value);if(!d1||!d2){alert('ダイヤ番号を入力してください');return;}const t=new Date();t.setHours(0,0,0,0);const e=new Date(t);e.setDate(t.getDate()+days);doSearchRange(t,e,d1,d2);}
-function doSearch(){const d1=parseInt(document.getElementById('dial1').value);const d2=parseInt(document.getElementById('dial2').value);if(!d1||!d2){alert('ダイヤ番号を入力してください');return;}const sm=parseInt(document.getElementById('fromMonth').value);const sd=parseInt(document.getElementById('fromDay').value);const em=parseInt(document.getElementById('toMonth').value);const ed=parseInt(document.getElementById('toDay').value);const s=new Date(2026,sm-1,sd);const e=new Date(2026,em-1,ed);doSearchRange(s,e,d1,d2);}
+function quickSearch(days){const d1=parseInt(document.getElementById('dial1').value);const d2=parseInt(document.getElementById('dial2').value);if(!d1||!d2){alert('ダイヤ番号を入力してください');return;}feedbackQuick();const t=new Date();t.setHours(0,0,0,0);const e=new Date(t);e.setDate(t.getDate()+days);doSearchRange(t,e,d1,d2);}
+function doSearch(){const d1=parseInt(document.getElementById('dial1').value);const d2=parseInt(document.getElementById('dial2').value);if(!d1||!d2){alert('ダイヤ番号を入力してください');return;}feedbackRange();const sm=parseInt(document.getElementById('fromMonth').value);const sd=parseInt(document.getElementById('fromDay').value);const em=parseInt(document.getElementById('toMonth').value);const ed=parseInt(document.getElementById('toDay').value);const s=new Date(2026,sm-1,sd);const e=new Date(2026,em-1,ed);doSearchRange(s,e,d1,d2);}
 function doSearchRange(start,end,d1,d2){const rows=[];let cur=new Date(start);while(cur<=end){const dn1=calcDial(cur,d1);const dn2=calcDial(cur,d2);const dt=dayType(cur);const rec1=DB[dn1];const rec2=DB[dn2];rows.push({m:cur.getMonth()+1,d:cur.getDate(),dw:DW[cur.getDay()],dt,hol:isHol(cur),p1:{dn:dn1,rec:rec1,slot:rec1?rec1[dt]:null},p2:{dn:dn2,rec:rec2,slot:rec2?rec2[dt]:null}});cur.setDate(cur.getDate()+1);}render(rows);}
 function getTimeStr(slot,rec){if(!rec||!slot)return '公休';if(slot.o==='—')return '要確認';return slot.o+'（'+slot.w+'h）';}
-function render(rows){const el=document.getElementById('results');if(!rows.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--dim);">該当する日がありません</div>';return;}let html='';rows.forEach(r=>{html+='<div class="result-card"><div class="result-date">'+r.m+'/'+r.d+'（'+r.dw+'）'+(r.hol?'祝':'')+'</div><div class="result-dual"><div class="result-person"><div class="label">人１ / '+r.p1.dn+'番</div><div class="dial">'+r.p1.dn+'</div><div class="time'+((!r.p1.rec||!r.p1.slot)?' holiday':'')+'">'+getTimeStr(r.p1.slot,r.p1.rec)+'</div></div><div class="result-person"><div class="label">人２ / '+r.p2.dn+'番</div><div class="dial">'+r.p2.dn+'</div><div class="time'+((!r.p2.rec||!r.p2.slot)?' holiday':'')+'">'+getTimeStr(r.p2.slot,r.p2.rec)+'</div></div></div></div>';});el.innerHTML=html;}
+function render(rows){const el=document.getElementById('results');if(!rows.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--dim);">該当する日がありません</div>';return;}let html='';rows.forEach(r=>{html+='<div class="result-card"><div class="result-date">'+r.m+'/'+r.d+'（'+r.dw+'）'+(r.hol?'祝':'')+'</div><div class="result-dual"><div class="result-person"><div class="label">1人目 / '+r.p1.dn+'番</div><div class="dial">'+r.p1.dn+'</div><div class="time'+((!r.p1.rec||!r.p1.slot)?' holiday':'')+'">'+getTimeStr(r.p1.slot,r.p1.rec)+'</div></div><div class="result-person"><div class="label">二人目 / '+r.p2.dn+'番</div><div class="dial">'+r.p2.dn+'</div><div class="time'+((!r.p2.rec||!r.p2.slot)?' holiday':'')+'">'+getTimeStr(r.p2.slot,r.p2.rec)+'</div></div></div></div>';});el.innerHTML=html;}
 initTheme();buildMonths('fromMonth');buildMonths('toMonth');const today=new Date();const end=new Date(today.getTime()+86400000*30);document.getElementById('fromMonth').value=today.getMonth()+1;updateFromDays();document.getElementById('fromDay').value=today.getDate();document.getElementById('toMonth').value=end.getMonth()+1;updateToDays();document.getElementById('toDay').value=end.getDate();const autoDial=((BASE_DIAL-1+Math.round((new Date()-BASE_DATE)/86400000))%92+92)%92+1;document.getElementById('dial1').placeholder=autoDial;document.getElementById('dial2').placeholder=autoDial;
 </script>
 
