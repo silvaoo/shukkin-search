@@ -422,6 +422,7 @@ function updateTodayPreview(){
     return;
   }
   box.classList.remove('empty'); // 実際のシフト内容を表示する時は枠を戻す
+  launchFireworks(1); // 有効な番号が入力されたら花火1発
   const today=new Date();
   const m=today.getMonth()+1,d=today.getDate();
   const dw=DW[today.getDay()];
@@ -644,14 +645,33 @@ function beep(freq,durationMs,delaySec){
   osc.connect(gain);gain.connect(ctx.destination);
   osc.start(t0);osc.stop(t0+durationMs/1000);
 }
-/* クイック検索用：短い単発の高めの音＋短いバイブ1回 */
+/* 宇宙をイメージしたスペース音（上昇→下降の2音同時） */
+function spaceBeep(){
+  try{
+    const ctx=getAudioCtx();
+    if(!ctx)return;
+    const now=ctx.currentTime;
+    const osc1=ctx.createOscillator(),osc2=ctx.createOscillator(),gain=ctx.createGain();
+    osc1.connect(gain);osc2.connect(gain);gain.connect(ctx.destination);
+    osc1.type='sine';osc2.type='sine';
+    osc1.frequency.setValueAtTime(200,now);
+    osc1.frequency.exponentialRampToValueAtTime(400,now+0.3);
+    osc2.frequency.setValueAtTime(300,now);
+    osc2.frequency.exponentialRampToValueAtTime(150,now+0.3);
+    gain.gain.setValueAtTime(0.2,now);
+    gain.gain.exponentialRampToValueAtTime(0.001,now+0.5);
+    osc1.start(now);osc2.start(now);
+    osc1.stop(now+0.5);osc2.stop(now+0.5);
+  }catch(e){console.log('音声エラー:',e);}
+}
+/* クイック検索用：スペース音＋短いバイブ1回 */
 function feedbackQuick(){
-  try{beep(880,90,0);}catch(e){}
+  spaceBeep();
   if(navigator.vibrate)navigator.vibrate(40);
 }
-/* 期間検索用：2段階の音（低→高）＋バイブ2回 */
+/* 期間検索用：スペース音＋バイブ2回 */
 function feedbackRange(){
-  try{beep(600,80,0);beep(950,110,0.11);}catch(e){}
+  spaceBeep();
   if(navigator.vibrate)navigator.vibrate([40,60,40]);
 }
 
@@ -739,6 +759,23 @@ function toggleMode(){document.body.classList.toggle('light');}
 const fwc=document.getElementById('fw');
 const fwx=fwc.getContext('2d');
 let particles=[];
+window.addEventListener('resize',()=>{fwc.width=window.innerWidth;fwc.height=window.innerHeight;});
+
+function launchFireworks(count){
+  try{
+    fwc.width=window.innerWidth;fwc.height=window.innerHeight;
+    const colors=['#ff0000','#00ff00','#0000ff','#ffff00','#ff00ff','#00ffff'];
+    for(let i=0;i<count;i++){
+      const x=Math.random()*fwc.width,y=Math.random()*fwc.height*0.5;
+      for(let j=0;j<30;j++){
+        const a=Math.random()*Math.PI*2,sp=Math.random()*5+3;
+        const c=colors[Math.floor(Math.random()*colors.length)];
+        particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,c,life:75});
+      }
+    }
+    drawFw();
+  }catch(e){console.log('花火エラー:',e);}
+}
 function launchFireworks(){
   fwc.width=window.innerWidth;fwc.height=window.innerHeight;
   particles=[];
