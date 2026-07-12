@@ -422,7 +422,8 @@ function updateTodayPreview(){
     return;
   }
   box.classList.remove('empty'); // 実際のシフト内容を表示する時は枠を戻す
-  launchFireworks(1); // 有効な番号が入力されたら花火1発
+  launchFireworks(); // 有効な番号が入力されたら花火1発
+  rocketFirework(); // ロケット花火風の音
   const today=new Date();
   const m=today.getMonth()+1,d=today.getDate();
   const dw=DW[today.getDay()];
@@ -617,7 +618,7 @@ function render(rows){
   el.innerHTML=html;
   window._lastRows=rows;
 
-  if(kyuCnt>0)launchFireworks();
+  if(kyuCnt>0)launchMultipleFireworks(5);
   setTimeout(()=>{el.scrollIntoView({behavior:'smooth',block:'start'});},100);
 }
 
@@ -664,14 +665,14 @@ function spaceBeep(){
     osc1.stop(now+0.5);osc2.stop(now+0.5);
   }catch(e){console.log('音声エラー:',e);}
 }
-/* クイック検索用：スペース音＋短いバイブ1回 */
+/* クイック検索用：ロケット花火音＋短いバイブ1回 */
 function feedbackQuick(){
-  spaceBeep();
+  rocketFirework();
   if(navigator.vibrate)navigator.vibrate(40);
 }
-/* 期間検索用：スペース音＋バイブ2回 */
+/* 期間検索用：ロケット花火音＋バイブ2回 */
 function feedbackRange(){
-  spaceBeep();
+  rocketFirework();
   if(navigator.vibrate)navigator.vibrate([40,60,40]);
 }
 
@@ -761,25 +762,18 @@ const fwx=fwc.getContext('2d');
 let particles=[];
 window.addEventListener('resize',()=>{fwc.width=window.innerWidth;fwc.height=window.innerHeight;});
 
-function launchFireworks(count){
-  try{
-    fwc.width=window.innerWidth;fwc.height=window.innerHeight;
-    const colors=['#ff0000','#00ff00','#0000ff','#ffff00','#ff00ff','#00ffff'];
-    for(let i=0;i<count;i++){
-      const x=Math.random()*fwc.width,y=Math.random()*fwc.height*0.5;
-      for(let j=0;j<30;j++){
-        const a=Math.random()*Math.PI*2,sp=Math.random()*5+3;
-        const c=colors[Math.floor(Math.random()*colors.length)];
-        particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,c,life:75});
-      }
-    }
-    drawFw();
-  }catch(e){console.log('花火エラー:',e);}
-}
+/* 花火を1発打ち上げる（ダイヤ番号入力時に使用） */
 function launchFireworks(){
   fwc.width=window.innerWidth;fwc.height=window.innerHeight;
   particles=[];
-  for(let i=0;i<5;i++)setTimeout(burst,i*300);
+  burst();
+  requestAnimationFrame(drawFw);
+}
+/* 複数の花火を連続で打ち上げる（公休判定時などに使用） */
+function launchMultipleFireworks(count){
+  fwc.width=window.innerWidth;fwc.height=window.innerHeight;
+  particles=[];
+  for(let i=0;i<count;i++)setTimeout(burst,i*300);
   requestAnimationFrame(drawFw);
 }
 function burst(){
@@ -790,6 +784,42 @@ function burst(){
     const a=(Math.PI*2/45)*i,sp=2+Math.random()*4;
     particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,c,life:75});
   }
+}
+/* ロケット花火風の音：ぴゅーーーん（打ち上げ）→ドカン（爆発） */
+function rocketFirework(){
+  try{
+    const ctx=getAudioCtx();
+    if(!ctx)return;
+    const now=ctx.currentTime;
+    // 打ち上げ音「ぴゅーーーん」：周波数がだんだん上がるノイズ風の音
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.type='sawtooth';
+    osc.frequency.setValueAtTime(300,now);
+    osc.frequency.exponentialRampToValueAtTime(1200,now+0.4);
+    gain.gain.setValueAtTime(0.15,now);
+    gain.gain.linearRampToValueAtTime(0.05,now+0.4);
+    osc.start(now);osc.stop(now+0.4);
+    // 爆発音「ドカン」：ノイズバーストで破裂感を出す
+    const bufferSize=ctx.sampleRate*0.3;
+    const buffer=ctx.createBuffer(1,bufferSize,ctx.sampleRate);
+    const data=buffer.getChannelData(0);
+    for(let i=0;i<bufferSize;i++){
+      data[i]=(Math.random()*2-1)*Math.pow(1-i/bufferSize,2);
+    }
+    const noise=ctx.createBufferSource();
+    noise.buffer=buffer;
+    const noiseFilter=ctx.createBiquadFilter();
+    noiseFilter.type='lowpass';
+    noiseFilter.frequency.setValueAtTime(1500,now+0.4);
+    noiseFilter.frequency.exponentialRampToValueAtTime(100,now+0.7);
+    const noiseGain=ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.5,now+0.4);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001,now+0.8);
+    noise.connect(noiseFilter);noiseFilter.connect(noiseGain);noiseGain.connect(ctx.destination);
+    noise.start(now+0.4);
+  }catch(e){console.log('ロケット花火音エラー:',e);}
 }
 function drawFw(){
   fwx.clearRect(0,0,fwc.width,fwc.height);
