@@ -386,10 +386,38 @@ function drawFireworks(){
   }catch(e){console.log('花火描画エラー:',e);}
 }
 
-function spaceBeep(){
+/* ロケット花火風の音：ぴゅーーーん（打ち上げ）→ドカン（爆発） */
+function rocketFirework(){
   try{
-    const ctx=new(window.AudioContext||window.webkitAudioContext)();const now=ctx.currentTime;const osc1=ctx.createOscillator(),osc2=ctx.createOscillator(),gain=ctx.createGain();osc1.connect(gain);osc2.connect(gain);gain.connect(ctx.destination);osc1.type='sine';osc2.type='sine';osc1.frequency.setValueAtTime(200,now);osc1.frequency.exponentialRampToValueAtTime(400,now+0.3);osc2.frequency.setValueAtTime(300,now);osc2.frequency.exponentialRampToValueAtTime(150,now+0.3);gain.gain.setValueAtTime(0.2,now);gain.gain.exponentialRampToValueAtTime(0.001,now+0.5);osc1.start(now);osc2.start(now);osc1.stop(now+0.5);osc2.stop(now+0.5);
-  }catch(e){console.log('音声エラー:',e);}
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const now=ctx.currentTime;
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.type='sawtooth';
+    osc.frequency.setValueAtTime(300,now);
+    osc.frequency.exponentialRampToValueAtTime(1200,now+0.4);
+    gain.gain.setValueAtTime(0.15,now);
+    gain.gain.linearRampToValueAtTime(0.05,now+0.4);
+    osc.start(now);osc.stop(now+0.4);
+    const bufferSize=ctx.sampleRate*0.3;
+    const buffer=ctx.createBuffer(1,bufferSize,ctx.sampleRate);
+    const data=buffer.getChannelData(0);
+    for(let i=0;i<bufferSize;i++){
+      data[i]=(Math.random()*2-1)*Math.pow(1-i/bufferSize,2);
+    }
+    const noise=ctx.createBufferSource();
+    noise.buffer=buffer;
+    const noiseFilter=ctx.createBiquadFilter();
+    noiseFilter.type='lowpass';
+    noiseFilter.frequency.setValueAtTime(1500,now+0.4);
+    noiseFilter.frequency.exponentialRampToValueAtTime(100,now+0.7);
+    const noiseGain=ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.5,now+0.4);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001,now+0.8);
+    noise.connect(noiseFilter);noiseFilter.connect(noiseGain);noiseGain.connect(ctx.destination);
+    noise.start(now+0.4);
+  }catch(e){console.log('ロケット花火音エラー:',e);}
 }
 
 function toggleTheme(){const html=document.documentElement;html.classList.toggle('light');document.getElementById('themeToggle').textContent=html.classList.contains('light')?'☀️':'🌙';}
@@ -408,8 +436,8 @@ function speakText(text){if(!('speechSynthesis'in window)){alert('読み上げ�
 function buildMonths(id){const s=document.getElementById(id);for(let m=1;m<=12;m++){const o=document.createElement('option');o.value=m;o.textContent=m+'月';s.appendChild(o);}}
 function updateFromDays(){const m=parseInt(document.getElementById('fromMonth').value);const sel=document.getElementById('fromDay');sel.innerHTML='';const max=new Date(2026,m,0).getDate();for(let i=1;i<=max;i++){const o=document.createElement('option');o.value=i;o.textContent=i+'日';sel.appendChild(o);}}
 function updateToDays(){const m=parseInt(document.getElementById('toMonth').value);const sel=document.getElementById('toDay');sel.innerHTML='';const max=new Date(2026,m,0).getDate();for(let i=1;i<=max;i++){const o=document.createElement('option');o.value=i;o.textContent=i+'日';sel.appendChild(o);}}
-function quickSearch(days){const d1=parseInt(document.getElementById('dial1').value);const d2=parseInt(document.getElementById('dial2').value);if(!d1||!d2){alert('両方のダイヤ番号を入力してください');return;}spaceBeep();const t=new Date();t.setHours(0,0,0,0);const e=new Date(t);e.setDate(t.getDate()+days);doSearchRange(t,e,d1,d2);}
-function doSearch(){const d1=parseInt(document.getElementById('dial1').value);const d2=parseInt(document.getElementById('dial2').value);if(!d1||!d2){alert('両方のダイヤ番号を入力してください');return;}spaceBeep();const sm=parseInt(document.getElementById('fromMonth').value);const sd=parseInt(document.getElementById('fromDay').value);const em=parseInt(document.getElementById('toMonth').value);const ed=parseInt(document.getElementById('toDay').value);const s=new Date(2026,sm-1,sd);const e=new Date(2026,em-1,ed);doSearchRange(s,e,d1,d2);}
+function quickSearch(days){const d1=parseInt(document.getElementById('dial1').value);const d2=parseInt(document.getElementById('dial2').value);if(!d1||!d2){alert('両方のダイヤ番号を入力してください');return;}rocketFirework();const t=new Date();t.setHours(0,0,0,0);const e=new Date(t);e.setDate(t.getDate()+days);doSearchRange(t,e,d1,d2);}
+function doSearch(){const d1=parseInt(document.getElementById('dial1').value);const d2=parseInt(document.getElementById('dial2').value);if(!d1||!d2){alert('両方のダイヤ番号を入力してください');return;}rocketFirework();const sm=parseInt(document.getElementById('fromMonth').value);const sd=parseInt(document.getElementById('fromDay').value);const em=parseInt(document.getElementById('toMonth').value);const ed=parseInt(document.getElementById('toDay').value);const s=new Date(2026,sm-1,sd);const e=new Date(2026,em-1,ed);doSearchRange(s,e,d1,d2);}
 function doSearchRange(start,end,d1,d2){const rows=[];let cur=new Date(start);while(cur<=end){const dn1=calcDial(cur,d1);const dn2=calcDial(cur,d2);const dt=dayType(cur);const rec1=DB[dn1];const rec2=DB[dn2];rows.push({m:cur.getMonth()+1,d:cur.getDate(),dw:DW[cur.getDay()],dt,hol:isHol(cur),p1:{dn:dn1,rec:rec1,slot:rec1?rec1[dt]:null},p2:{dn:dn2,rec:rec2,slot:rec2?rec2[dt]:null}});cur.setDate(cur.getDate()+1);}window._lastRows=rows;render(rows);}
 function getTimeStr(slot,rec){if(!rec||!slot)return '公休';if(slot.o==='—')return '要確認';return slot.o+'（'+slot.w+'h）';}
 function render(rows){const el=document.getElementById('results');if(!rows.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--dim);">該当する日がありません</div>';return;}let html='';rows.forEach(r=>{html+='<div class="result-card"><div class="result-date">'+r.m+'/'+r.d+'（'+r.dw+'）'+(r.hol?'祝':'')+'</div><div class="result-dual"><div class="result-person"><div class="label">1人目 / '+r.p1.dn+'番</div><div class="dial">'+r.p1.dn+'</div><div class="time'+((!r.p1.rec||!r.p1.slot)?' holiday':'')+'">'+getTimeStr(r.p1.slot,r.p1.rec)+'</div></div><div class="result-person"><div class="label">二人目 / '+r.p2.dn+'番</div><div class="dial">'+r.p2.dn+'</div><div class="time'+((!r.p2.rec||!r.p2.slot)?' holiday':'')+'">'+getTimeStr(r.p2.slot,r.p2.rec)+'</div></div></div></div>';});html+='<button class="speak-btn" onclick="handleSpeakResults()">🔊 検索結果を読み上げ</button>';el.innerHTML=html;}
