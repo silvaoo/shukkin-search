@@ -786,40 +786,22 @@ function burst(){
   }
 }
 /* ロケット花火風の音：ぴゅーーーん（打ち上げ）→ドカン（爆発） */
+/* 軽快な「ひゅーーーん」音：高音から始まり、だんだん小さくなりながら減衰していく */
 function rocketFirework(){
   try{
     const ctx=getAudioCtx();
     if(!ctx)return;
     const now=ctx.currentTime;
-    // 打ち上げ音「ぴゅーーーん」：周波数がだんだん上がるノイズ風の音
     const osc=ctx.createOscillator();
     const gain=ctx.createGain();
     osc.connect(gain);gain.connect(ctx.destination);
-    osc.type='sawtooth';
-    osc.frequency.setValueAtTime(300,now);
-    osc.frequency.exponentialRampToValueAtTime(1200,now+0.4);
-    gain.gain.setValueAtTime(0.15,now);
-    gain.gain.linearRampToValueAtTime(0.05,now+0.4);
-    osc.start(now);osc.stop(now+0.4);
-    // 爆発音「ドカン」：ノイズバーストで破裂感を出す
-    const bufferSize=ctx.sampleRate*0.3;
-    const buffer=ctx.createBuffer(1,bufferSize,ctx.sampleRate);
-    const data=buffer.getChannelData(0);
-    for(let i=0;i<bufferSize;i++){
-      data[i]=(Math.random()*2-1)*Math.pow(1-i/bufferSize,2);
-    }
-    const noise=ctx.createBufferSource();
-    noise.buffer=buffer;
-    const noiseFilter=ctx.createBiquadFilter();
-    noiseFilter.type='lowpass';
-    noiseFilter.frequency.setValueAtTime(1500,now+0.4);
-    noiseFilter.frequency.exponentialRampToValueAtTime(100,now+0.7);
-    const noiseGain=ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.5,now+0.4);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001,now+0.8);
-    noise.connect(noiseFilter);noiseFilter.connect(noiseGain);noiseGain.connect(ctx.destination);
-    noise.start(now+0.4);
-  }catch(e){console.log('ロケット花火音エラー:',e);}
+    osc.type='sine';
+    osc.frequency.setValueAtTime(1400,now);
+    osc.frequency.exponentialRampToValueAtTime(500,now+0.9);
+    gain.gain.setValueAtTime(0.18,now);
+    gain.gain.exponentialRampToValueAtTime(0.001,now+0.9);
+    osc.start(now);osc.stop(now+0.9);
+  }catch(e){console.log('効果音エラー:',e);}
 }
 function drawFw(){
   fwx.clearRect(0,0,fwc.width,fwc.height);
