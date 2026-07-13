@@ -63,5 +63,19 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "アプリを共有",
+      "short_name": "共有",
+      "description": "このアプリのリンクをLINEなどで共有します",
+      "url": "share.html",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

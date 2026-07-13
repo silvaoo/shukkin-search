@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>学A2を共有</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    body {
+        background: #0a0e27;
+        color: #e0e0e6;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        text-align: center;
+    }
+    .icon {
+        width: 88px;
+        height: 88px;
+        border-radius: 20px;
+        margin-bottom: 16px;
+    }
+    h1 { font-size: 20px; margin-bottom: 8px; }
+    p { font-size: 13px; color: #a0a0ab; margin-bottom: 28px; line-height: 1.6; }
+    .btn {
+        width: 100%;
+        max-width: 360px;
+        padding: 16px;
+        border: none;
+        border-radius: 12px;
+        color: #fff;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .btn-share { background: linear-gradient(135deg, #10ac84, #1dd1a1); }
+    .btn-line { background: #06c755; }
+    .btn-copy { background: #2a2a30; border: 1px solid #444; }
+    .back-link { margin-top: 20px; font-size: 13px; color: #00f5ff; text-decoration: none; }
+    .toast {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.85);
+        color: #fff;
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-size: 13px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        white-space: nowrap;
+    }
+    .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+    <img class="icon" src="icons/icon-192.png" alt="学A2アイコン">
+    <h1>学A2を共有</h1>
+    <p>同僚にこのアプリのリンクを送ることができます。<br>下のボタンからお好きな方法で共有してください。</p>
+
+    <button class="btn btn-share" onclick="doShare()">📤 共有する</button>
+    <button class="btn btn-line" onclick="shareToLine()">💬 LINEで送る</button>
+    <button class="btn btn-copy" onclick="copyLink()">🔗 リンクをコピー</button>
+
+    <a class="back-link" href="./">← アプリに戻る</a>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const https://silvaoo.github.io/shukkin-search/2person/ = "https://silvaoo.github.io/shukkin-search/2person/";
+        const APP_TEXT = "学A2(出退勤検索くん 2人同時検索版) 北大和・学園前Aダイヤ";
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2200);
+        }
+
+        // 端末標準の共有シート(Web Share API)を呼び出す。対応していなければLINE共有にフォールバック
+        async function doShare() {
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title: APP_TEXT, text: APP_TEXT, url: https://silvaoo.github.io/shukkin-search/2person/ });
+                } catch (e) {
+                    // ユーザーがキャンセルした場合などは何もしない
+                }
+            } else {
+                shareToLine();
+            }
+        }
+
+        // LINEのURLスキームで直接共有する
+        function shareToLine() {
+            const text = encodeURIComponent(APP_TEXT + '\n' + https://silvaoo.github.io/shukkin-search/2person/);
+            window.location.href = `https://line.me/R/msg/text/?${text}`;
+        }
+
+        function copyLink() {
+            navigator.clipboard.writeText(https://silvaoo.github.io/shukkin-search/2person/).then(() => {
+                showToast('📋 リンクをコピーしました');
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = https://silvaoo.github.io/shukkin-search/2person/; ta.style.position = 'fixed'; ta.style.opacity = '0';
+                document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('📋 リンクをコピーしました');
+            });
+        }
+    </script>
+</body>
+</html>
