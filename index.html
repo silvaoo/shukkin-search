@@ -279,7 +279,7 @@ input[type="date"] {
 <div class="toast" id="toast"></div>
 
 <div class="header">
-  <a href="share.html" class="share-btn" aria-label="アプリを共有">📤</a>
+  <a href="#" class="share-btn" onclick="shareApp(); return false;" aria-label="アプリを共有">📤</a>
   <h1>🚌 出退勤検索くん</h1>
   <p>北大和・学園前 Aダイヤ ／ 2026年3月14日改正 ／ 1〜92番</p>
   <button class="mode-btn" onclick="toggleMode()">🌙/☀️</button>
@@ -824,6 +824,20 @@ function showToast(msg){
 
 /* ==== ダーク/ライトモード切替 ==== */
 function toggleMode(){document.body.classList.toggle('light');}
+
+/* ==== アプリ共有: ページ遷移せずその場で共有シートを呼び出す ==== */
+async function shareApp(){
+  const shareUrl='https://silvaoo.github.io/shukkin-search/';
+  const shareText='学A(出退勤検索くん) 北大和・学園前Aダイヤ';
+  if(navigator.share){
+    try{ await navigator.share({title:shareText,text:shareText,url:shareUrl}); }catch(e){}
+  }else{
+    try{
+      await navigator.clipboard.writeText(shareUrl);
+      showToast('📋 リンクをコピーしました');
+    }catch(e){ showToast(shareUrl); }
+  }
+}
 
 /* ==== 花火アニメーション（公休の日があったときのお楽しみ） ==== */
 const fwc=document.getElementById('fw');
