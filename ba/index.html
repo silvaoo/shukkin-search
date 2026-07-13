@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>出退勤検索くん (BAダイヤ専用)</title>
+    <!-- favicon: 「BA」の文字だけのシンプルなSVGアイコン(データURIなので外部ファイル不要) -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23121214'/%3E%3Ctext x='50' y='62' font-size='38' font-family='Arial, sans-serif' font-weight='bold' fill='%2300d2d3' text-anchor='middle'%3EBA%3C/text%3E%3C/svg%3E">
+    <style>
+        /* ===== ダークモード(既定)のカラー変数 ===== */
+        :root {
+            --bg-color: #121214;
+            --card-bg: #1c1c1f;
+            --accent-orange: #ff9f43;
+            --accent-cyan: #00d2d3;
+            --text-color: #e0e0e6;
+            --muted-text: #a0a0ab;
+            --btn-green: linear-gradient(135deg, #10ac84, #1dd1a1);
+            --btn-purple: linear-gradient(135deg, #5f27cd, #341f97);
+            --border-color: #2a2a30;
+            --input-bg: #000000;
+            --list-bg: #252529;
+            --toggle-bg: #2a2a30;
+        }
+
+        /* ===== ライトモードのカラー変数(bodyにlightクラスが付くと切り替わる) ===== */
+        body.light {
+            --bg-color: #f4f5f7;
+            --card-bg: #ffffff;
+            --accent-orange: #e08a2e;
+            --accent-cyan: #0097a7;
+            --text-color: #202024;
+            --muted-text: #6b6b75;
+            --border-color: #dcdce2;
+            --input-bg: #ffffff;
+            --list-bg: #f0f1f4;
+            --toggle-bg: #e4e4ea;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 16px;
+            font-size: 16px;
+            transition: background-color 0.25s ease, color 0.25s ease;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        header .header-text {
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 24px;
+            color: var(--accent-cyan);
+            text-shadow: 0 0 10px rgba(0, 210, 211, 0.3);
+        }
+
+        header p {
+            font-size: 12px;
+            color: var(--muted-text);
+            margin-top: 4px;
+        }
+
+        /* ダーク/ライト切替ボタン */
+        #theme-toggle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            background: var(--toggle-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 20px;
+            padding: 8px 12px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: background-color 0.25s ease, border-color 0.25s ease;
+        }
+
+        .card-title {
+            font-size: 14px;
+            color: var(--accent-orange);
+            font-weight: bold;
+            margin-bottom: 12px;
+            border-left: 3px solid var(--accent-orange);
+            padding-left: 8px;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .input-group span {
+            font-size: 18px;
+        }
+
+        input[type="number"] {
+            background-color: var(--input-bg);
+            border: 2px solid var(--accent-orange);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 28px;
+            font-weight: bold;
+            width: 90px;
+            text-align: center;
+            padding: 4px;
+        }
+
+        input[type="date"] {
+            background-color: var(--toggle-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-color);
+            font-size: 16px;
+            padding: 8px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .btn-speak { background: var(--btn-green); }
+        .btn-search { background: var(--btn-purple); }
+
+        .result-box {
+            background-color: var(--bg-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .result-row:last-child { border-bottom: none; }
+        .row-label { color: var(--muted-text); }
+        .row-val { font-weight: bold; color: var(--text-color); }
+        .row-val.highlight { color: var(--accent-cyan); }
+
+        .list-item {
+            background-color: var(--list-bg);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-left: 4px solid var(--accent-cyan);
+        }
+        .list-item.holiday { border-left: 4px solid #ff4d4d; }
+        .list-item.bon { border-left: 4px solid #ffcc00; }
+
+        .quick-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .quick-btn {
+            flex: 1;
+            background: var(--toggle-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .bon-tag {
+            display: inline-block;
+            background: #ffcc00;
+            color: #3a2f00;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 24px;
+            padding-bottom: 20px;
+            font-size: 12px;
+            color: var(--muted-text);
+        }
+
+        footer a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+        }
+
+        /* 花火アニメーション用キャンバスは画面全体を覆う(操作を邪魔しないようクリック無効) */
+        #fireworks-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 花火アニメーション描画用キャンバス -->
+    <canvas id="fireworks-canvas"></canvas>
+
+    <header>
+        <div class="header-text">
+            <h1>🚌 出退勤検索くん (BAダイヤ)</h1>
+            <p>2026年3月14日改正対応版</p>
+        </div>
+        <button id="theme-toggle" onclick="toggleTheme()">🌙 ダーク</button>
+    </header>
+
+    <div class="card">
+        <div class="card-title" id="today-title">本日 のダイヤ番号を入力</div>
+        <div class="input-group">
+            <span>今日は</span>
+            <input type="number" id="daiya-number" value="13" min="1" max="27" oninput="onDaiyaInput()">
+            <span>番ダイヤ</span>
+        </div>
+        <p style="text-align:center; font-size:12px; color:var(--muted-text); margin-bottom:12px;">↑ 1〜27の番号を入力してください</p>
+
+        <div id="today-result" class="result-box"></div>
+
+        <button class="btn btn-speak" onclick="speakToday()">🔊 今日の勤務を読み上げ</button>
+    </div>
+
+    <div class="card">
+        <div class="card-title">期間を選んで検索</div>
+
+        <div class="quick-buttons">
+            <button class="quick-btn" onclick="setQuickPeriod(0)">今日</button>
+            <button class="quick-btn" onclick="setQuickPeriod(7)">1週間</button>
+            <button class="quick-btn" onclick="setQuickPeriod(14)">2週間</button>
+        </div>
+
+        <label style="font-size:12px; color:var(--muted-text);">開始日</label>
+        <input type="date" id="start-date">
+
+        <label style="font-size:12px; color:var(--muted-text);">終了日</label>
+        <input type="date" id="end-date">
+
+        <button class="btn btn-search" onclick="searchRange()">🔍 この期間を検索する</button>
+
+        <div id="range-results" style="margin-top:12px; max-height:300px; overflow-y:auto;"></div>
+    </div>
+
+    <footer>
+        by AIタケタニ<br>
+        元データは<span id="source-note">コチラ（出退勤表 画像2枚）</span>
+    </footer>
+
+    <script>
+        /* =========================================================
+           BAダイヤ データ本体 (1〜27番)
+           画像2枚(北大和Bダイヤ出退勤表)より入力。
+           dayType: "平"=平日 / "土"=土曜 / "日祝"=日祝 / "全"=曜日を問わず同一(公休など)
+           ========================================================= */
+        const baDaiyaData = [
+            { id: 1, dayType: "平", start: "5:23", memo: "六条西三丁目ロープ開け", end: "18:10", workTime: "9:44" },
+            { id: 1, dayType: "土", start: "9:11", memo: "", end: "18:00", workTime: "7:35" },
+            { id: 1, dayType: "日祝", start: "9:11", memo: "", end: "18:00", workTime: "7:35" },
+            { id: 2, dayType: "平", start: "6:15 / 12:25", memo: "", end: "17:21 / 21:07", workTime: "5:18 / 3:33" },
+            { id: 2, dayType: "土", start: "5:39", memo: "", end: "12:12", workTime: "5:37" },
+            { id: 2, dayType: "日祝", start: "8:39", memo: "", end: "12:22", workTime: "3:32" },
+            { id: 3, dayType: "平", start: "6:11", memo: "育西開校日・富雄こうのう", end: "19:46", workTime: "9:23" },
+            { id: 3, dayType: "平", start: "6:11", memo: "育西休校日・富雄こうのう", end: "15:45", workTime: "7:59" },
+            { id: 3, dayType: "土", start: "9:13", memo: "富雄こうのう", end: "20:05", workTime: "9:09" },
+            { id: 3, dayType: "日祝", start: "9:13", memo: "富雄こうのう", end: "20:05", workTime: "9:09" },
+            { id: 4, dayType: "平", start: "5:36", memo: "", end: "9:41", workTime: "4:05" },
+            { id: 4, dayType: "土", start: "6:28", memo: "", end: "10:35", workTime: "3:37" },
+            { id: 4, dayType: "日祝", start: "6:28", memo: "", end: "10:35", workTime: "3:37" },
+            { id: 5, dayType: "全", start: "公休", memo: "", end: "", workTime: "" },
+            { id: 6, dayType: "平", start: "5:39", memo: "育西開校日", end: "17:35", workTime: "10:00" },
+            { id: 6, dayType: "平", start: "5:39", memo: "育西休校日", end: "17:35", workTime: "9:00" },
+            { id: 6, dayType: "土", start: "8:32", memo: "", end: "17:48", workTime: "8:16" },
+            { id: 6, dayType: "日祝", start: "8:32", memo: "", end: "17:48", workTime: "8:16" },
+            { id: 7, dayType: "平", start: "6:30", memo: "育西開校日", end: "19:59", workTime: "9:15" },
+            { id: 7, dayType: "平", start: "6:30", memo: "育西休校日", end: "19:59", workTime: "9:06" },
+            { id: 7, dayType: "土", start: "10:23", memo: "", end: "16:21", workTime: "7:55" },
+            { id: 7, dayType: "日祝", start: "10:23", memo: "", end: "16:21", workTime: "7:55" },
+            { id: 8, dayType: "平", start: "18:28", memo: "学北・シーカ鍵閉め", end: "24:32", workTime: "5:51" },
+            { id: 8, dayType: "土", start: "17:00", memo: "", end: "24:09", workTime: "6:17" },
+            { id: 8, dayType: "日祝", start: "17:00", memo: "", end: "24:09", workTime: "6:17" },
+            { id: 9, dayType: "平", start: "16:07", memo: "育西開校日", end: "22:54", workTime: "6:12" },
+            { id: 9, dayType: "平", start: "18:38", memo: "育西休校日", end: "22:54", workTime: "3:52" },
+            { id: 9, dayType: "土", start: "16:34", memo: "", end: "23:48", workTime: "6:05" },
+            { id: 9, dayType: "日祝", start: "16:34", memo: "", end: "23:48", workTime: "6:05" },
+            { id: 10, dayType: "全", start: "公休", memo: "", end: "", workTime: "" },
+            { id: 11, dayType: "全", start: "公休", memo: "", end: "", workTime: "" },
+            { id: 12, dayType: "平", start: "5:33", memo: "", end: "19:26", workTime: "8:55" },
+            { id: 12, dayType: "土", start: "5:53", memo: "", end: "18:45", workTime: "9:50" },
+            { id: 12, dayType: "日祝", start: "5:53", memo: "", end: "18:45", workTime: "9:50" },
+            { id: 13, dayType: "平", start: "6:23 / 10:35", memo: "育西開校日", end: "16:18 / 21:19", workTime: "3:58 / 4:21" },
+            { id: 13, dayType: "平", start: "6:23 / 10:35", memo: "育西休校日", end: "16:18 / 21:19", workTime: "3:58 / 4:21" },
+            { id: 13, dayType: "土", start: "6:03", memo: "六条西三丁目ロープ開け", end: "16:29", workTime: "9:27" },
+            { id: 13, dayType: "土", start: "6:03", memo: "ふれあい休み", end: "14:55", workTime: "7:53" },
+            { id: 13, dayType: "日祝", start: "6:03", memo: "六条西三丁目ロープ開け", end: "16:29", workTime: "9:27" },
+            { id: 13, dayType: "日祝", start: "6:03", memo: "ふれあい休み", end: "14:55", workTime: "7:53" },
+            { id: 14, dayType: "平", start: "5:59", memo: "育西開校日", end: "18:46", workTime: "9:52" },
+            { id: 14, dayType: "平", start: "5:59", memo: "育西休校日", end: "16:06", workTime: "8:15" },
+            { id: 14, dayType: "土", start: "5:20", memo: "", end: "12:05", workTime: "5:39" },
+            { id: 14, dayType: "日祝", start: "5:45", memo: "", end: "12:05", workTime: "5:14" },
+            { id: 15, dayType: "平", start: "5:17", memo: "", end: "10:51", workTime: "5:12" },
+            { id: 15, dayType: "土", start: "5:48", memo: "", end: "10:51", workTime: "4:26" },
+            { id: 15, dayType: "日祝", start: "6:19", memo: "", end: "10:51", workTime: "3:55" },
+            { id: 16, dayType: "全", start: "公休", memo: "", end: "", workTime: "" },
+            { id: 17, dayType: "平", start: "5:21", memo: "本社こうのう", end: "17:34", workTime: "9:41" },
+            { id: 17, dayType: "土", start: "5:34", memo: "", end: "14:28", workTime: "7:32" },
+            { id: 17, dayType: "日祝", start: "6:12", memo: "", end: "14:28", workTime: "6:54" },
+            { id: 18, dayType: "平", start: "5:58 / 11:25", memo: "", end: "16:27 / 21:33", workTime: "5:05 / 4:33" },
+            { id: 18, dayType: "土", start: "6:57 / 9:55", memo: "", end: "17:23 / 21:31", workTime: "2:58 / 4:08" },
+            { id: 18, dayType: "日祝", start: "6:57 / 9:55", memo: "", end: "17:23 / 21:31", workTime: "2:58 / 4:08" },
+            { id: 19, dayType: "平", start: "16:59", memo: "六条西三丁目ロープ閉め", end: "24:14", workTime: "6:51" },
+            { id: 19, dayType: "土", start: "16:50", memo: "六条西三丁目ロープ閉め", end: "23:41", workTime: "5:57" },
+            { id: 19, dayType: "日祝", start: "16:50", memo: "六条西三丁目ロープ閉め", end: "23:41", workTime: "5:57" },
+            { id: 20, dayType: "平", start: "11:33", memo: "", end: "22:32", workTime: "9:11" },
+            { id: 20, dayType: "平", start: "14:13", memo: "ふれあい休み", end: "22:32", workTime: "7:19" },
+            { id: 20, dayType: "土", start: "11:33", memo: "", end: "22:23", workTime: "7:22" },
+            { id: 20, dayType: "土", start: "15:03", memo: "ふれあい休み", end: "22:23", workTime: "5:51" },
+            { id: 20, dayType: "日祝", start: "11:33", memo: "", end: "22:23", workTime: "7:22" },
+            { id: 20, dayType: "日祝", start: "15:03", memo: "ふれあい休み", end: "22:23", workTime: "5:51" },
+            { id: 21, dayType: "全", start: "公休", memo: "", end: "", workTime: "" },
+            { id: 22, dayType: "全", start: "公休", memo: "", end: "", workTime: "" },
+            { id: 23, dayType: "平", start: "6:13", memo: "育西開校日", end: "20:09", workTime: "9:25" },
+            { id: 23, dayType: "平", start: "6:13", memo: "育西休校日", end: "20:09", workTime: "8:44" },
+            { id: 23, dayType: "土", start: "13:13", memo: "", end: "19:51", workTime: "5:57" },
+            { id: 23, dayType: "日祝", start: "13:13", memo: "", end: "19:51", workTime: "5:57" },
+            { id: 24, dayType: "平", start: "5:48", memo: "", end: "16:29", workTime: "9:14" },
+            { id: 24, dayType: "平", start: "5:48", memo: "ふれあい休み", end: "14:55", workTime: "7:40" },
+            { id: 24, dayType: "土", start: "6:39", memo: "", end: "16:15", workTime: "8:19" },
+            { id: 24, dayType: "日祝", start: "6:39", memo: "", end: "16:15", workTime: "8:19" },
+            { id: 25, dayType: "平", start: "5:17", memo: "手入れ・風呂掃除", end: "12:15", workTime: "6:02" },
+            { id: 25, dayType: "土", start: "6:03", memo: "手入れ・風呂掃除", end: "12:04", workTime: "5:24" },
+            { id: 25, dayType: "日祝", start: "6:03", memo: "手入れ・風呂掃除", end: "12:04", workTime: "5:24" },
+            { id: 26, dayType: "平", start: "8:40", memo: "予備", end: "17:50", workTime: "7:39" },
+            { id: 26, dayType: "土", start: "8:40", memo: "予備", end: "17:50", workTime: "7:39" },
+            { id: 26, dayType: "日祝", start: "8:40", memo: "予備", end: "17:50", workTime: "7:39" },
+            { id: 27, dayType: "全", start: "公休", memo: "", end: "", workTime: "" }
+        ];
+
+        /* =========================================================
+           お盆特例: 2026年8月13日〜15日は「お盆休みで土曜ダイヤ」扱い。
+           実際の曜日にかかわらず「土」データを参照して表示する。
+           ========================================================= */
+        const BON_SPECIAL_DATES = ["2026-08-13", "2026-08-14", "2026-08-15"];
+
+        function toDateKey(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+            const d = String(dateObj.getDate()).padStart(2, "0");
+            return `${y}-${m}-${d}`;
+        }
+
+        function isBonSpecial(dateObj) {
+            return BON_SPECIAL_DATES.includes(toDateKey(dateObj));
+        }
+
+        // お盆特例を考慮した曜日区分の判定
+        function getDayType(dateObj) {
+            if (isBonSpecial(dateObj)) return "土"; // お盆休み中は土曜ダイヤ扱い
+            const day = dateObj.getDay();
+            if (day === 0) return "日祝";
+            if (day === 6) return "土";
+            return "平";
+        }
+
+        function findData(daiyaId, dayType) {
+            const allDayMatch = baDaiyaData.filter(d => d.id === daiyaId && d.dayType === "全");
+            if (allDayMatch.length > 0) return allDayMatch;
+            return baDaiyaData.filter(d => d.id === daiyaId && d.dayType === dayType);
+        }
+
+        function getTodayString() {
+            const now = new Date();
+            const days = ['日', '月', '火', '水', '木', '金', '土'];
+            return `${now.getMonth()+1}/${now.getDate()}(${days[now.getDay()]})`;
+        }
+
+        /* ===== ダイヤ番号入力時のハンドラ: 検索結果表示 + 花火 + 効果音 ===== */
+        function onDaiyaInput() {
+            searchToday();
+            launchFireworks();
+            playSwoosh();
+        }
+
+        function searchToday() {
+            const num = parseInt(document.getElementById('daiya-number').value);
+            const titleEl = document.getElementById('today-title');
+            const resultEl = document.getElementById('today-result');
+            const now = new Date();
+
+            titleEl.innerText = `本日 ${getTodayString()} の勤務データ (BAダイヤ)`;
+
+            if (isNaN(num) || num < 1 || num > 27) {
+                resultEl.innerHTML = '<div style="color:var(--muted-text); text-align:center;">1〜27の番号を入力してください</div>';
+                return;
+            }
+
+            const bon = isBonSpecial(now);
+            const currentDayType = getDayType(now);
+            const matches = findData(num, currentDayType);
+
+            if (matches.length === 0) {
+                resultEl.innerHTML = '<div style="color:var(--muted-text); text-align:center;">該当データなし</div>';
+                return;
+            }
+
+            let html = '';
+            if (bon) {
+                html += `<div style="text-align:center; margin-bottom:8px;"><span class="bon-tag">お盆休みで土曜ダイヤ</span></div>`;
+            }
+            matches.forEach(m => {
+                if(m.start === "公休" || m.dayType === "全") {
+                    html += `<div class="result-row"><span class="row-label">勤務区分</span><span class="row-val" style="color:#ff4d4d;">公休</span></div>`;
+                } else {
+                    if(m.memo) {
+                        html += `<div class="result-row"><span class="row-label">記事・備考</span><span class="row-val" style="color:var(--accent-orange);">${m.memo}</span></div>`;
+                    }
+                    html += `
+                        <div class="result-row"><span class="row-label">出勤時間</span><span class="row-val highlight">${m.start}</span></div>
+                        <div class="result-row"><span class="row-label">退勤時間</span><span class="row-val highlight">${m.end}</span></div>
+                        <div class="result-row"><span class="row-label">労働時間</span><span class="row-val">${m.workTime}</span></div>
+                    `;
+                }
+            });
+            resultEl.innerHTML = html;
+        }
+
+        function speakToday() {
+            const num = parseInt(document.getElementById('daiya-number').value);
+            if (isNaN(num) || num < 1 || num > 27) return;
+
+            const now = new Date();
+            const bon = isBonSpecial(now);
+            const currentDayType = getDayType(now);
+            const matches = findData(num, currentDayType);
+
+            if (matches.length === 0) return;
+
+            let speechText = `BAダイヤ、${num}番。`;
+            if (bon) speechText += "本日はお盆休み期間のため、土曜ダイヤで運行します。";
+            matches.forEach((m, idx) => {
+                if(matches.length > 1) speechText += `パターン${idx + 1}。`;
+                if (m.start === "公休" || m.dayType === "全") {
+                    speechText += "本日は公休です。";
+                } else {
+                    if (m.memo) speechText += `備考、${m.memo}。`;
+                    speechText += `出勤、${m.start}。退勤、${m.end}。労働時間は ${m.workTime} です。`;
+                }
+            });
+
+            window.speechSynthesis.cancel();
+            const uttr = new SpeechSynthesisUtterance(speechText);
+            uttr.lang = 'ja-JP';
+            window.speechSynthesis.speak(uttr);
+        }
+
+        function searchRange() {
+            const startStr = document.getElementById('start-date').value;
+            const endStr = document.getElementById('end-date').value;
+            const num = parseInt(document.getElementById('daiya-number').value);
+            const container = document.getElementById('range-results');
+
+            if (!startStr || !endStr || isNaN(num) || num < 1 || num > 27) {
+                container.innerHTML = '<div style="color:var(--muted-text); padding:8px;">条件を正しくセットしてください</div>';
+                return;
+            }
+
+            let start = new Date(startStr);
+            const end = new Date(endStr);
+            let html = '';
+            const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
+
+            while (start <= end) {
+                const bon = isBonSpecial(start);
+                const currentDayType = getDayType(start);
+                const matches = findData(num, currentDayType);
+                const dateLabel = `${start.getMonth()+1}/${start.getDate()}(${daysOfWeek[start.getDay()]})`;
+                const bonTag = bon ? '<span class="bon-tag">お盆休みで土曜ダイヤ</span>' : '';
+
+                matches.forEach(m => {
+                    if (m.start === "公休" || m.dayType === "全") {
+                        html += `<div class="list-item holiday"><strong>${dateLabel}</strong>: <span style="color:#ff4d4d; font-weight:bold;">公休</span>${bonTag}</div>`;
+                    } else {
+                        const memoStr = m.memo ? ` [${m.memo}]` : '';
+                        html += `
+                            <div class="list-item ${bon ? 'bon' : ''}">
+                                <strong>${dateLabel}</strong> <span style="color:var(--muted-text)">(${m.dayType})</span>${memoStr}${bonTag}<br>
+                                ⏰ <span style="color:var(--accent-cyan)">${m.start} 〜 ${m.end}</span> (労 ${m.workTime})
+                            </div>`;
+                    }
+                });
+                start.setDate(start.getDate() + 1);
+            }
+            container.innerHTML = html || '<div style="color:var(--muted-text); padding:8px;">データがありません</div>';
+        }
+
+        function setQuickPeriod(days) {
+            const today = new Date();
+            document.getElementById('start-date').value = today.toISOString().split('T')[0];
+            if(days === 0) {
+                document.getElementById('end-date').value = today.toISOString().split('T')[0];
+            } else {
+                const endDate = new Date();
+                endDate.setDate(today.getDate() + days - 1);
+                document.getElementById('end-date').value = endDate.toISOString().split('T')[0];
+            }
+            searchRange();
+        }
+
+        /* =========================================================
+           ダーク / ライト モード切替
+           localStorageに保存し、次回訪問時も同じテーマを復元する
+           ========================================================= */
+        function applyTheme(theme) {
+            const btn = document.getElementById('theme-toggle');
+            if (theme === 'light') {
+                document.body.classList.add('light');
+                btn.innerText = '☀️ ライト';
+            } else {
+                document.body.classList.remove('light');
+                btn.innerText = '🌙 ダーク';
+            }
+        }
+
+        function toggleTheme() {
+            const isLight = document.body.classList.contains('light');
+            const next = isLight ? 'dark' : 'light';
+            applyTheme(next);
+            localStorage.setItem('ba-theme', next);
+        }
+
+        /* =========================================================
+           花火アニメーション
+           番号入力のたびにキャンバス上で軽い花火を1発打ち上げる
+           ========================================================= */
+        const fwCanvas = document.getElementById('fireworks-canvas');
+        const fwCtx = fwCanvas.getContext('2d');
+        let fwParticles = [];
+        let fwAnimating = false;
+
+        function resizeFwCanvas() {
+            fwCanvas.width = window.innerWidth;
+            fwCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeFwCanvas);
+        resizeFwCanvas();
+
+        function launchFireworks() {
+            const colors = ['#ff9f43', '#00d2d3', '#ff6b6b', '#feca57', '#5f27cd', '#1dd1a1'];
+            const cx = fwCanvas.width / 2 + (Math.random() - 0.5) * fwCanvas.width * 0.4;
+            const cy = fwCanvas.height * 0.35 + (Math.random() - 0.5) * 80;
+            const particleCount = 40;
+
+            for (let i = 0; i < particleCount; i++) {
+                const angle = (Math.PI * 2 * i) / particleCount;
+                const speed = 2 + Math.random() * 3;
+                fwParticles.push({
+                    x: cx,
+                    y: cy,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 1,
+                    color: colors[Math.floor(Math.random() * colors.length)]
+                });
+            }
+
+            if (!fwAnimating) {
+                fwAnimating = true;
+                requestAnimationFrame(animateFireworks);
+            }
+        }
+
+        function animateFireworks() {
+            fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
+
+            fwParticles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.05; // 重力
+                p.life -= 0.02;
+
+                fwCtx.globalAlpha = Math.max(p.life, 0);
+                fwCtx.fillStyle = p.color;
+                fwCtx.beginPath();
+                fwCtx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                fwCtx.fill();
+            });
+            fwCtx.globalAlpha = 1;
+
+            fwParticles = fwParticles.filter(p => p.life > 0);
+
+            if (fwParticles.length > 0) {
+                requestAnimationFrame(animateFireworks);
+            } else {
+                fwAnimating = false;
+                fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
+            }
+        }
+
+        /* =========================================================
+           効果音: 軽快な「ひゅーーーん」フェードアウト音
+           Web Audio APIで周波数を高→低へスイープさせつつ音量を減衰
+           ========================================================= */
+        let audioCtx = null;
+
+        function playSwoosh() {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                const now = audioCtx.currentTime;
+                osc.frequency.setValueAtTime(1200, now);
+                osc.frequency.exponentialRampToValueAtTime(200, now + 0.5);
+
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.6);
+            } catch (e) {
+                // Web Audio非対応環境では何もしない
+                console.warn('効果音の再生に失敗しました', e);
+            }
+        }
+
+        window.onload = function() {
+            const savedTheme = localStorage.getItem('ba-theme') || 'dark';
+            applyTheme(savedTheme);
+            setQuickPeriod(0);
+            searchToday();
+        }
+    </script>
+</body>
+</html>
