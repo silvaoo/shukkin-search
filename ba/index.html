@@ -4,8 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>出退勤検索くん (BAダイヤ専用)</title>
-    <!-- favicon: 「BA」の文字だけのシンプルなSVGアイコン(データURIなので外部ファイル不要) -->
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23121214'/%3E%3Ctext x='50' y='62' font-size='38' font-family='Arial, sans-serif' font-weight='bold' fill='%2300d2d3' text-anchor='middle'%3EBA%3C/text%3E%3C/svg%3E">
+
+    <!-- ホーム画面追加時のアイコン・タイトル設定 -->
+    <meta name="apple-mobile-web-app-title" content="BA">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#121214">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/icons/icon-180.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/icons/icon-152.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/icons/icon-144.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/icons/icon-120.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/icons/icon-96.png">
+    <link rel="manifest" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/manifest.json">
+
     <style>
         /* ===== ダークモード(既定)のカラー変数 ===== */
         :root {
@@ -56,17 +68,24 @@
         header {
             display: flex;
             align-items: center;
-            justify-content: center;
-            position: relative;
+            justify-content: space-between;
+            gap: 8px;
             margin-bottom: 20px;
+        }
+
+        header .header-spacer {
+            width: 34px;
+            flex-shrink: 0;
         }
 
         header .header-text {
             text-align: center;
+            flex: 1;
+            min-width: 0;
         }
 
         header h1 {
-            font-size: 24px;
+            font-size: 20px;
             color: var(--accent-cyan);
             text-shadow: 0 0 10px rgba(0, 210, 211, 0.3);
         }
@@ -77,18 +96,22 @@
             margin-top: 4px;
         }
 
-        /* ダーク/ライト切替ボタン */
+        /* ダーク/ライト切替ボタン: 円形の小さなアイコンボタンにしてタイトルと重ならないようにする */
         #theme-toggle {
-            position: absolute;
-            right: 0;
-            top: 0;
+            width: 34px;
+            height: 34px;
+            flex-shrink: 0;
             background: var(--toggle-bg);
             border: 1px solid var(--border-color);
             color: var(--text-color);
-            border-radius: 20px;
-            padding: 8px 12px;
-            font-size: 13px;
+            border-radius: 50%;
+            padding: 0;
+            font-size: 15px;
+            line-height: 1;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .card {
@@ -135,6 +158,12 @@
             box-shadow: 0 0 0 1px var(--border-color);
         }
 
+        input[type="number"]::placeholder {
+            color: var(--muted-text);
+            font-weight: normal;
+            opacity: 0.6;
+        }
+
         input[type="date"] {
             background-color: var(--toggle-bg);
             border: 1px solid var(--border-color);
@@ -166,14 +195,9 @@
         .btn-speak { background: var(--btn-green); }
         .btn-search { background: var(--btn-purple); }
 
-        /* 出退勤結果を表(テーブル)のようにきっちり枠で囲んで見やすくする */
+        /* 出退勤結果を1行ずつ完全に枠で囲んだボックスとして表示する */
         .result-box {
-            background-color: var(--bg-color);
-            border-radius: 8px;
-            padding: 0;
             margin-top: 12px;
-            border: 2px solid var(--border-color);
-            overflow: hidden;
         }
 
         .result-row {
@@ -181,10 +205,13 @@
             justify-content: space-between;
             align-items: center;
             padding: 10px 12px;
-            border-bottom: 1px solid var(--border-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            background-color: var(--bg-color);
         }
 
-        .result-row:last-child { border-bottom: none; }
+        .result-row:last-child { margin-bottom: 0; }
         .row-label { color: var(--muted-text); font-size: 13px; }
         .row-val { font-weight: bold; color: var(--text-color); }
         .row-val.highlight { color: var(--accent-cyan); }
@@ -233,6 +260,9 @@
             display: flex;
             gap: 8px;
             margin-bottom: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 6px;
         }
 
         .quick-btn {
@@ -260,15 +290,67 @@
 
         footer {
             text-align: center;
-            margin-top: 24px;
+            margin-top: 10px;
             padding-bottom: 20px;
-            font-size: 12px;
+            font-size: 11px;
             color: var(--muted-text);
+            line-height: 1.8;
         }
 
-        footer a {
+        footer .credit {
             color: var(--accent-cyan);
-            text-decoration: none;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .data-source-notice {
+            text-align: center;
+            font-size: 12px;
+            color: var(--muted-text);
+            margin-top: 14px;
+            line-height: 1.8;
+        }
+        .source-link {
+            color: var(--accent-cyan);
+            font-weight: 700;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .source-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 10000;
+            padding: 16px;
+        }
+        .source-modal.active { display: flex; align-items: center; }
+        .source-modal-content {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            width: 100%;
+            padding: 4px;
+        }
+        .source-modal-content img {
+            max-height: 82vh;
+            width: auto;
+            flex-shrink: 0;
+            border-radius: 8px;
+            border: 2px solid #444;
+        }
+        .source-modal-close {
+            position: fixed;
+            top: 14px;
+            right: 16px;
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            font-size: 18px;
+            z-index: 10001;
         }
 
         /* 花火アニメーション用キャンバスは画面全体を覆う(操作を邪魔しないようクリック無効) */
@@ -289,18 +371,19 @@
     <canvas id="fireworks-canvas"></canvas>
 
     <header>
+        <div class="header-spacer"></div>
         <div class="header-text">
             <h1>🚌 出退勤検索くん (BAダイヤ)</h1>
             <p>2026年3月14日改正対応版</p>
         </div>
-        <button id="theme-toggle" onclick="toggleTheme()">🌙 ダーク</button>
+        <button id="theme-toggle" onclick="toggleTheme()" aria-label="ダーク/ライト切り替え">🌙</button>
     </header>
 
     <div class="card">
         <div class="card-title" id="today-title">本日 のダイヤ番号を入力</div>
         <div class="input-group">
             <span>今日は</span>
-            <input type="number" id="daiya-number" value="13" min="1" max="27" oninput="onDaiyaInput()">
+            <input type="number" id="daiya-number" placeholder="1" min="1" max="27" oninput="onDaiyaInput()">
             <span>番ダイヤ</span>
         </div>
         <p style="text-align:center; font-size:12px; color:var(--muted-text); margin-bottom:12px;">↑ 1〜27の番号を入力してください</p>
@@ -330,10 +413,24 @@
         <div id="range-results" style="margin-top:12px; max-height:300px; overflow-y:auto;"></div>
     </div>
 
+    <div class="data-source-notice">
+        このアプリは<span class="source-link" onclick="openSourceModal()">コチラ</span>のデータを元に作成しております。
+    </div>
+
     <footer>
-        by AIタケタニ<br>
-        元データは<span id="source-note">コチラ（出退勤表 画像2枚）</span>
+        <div>⚠ あくまでも目安としてお使いください。</div>
+        <div>出退勤時間に誤りがあっても当方は責任を負いかねます。</div>
+        <div class="credit">by AIタケタニ</div>
     </footer>
+
+    <!-- 元データ画像モーダル(2枚並べて表示) -->
+    <div id="sourceModal" class="source-modal" onclick="closeSourceModal()">
+        <button class="source-modal-close" onclick="closeSourceModal()">✕</button>
+        <div class="source-modal-content">
+            <img src="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/images/genpage-1.jpg" alt="出退勤表 元データ 1枚目" onerror="this.replaceWith(Object.assign(document.createElement('div'),{style:'color:#fff;padding:20px;',innerText:'画像準備中です'}))">
+            <img src="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/images/genpage-2.jpg" alt="出退勤表 元データ 2枚目" onerror="this.replaceWith(Object.assign(document.createElement('div'),{style:'color:#fff;padding:20px;',innerText:'画像準備中です'}))">
+        </div>
+    </div>
 
     <script>
         /* =========================================================
@@ -496,8 +593,7 @@
                 html += `<div style="text-align:center; margin:8px 0;"><span class="bon-tag">お盆休みで土曜ダイヤ</span></div>`;
             }
             matches.forEach((m, idx) => {
-                // 枠で囲んだブロック単位で表示(複数パターンある場合は区切り線を入れる)
-                html += `<div style="${idx > 0 ? 'border-top:2px solid var(--border-color);' : ''}">`;
+                html += `<div style="${idx > 0 ? 'margin-top:14px; padding-top:10px; border-top:2px dashed var(--border-color);' : ''}">`;
                 html += `<div class="result-row"><span class="row-label">曜日区分</span><span class="day-badge day-${m.dayType === '全' ? '平' : m.dayType}">${m.dayType === '全' ? '毎日' : m.dayType}</span></div>`;
                 if(m.start === "公休" || m.dayType === "全") {
                     html += `<div class="result-row"><span class="row-label">勤務区分</span><span class="row-val" style="color:#ff4d4d;">公休</span></div>`;
@@ -617,10 +713,10 @@
             const btn = document.getElementById('theme-toggle');
             if (theme === 'light') {
                 document.body.classList.add('light');
-                btn.innerText = '☀️ ライト';
+                btn.innerText = '☀️';
             } else {
                 document.body.classList.remove('light');
-                btn.innerText = '🌙 ダーク';
+                btn.innerText = '🌙';
             }
         }
 
@@ -730,6 +826,16 @@
                 // Web Audio非対応環境では何もしない
                 console.warn('効果音の再生に失敗しました', e);
             }
+        }
+
+        /* =========================================================
+           元データ画像モーダル(2枚並べて表示)の開閉
+           ========================================================= */
+        function openSourceModal() {
+            document.getElementById('sourceModal').classList.add('active');
+        }
+        function closeSourceModal() {
+            document.getElementById('sourceModal').classList.remove('active');
         }
 
         window.onload = function() {
