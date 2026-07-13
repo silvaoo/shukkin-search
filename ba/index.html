@@ -201,8 +201,14 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.2);
         }
 
-        .btn-speak { background: var(--btn-green); border: 3px solid var(--accent-orange); }
+        .btn-speak { background: var(--btn-green); }
         .btn-search { background: var(--btn-purple); }
+
+        /* 「今日のダイヤ番号を入力」カード全体をオレンジ枠で囲む(読み上げボタンまで含む) */
+        .card-accent-orange {
+            border: 3px solid var(--accent-orange);
+            box-shadow: 0 0 16px rgba(255, 159, 67, 0.25);
+        }
 
         /* ==== 結果表示: 学園前ダイヤ版と同じ「day-card」仕様 ==== */
         .result-box { margin-top: 12px; }
@@ -495,7 +501,7 @@
         🔄 新しいバージョンがあります。タップで更新
     </button>
 
-    <div class="card">
+    <div class="card card-accent-orange">
         <div class="card-title" id="today-title">本日 のダイヤ番号を入力</div>
         <div class="input-group">
             <span>今日は</span>
