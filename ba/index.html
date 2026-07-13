@@ -166,13 +166,22 @@
 
         input[type="date"] {
             background-color: var(--toggle-bg);
-            border: 1px solid var(--border-color);
+            border: 2px solid var(--border-color);
             border-radius: 6px;
             color: var(--text-color);
             font-size: 16px;
             padding: 8px;
             width: 100%;
             margin-bottom: 10px;
+        }
+
+        .range-results-box {
+            margin-top: 12px;
+            max-height: 420px;
+            overflow-y: auto;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px;
         }
 
         .btn {
@@ -473,6 +482,7 @@
             <button class="quick-btn" onclick="setQuickPeriod(0)">今日</button>
             <button class="quick-btn" onclick="setQuickPeriod(7)">1週間</button>
             <button class="quick-btn" onclick="setQuickPeriod(14)">2週間</button>
+            <button class="quick-btn" onclick="setQuickPeriodMonths(1)">1ヶ月</button>
         </div>
 
         <label style="font-size:12px; color:var(--muted-text);">開始日</label>
@@ -483,7 +493,7 @@
 
         <button class="btn btn-search" onclick="searchRange()">🔍 この期間を検索する</button>
 
-        <div id="range-results" style="margin-top:12px; max-height:300px; overflow-y:auto;"></div>
+        <div id="range-results" class="range-results-box"></div>
     </div>
 
     <div class="data-source-notice">
@@ -877,6 +887,27 @@
             searchRange();
         }
 
+        /* 指定日付のNヶ月後を計算する(月末をまたぐ場合は月末に丸める) */
+        function addMonths(date, n) {
+            const d = new Date(date);
+            const day = d.getDate();
+            d.setDate(1); // 繰り上がりで日付がズレないよう、いったん1日にしてから月を進める
+            d.setMonth(d.getMonth() + n);
+            const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+            d.setDate(Math.min(day, lastDay)); // 元の日が翌月に存在しない場合は月末に丸める
+            return d;
+        }
+
+        /* 「1ヶ月」クイックボタン: 開始日=今日、終了日=ちょうど1ヶ月後(の前日)*/
+        function setQuickPeriodMonths(n) {
+            const today = new Date();
+            const endDate = addMonths(today, n);
+            endDate.setDate(endDate.getDate() - 1);
+            document.getElementById('start-date').value = today.toISOString().split('T')[0];
+            document.getElementById('end-date').value = endDate.toISOString().split('T')[0];
+            searchRange();
+        }
+
         /* =========================================================
            ダーク / ライト モード切替
            localStorageに保存し、次回訪問時も同じテーマを復元する
@@ -1013,7 +1044,7 @@
         window.onload = function() {
             const savedTheme = localStorage.getItem('ba-theme') || 'dark';
             applyTheme(savedTheme);
-            setQuickPeriod(0);
+            setQuickPeriodMonths(1); // 期間検索のデフォルトは1ヶ月
             searchToday();
         }
     </script>
