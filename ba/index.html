@@ -195,66 +195,139 @@
         .btn-speak { background: var(--btn-green); }
         .btn-search { background: var(--btn-purple); }
 
-        /* 出退勤結果を1行ずつ完全に枠で囲んだボックスとして表示する */
-        .result-box {
-            margin-top: 12px;
+        /* ==== 結果表示: 学園前ダイヤ版と同じ「day-card」仕様 ==== */
+        .result-box { margin-top: 12px; }
+
+        .res-summary {
+            font-size: 11px;
+            color: var(--muted-text);
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
         }
 
-        .result-row {
+        .empty-msg {
+            text-align: center;
+            padding: 30px 12px;
+            color: var(--muted-text);
+            font-size: 13px;
+        }
+
+        .day-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        .day-card.long { border-color: rgba(255, 77, 77, 0.45); }
+
+        .day-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
             margin-bottom: 6px;
-            background-color: var(--bg-color);
-        }
-
-        .result-row:last-child { margin-bottom: 0; }
-        .row-label { color: var(--muted-text); font-size: 13px; }
-        .row-val { font-weight: bold; color: var(--text-color); }
-        .row-val.highlight { color: var(--accent-cyan); }
-
-        /* 日区分ごとの色分けタグ(平日/土曜/日祝) */
-        .day-badge {
-            display: inline-block;
-            font-size: 12px;
-            font-weight: bold;
-            padding: 2px 8px;
-            border-radius: 4px;
-            border: 1px solid var(--border-color);
-            margin-right: 6px;
-        }
-        .day-badge.day-平 { background: var(--card-bg); color: var(--text-color); }
-        .day-badge.day-土 { background: rgba(0, 151, 167, 0.18); color: var(--accent-cyan); border-color: var(--accent-cyan); }
-        .day-badge.day-日祝 { background: rgba(255, 77, 77, 0.15); color: #ff4d4d; border-color: #ff4d4d; }
-
-        .list-item {
-            background-color: var(--list-bg);
-            border-radius: 6px;
-            padding: 10px 12px;
-            margin-bottom: 8px;
-            border: 2px solid var(--border-color);
-            border-left: 5px solid var(--accent-cyan);
-        }
-        .list-item.holiday { border-left: 5px solid #ff4d4d; }
-        .list-item.bon { border-left: 5px solid #ffcc00; }
-
-        .list-item-header {
-            display: flex;
-            align-items: center;
+            gap: 8px;
             flex-wrap: wrap;
-            gap: 4px;
-            margin-bottom: 6px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid var(--border-color);
+        }
+        .day-date { font-size: 18px; font-weight: 700; color: var(--text-color); }
+        .day-date.holiday { color: #ff4d4d; }
+        .day-date.saturday { color: var(--accent-cyan); }
+
+        .day-badge {
+            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .badge-week { background: rgba(29, 209, 161, 0.12); color: #1dd1a1; border: 1px solid #1dd1a1; }
+        .badge-sat  { background: rgba(0, 210, 211, 0.12); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); }
+        .badge-hday { background: rgba(255, 77, 77, 0.12); color: #ff4d4d; border: 1px solid #ff4d4d; }
+
+        .day-dial {
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--accent-orange);
+            text-shadow: 0 0 10px rgba(255, 159, 67, 0.35);
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+        .day-dial span { font-size: 14px; color: var(--muted-text); font-weight: 400; }
+
+        .day-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .day-boxes.split { grid-template-columns: 1fr; }
+        .day-box {
+            background: var(--list-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+        .day-box-label { font-size: 10px; color: var(--muted-text); margin-bottom: 4px; letter-spacing: 1px; }
+        .day-box-val { font-size: 14px; color: var(--text-color); line-height: 1.5; font-weight: bold; }
+        .day-box-val.holiday-val { color: #ff4d4d; font-size: 17px; font-weight: 700; }
+
+        .day-note {
+            font-size: 12px;
+            color: var(--accent-orange);
+            margin-top: 8px;
+            line-height: 1.6;
         }
 
-        .list-item-date {
-            font-weight: bold;
-            font-size: 15px;
+        .pattern-divider {
+            margin: 12px 0;
+            border-top: 1px dashed var(--border-color);
         }
+
+        .shift-badge {
+            display: inline-block;
+            padding: 2px 9px;
+            border-radius: 10px;
+            font-size: 10.5px;
+            font-weight: 700;
+            margin-left: 6px;
+            background: rgba(255, 77, 77, 0.12);
+            color: #ff4d4d;
+            border: 1px solid #ff4d4d;
+        }
+
+        /* ==== アクションボタン(結果コピー・読み上げ) ==== */
+        .action-row { display: flex; gap: 8px; margin-top: 4px; }
+        .act-btn {
+            flex: 1;
+            padding: 11px 4px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            border: 1px solid;
+            background: var(--list-bg);
+            color: var(--text-color);
+        }
+        .act-copy { border-color: #1dd1a1; color: #1dd1a1; }
+        .act-copy:active { background: #1dd1a1; color: #000; }
+        .act-tts { border-color: #feca57; color: #feca57; }
+        .act-tts:active { background: #feca57; color: #000; }
+
+        /* ==== トースト通知 ==== */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 210, 211, 0.15);
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            padding: 10px 24px;
+            border-radius: 20px;
+            font-size: 13px;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+        }
+        .toast.show { opacity: 1; }
 
         .quick-buttons {
             display: flex;
@@ -432,6 +505,9 @@
         </div>
     </div>
 
+    <!-- トースト通知(結果コピー時などに表示) -->
+    <div id="toast" class="toast"></div>
+
     <script>
         /* =========================================================
            BAダイヤ データ本体 (1〜27番)
@@ -559,6 +635,79 @@
             return `${now.getMonth()+1}/${now.getDate()}(${days[now.getDay()]})`;
         }
 
+        /* workTime文字列(例 "9:44" や "5:18 / 3:33")から合計分数を計算する */
+        function parseTotalMinutes(workTimeStr) {
+            if (!workTimeStr) return 0;
+            return workTimeStr.split('/').reduce((sum, part) => {
+                const t = part.trim();
+                const mHH = t.match(/^(\d+):(\d+)$/);
+                if (!mHH) return sum;
+                return sum + parseInt(mHH[1]) * 60 + parseInt(mHH[2]);
+            }, 0);
+        }
+
+        /* ==== トースト通知 ==== */
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => { t.classList.remove('show'); }, 2500);
+        }
+
+        /* =========================================================
+           1日分のday-cardを組み立てる(学園前ダイヤ版と同じ「day-card」仕様)
+           dial: ダイヤ番号 / dateLabel: 表示用日付 / dayType: 平・土・日祝
+           bon: お盆特例フラグ / matches: findDataの結果(複数パターンあり得る)
+           ========================================================= */
+        function buildDayCardHtml(dial, dateLabel, dayType, bon, matches) {
+            let dateClass = 'day-date';
+            let badgeClass = 'day-badge badge-week';
+            let badgeText = '平日';
+            if (dayType === '土') {
+                dateClass += ' saturday';
+                badgeClass = 'day-badge badge-sat';
+                badgeText = bon ? 'お盆休みで土曜ダイヤ' : '土曜';
+            }
+            if (dayType === '日祝') {
+                dateClass += ' holiday';
+                badgeClass = 'day-badge badge-hday';
+                badgeText = '日祝';
+            }
+
+            const isOff = matches.length === 0 || matches[0].start === '公休' || matches[0].dayType === '全';
+
+            // 長時間(9時間以上)判定: 全パターン中いずれかが9時間以上なら長時間バッジ
+            const longFlag = !isOff && matches.some(m => parseTotalMinutes(m.workTime) >= 9 * 60);
+
+            let bodyHtml;
+            if (isOff) {
+                bodyHtml = `<div class="day-boxes">
+                    <div class="day-box"><div class="day-box-label">勤務区分</div><div class="day-box-val holiday-val">公休</div></div>
+                    <div class="day-box"><div class="day-box-label">労働時間</div><div class="day-box-val" style="color:var(--muted-text)">—</div></div>
+                </div>`;
+            } else {
+                bodyHtml = matches.map((m, idx) => {
+                    const noteHtml = m.memo ? `<div class="day-note">📌 ${m.memo}</div>` : '';
+                    const divider = idx > 0 ? '<div class="pattern-divider"></div>' : '';
+                    return `${divider}<div class="day-boxes">
+                        <div class="day-box"><div class="day-box-label">出退勤時間</div><div class="day-box-val">${m.start} 〜 ${m.end}</div></div>
+                        <div class="day-box"><div class="day-box-label">労働時間</div><div class="day-box-val">${m.workTime}</div></div>
+                    </div>${noteHtml}`;
+                }).join('');
+            }
+
+            const longBadge = longFlag ? '<span class="shift-badge">長時間</span>' : '';
+
+            return `<div class="day-card${longFlag ? ' long' : ''}">
+                <div class="day-header">
+                    <div class="${dateClass}">${dateLabel}${longBadge}</div>
+                    <div class="${badgeClass}">${badgeText}</div>
+                </div>
+                <div class="day-dial">${dial}<span> 番ダイヤ</span></div>
+                ${bodyHtml}
+            </div>`;
+        }
+
         /* ===== ダイヤ番号入力時のハンドラ: 検索結果表示 + 花火 + 効果音 ===== */
         function onDaiyaInput() {
             searchToday();
@@ -575,7 +724,7 @@
             titleEl.innerText = `本日 ${getTodayString()} の勤務データ (BAダイヤ)`;
 
             if (isNaN(num) || num < 1 || num > 27) {
-                resultEl.innerHTML = '<div style="color:var(--muted-text); text-align:center;">1〜27の番号を入力してください</div>';
+                resultEl.innerHTML = '<div class="empty-msg">1〜27の番号を入力してください</div>';
                 return;
             }
 
@@ -584,32 +733,11 @@
             const matches = findData(num, currentDayType);
 
             if (matches.length === 0) {
-                resultEl.innerHTML = '<div style="color:var(--muted-text); text-align:center;">該当データなし</div>';
+                resultEl.innerHTML = '<div class="empty-msg">該当データなし</div>';
                 return;
             }
 
-            let html = '';
-            if (bon) {
-                html += `<div style="text-align:center; margin:8px 0;"><span class="bon-tag">お盆休みで土曜ダイヤ</span></div>`;
-            }
-            matches.forEach((m, idx) => {
-                html += `<div style="${idx > 0 ? 'margin-top:14px; padding-top:10px; border-top:2px dashed var(--border-color);' : ''}">`;
-                html += `<div class="result-row"><span class="row-label">曜日区分</span><span class="day-badge day-${m.dayType === '全' ? '平' : m.dayType}">${m.dayType === '全' ? '毎日' : m.dayType}</span></div>`;
-                if(m.start === "公休" || m.dayType === "全") {
-                    html += `<div class="result-row"><span class="row-label">勤務区分</span><span class="row-val" style="color:#ff4d4d;">公休</span></div>`;
-                } else {
-                    if(m.memo) {
-                        html += `<div class="result-row"><span class="row-label">記事・備考</span><span class="row-val" style="color:var(--accent-orange); text-align:right;">${m.memo}</span></div>`;
-                    }
-                    html += `
-                        <div class="result-row"><span class="row-label">出勤時間</span><span class="row-val highlight">${m.start}</span></div>
-                        <div class="result-row"><span class="row-label">退勤時間</span><span class="row-val highlight">${m.end}</span></div>
-                        <div class="result-row"><span class="row-label">労働時間</span><span class="row-val">${m.workTime}</span></div>
-                    `;
-                }
-                html += `</div>`;
-            });
-            resultEl.innerHTML = html;
+            resultEl.innerHTML = buildDayCardHtml(num, `本日 ${getTodayString()}`, currentDayType, bon, matches);
         }
 
         function speakToday() {
@@ -641,6 +769,9 @@
             window.speechSynthesis.speak(uttr);
         }
 
+        /* 期間検索結果を保持し、コピー・読み上げボタンから参照できるようにする */
+        window._lastRangeRows = [];
+
         function searchRange() {
             const startStr = document.getElementById('start-date').value;
             const endStr = document.getElementById('end-date').value;
@@ -648,48 +779,89 @@
             const container = document.getElementById('range-results');
 
             if (!startStr || !endStr || isNaN(num) || num < 1 || num > 27) {
-                container.innerHTML = '<div style="color:var(--muted-text); padding:8px;">条件を正しくセットしてください</div>';
+                container.innerHTML = '<div class="empty-msg">条件を正しくセットしてください</div>';
                 return;
             }
 
             let start = new Date(startStr);
             const end = new Date(endStr);
-            let html = '';
             const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
+            const rows = [];
 
             while (start <= end) {
                 const bon = isBonSpecial(start);
                 const currentDayType = getDayType(start);
                 const matches = findData(num, currentDayType);
-                const dateLabel = `${start.getMonth()+1}/${start.getDate()}(${daysOfWeek[start.getDay()]})`;
-                const bonTag = bon ? '<span class="bon-tag">お盆休みで土曜ダイヤ</span>' : '';
-
-                matches.forEach(m => {
-                    const badgeType = m.dayType === '全' ? '平' : m.dayType;
-                    if (m.start === "公休" || m.dayType === "全") {
-                        html += `
-                            <div class="list-item holiday">
-                                <div class="list-item-header">
-                                    <span class="list-item-date">${dateLabel}</span>${bonTag}
-                                </div>
-                                <span style="color:#ff4d4d; font-weight:bold;">公休</span>
-                            </div>`;
-                    } else {
-                        const memoStr = m.memo ? `<div style="font-size:12px; color:var(--accent-orange); margin-bottom:4px;">${m.memo}</div>` : '';
-                        html += `
-                            <div class="list-item ${bon ? 'bon' : ''}">
-                                <div class="list-item-header">
-                                    <span class="list-item-date">${dateLabel}</span>
-                                    <span class="day-badge day-${badgeType}">${m.dayType}</span>${bonTag}
-                                </div>
-                                ${memoStr}
-                                ⏰ <span style="color:var(--accent-cyan)">${m.start} 〜 ${m.end}</span> (労 ${m.workTime})
-                            </div>`;
-                    }
-                });
+                const dateLabel = `${start.getMonth()+1}/${start.getDate()}（${daysOfWeek[start.getDay()]}）`;
+                rows.push({ dateLabel, dayType: currentDayType, bon, matches, dial: num });
                 start.setDate(start.getDate() + 1);
             }
-            container.innerHTML = html || '<div style="color:var(--muted-text); padding:8px;">データがありません</div>';
+
+            window._lastRangeRows = rows;
+
+            if (rows.length === 0) {
+                container.innerHTML = '<div class="empty-msg">📋 該当する日がありません</div>';
+                return;
+            }
+
+            const workCnt = rows.filter(r => !(r.matches.length === 0 || r.matches[0].start === '公休' || r.matches[0].dayType === '全')).length;
+            const offCnt = rows.length - workCnt;
+
+            let html = `<div class="res-summary">${rows.length}日間 ／ 勤務${workCnt}日 ／ 公休${offCnt}日</div>`;
+            rows.forEach(r => {
+                html += buildDayCardHtml(r.dial, r.dateLabel, r.dayType, r.bon, r.matches);
+            });
+            html += `<div class="action-row">
+                <button class="act-btn act-copy" onclick="copyRangeResults()">📋 結果をコピー</button>
+                <button class="act-btn act-tts" onclick="speakRangeResults()">🔊 読み上げ</button>
+            </div>`;
+
+            container.innerHTML = html;
+        }
+
+        /* 期間検索結果をテキストとしてクリップボードにコピーする */
+        function copyRangeResults() {
+            const rows = window._lastRangeRows;
+            if (!rows || !rows.length) { showToast('先に検索してください'); return; }
+            const lines = rows.map(r => {
+                const isOff = r.matches.length === 0 || r.matches[0].start === '公休' || r.matches[0].dayType === '全';
+                if (isOff) return `${r.dateLabel} ${r.dial}番 公休`;
+                return r.matches.map(m => `${r.dateLabel} ${r.dial}番 ${m.start}〜${m.end} 労${m.workTime}`).join('\n');
+            });
+            const text = lines.join('\n');
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('📋 コピーしました！');
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+                document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('📋 コピーしました！');
+            });
+        }
+
+        /* 期間検索結果をまとめて読み上げる */
+        function speakRangeResults() {
+            const rows = window._lastRangeRows;
+            if (!rows || !rows.length) { showToast('先に検索してください'); return; }
+            let text = '';
+            rows.forEach(r => {
+                const isOff = r.matches.length === 0 || r.matches[0].start === '公休' || r.matches[0].dayType === '全';
+                text += `${r.dateLabel}、${r.dial}番。`;
+                if (r.bon) text += 'お盆休みで土曜ダイヤ。';
+                if (isOff) {
+                    text += '公休。';
+                } else {
+                    r.matches.forEach(m => {
+                        if (m.memo) text += `備考、${m.memo}。`;
+                        text += `出勤、${m.start}。退勤、${m.end}。労働時間は ${m.workTime} です。`;
+                    });
+                }
+            });
+            window.speechSynthesis.cancel();
+            const uttr = new SpeechSynthesisUtterance(text);
+            uttr.lang = 'ja-JP';
+            window.speechSynthesis.speak(uttr);
         }
 
         function setQuickPeriod(days) {
