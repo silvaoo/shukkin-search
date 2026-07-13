@@ -379,8 +379,12 @@ function addMonths(date,n){
 /* その日が祝日かどうか判定する */
 function isHol(d){return HOLIDAYS.has(toISO(d));}
 
-/* 日付の種別（平日／土曜／日祝）を判定する */
-function dayType(d){const w=d.getDay();if(w===0||isHol(d))return '日祝';if(w===6)return '土';return '平';}
+/* お盆期間（土曜日ダイヤ扱いになる日）*/
+const OBON_DAYS=new Set(['2026-08-13','2026-08-14','2026-08-15']);
+function isObon(d){return OBON_DAYS.has(toISO(d));}
+
+/* 日付の種別（平日／土曜／日祝）を判定する（お盆期間は土曜日ダイヤ扱い） */
+function dayType(d){const w=d.getDay();if(isObon(d))return '土';if(w===0||isHol(d))return '日祝';if(w===6)return '土';return '平';}
 
 /* 「今日のダイヤ番号」を起点に、対象日のダイヤ番号を計算する
    実際の端末の「今日」からの日数差で計算するので、基準日が多少古くなってもズレない */
@@ -484,7 +488,7 @@ function updateTodayPreview(){
   const today=new Date();
   const m=today.getMonth()+1,d=today.getDate();
   const dw=DW[today.getDay()];
-  const dtLabel=isHol(today)?`${dw}・祝`:dw;
+  const dtLabel=isObon(today)?`${dw}（お盆休み）`:isHol(today)?`${dw}・祝`:dw;
   const dt=dayType(today);
   const rec=DB[v];
   if(!rec||!rec[dt]){
@@ -507,7 +511,7 @@ function handleSpeakToday(){
   const m=today.getMonth()+1,d=today.getDate();
   const dw=DW[today.getDay()];
   const dt=dayType(today);
-  const holLabel=isHol(today)?'祝日':'';
+  const holLabel=isObon(today)?'お盆休み':isHol(today)?'祝日':'';
   const rec=DB[v];
   let text=`${m}月${d}日、${dw}曜日${holLabel}。${v}番ダイヤ。`;
   if(!rec||!rec[dt]){
@@ -533,7 +537,7 @@ function handleSpeakResults(){
   let text='';
   rows.forEach(r=>{
     const allKyu=!r.rec||(r.rec&&r.slot===null);
-    const holLabel=r.hol?'祝日':'';
+    const holLabel=r.obon?'お盆休み':r.hol?'祝日':'';
     text+=`${r.m}月${r.d}日${r.dw}曜${holLabel}、${r.dn}番ダイヤ。`;
     if(allKyu){text+='公休。';}
     else if(r.slot&&r.slot.o!=='—'){
@@ -634,7 +638,7 @@ function render(rows){
     const isOff=allKyu||dayKyu;
 
     let dateClass='day-date',badgeClass='day-badge badge-week',badgeText='平日';
-    if(r.dt==='土'){dateClass+=' saturday';badgeClass='day-badge badge-sat';badgeText='土曜';}
+    if(r.dt==='土'){dateClass+=' saturday';badgeClass='day-badge badge-sat';badgeText=r.obon?'お盆休み':'土曜';}
     if(r.dt==='日祝'){dateClass+=' holiday';badgeClass='day-badge badge-hday';badgeText=r.hol?'祝日':'日曜';}
 
     const totalH=(!isOff&&r.slot)?parseTotalHours(r.slot.w):0;
@@ -741,8 +745,9 @@ function buildAndRender(dial,from,to){
     const dn=calcDial(cur,dial);
     const dt=dayType(cur);
     const hol=isHol(cur);
+    const obon=isObon(cur);
     const rec=DB[dn];
-    rows.push({m:cur.getMonth()+1,d:cur.getDate(),dw:DW[cur.getDay()],dt,hol,dn,rec,slot:rec?rec[dt]:null});
+    rows.push({m:cur.getMonth()+1,d:cur.getDate(),dw:DW[cur.getDay()],dt,hol,obon,dn,rec,slot:rec?rec[dt]:null});
     cur.setDate(cur.getDate()+1);
   }
   render(rows);
