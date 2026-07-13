@@ -10,13 +10,13 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#121214">
-    <link rel="apple-touch-icon" sizes="180x180" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/icons/icon-180.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/icons/icon-152.png">
-    <link rel="apple-touch-icon" sizes="144x144" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/icons/icon-144.png">
-    <link rel="apple-touch-icon" sizes="120x120" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/icons/icon-120.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/icons/icon-192.png">
-    <link rel="icon" type="image/png" sizes="96x96" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/icons/icon-96.png">
-    <link rel="manifest" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/manifest.json">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="icons/icon-120.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="icons/icon-96.png">
+    <link rel="manifest" href="manifest.json">
 
     <style>
         /* ===== ダークモード(既定)のカラー変数 ===== */
@@ -338,6 +338,29 @@
         }
         .toast.show { opacity: 1; }
 
+        /* ==== インストール案内・更新案内バナー ==== */
+        .notice-banner {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 2px solid;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 14px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .install-banner {
+            background: rgba(0, 210, 211, 0.1);
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+        .update-banner {
+            background: rgba(255, 159, 67, 0.12);
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+        }
+
         .quick-buttons {
             display: flex;
             gap: 8px;
@@ -461,6 +484,16 @@
         </div>
         <button id="theme-toggle" onclick="toggleTheme()" aria-label="ダーク/ライト切り替え">🌙</button>
     </header>
+
+    <!-- ホーム画面インストールの案内バナー(インストール可能な時だけ表示) -->
+    <button id="install-banner" class="notice-banner install-banner" onclick="handleInstallClick()" style="display:none;">
+        📲 アプリとしてインストール
+    </button>
+
+    <!-- 新バージョン検知時の更新案内バナー -->
+    <button id="update-banner" class="notice-banner update-banner" onclick="handleUpdateClick()" style="display:none;">
+        🔄 新しいバージョンがあります。タップで更新
+    </button>
 
     <div class="card">
         <div class="card-title" id="today-title">本日 のダイヤ番号を入力</div>
@@ -1046,6 +1079,84 @@
             applyTheme(savedTheme);
             setQuickPeriodMonths(1); // 期間検索のデフォルトは1ヶ月
             searchToday();
+            initServiceWorkerAndInstall(); // インストール導線・更新検知の初期化
+        }
+
+        /* =========================================================
+           PWAインストール導線 と 更新検知
+           - Service Workerを登録するとAndroid Chromeで「アプリとして
+             インストール」できるようになる(iOSは仕組み上、自動プロンプト非対応。
+             共有メニューから「ホーム画面に追加」する必要がある)
+           - 新しいバージョンをデプロイした際、既に開いている端末では
+             更新バナーをタップすることで最新版に切り替えられる
+           ========================================================= */
+        let deferredInstallPrompt = null;
+
+        function initServiceWorkerAndInstall() {
+            // Android Chrome等、Web App Install Bannerの対象となる場合に発火する
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredInstallPrompt = e;
+                document.getElementById('install-banner').style.display = 'block';
+            });
+
+            // インストール完了時はバナーを隠す
+            window.addEventListener('appinstalled', () => {
+                document.getElementById('install-banner').style.display = 'none';
+                deferredInstallPrompt = null;
+            });
+
+            if (!('serviceWorker' in navigator)) return;
+
+            navigator.serviceWorker.register('sw.js').then((reg) => {
+                // 既にSWが存在し、かつ新しいSWが見つかった場合は「更新あり」バナーを出す
+                reg.addEventListener('updatefound', () => {
+                    const newWorker = reg.installing;
+                    if (!newWorker) return;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            document.getElementById('update-banner').style.display = 'block';
+                        }
+                    });
+                });
+            }).catch((e) => {
+                console.warn('Service Workerの登録に失敗しました', e);
+            });
+
+            // 新しいSWに切り替わったら自動的にページを再読み込みする
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                refreshing = true;
+                window.location.reload();
+            });
+        }
+
+        // インストールバナーをタップした時: ネイティブのインストールプロンプトを表示
+        function handleInstallClick() {
+            const banner = document.getElementById('install-banner');
+            if (!deferredInstallPrompt) {
+                banner.style.display = 'none';
+                return;
+            }
+            deferredInstallPrompt.prompt();
+            deferredInstallPrompt.userChoice.finally(() => {
+                deferredInstallPrompt = null;
+                banner.style.display = 'none';
+            });
+        }
+
+        // 更新バナーをタップした時: 待機中の新しいSWをすぐ有効化させる
+        function handleUpdateClick() {
+            document.getElementById('update-banner').style.display = 'none';
+            if (!('serviceWorker' in navigator)) { window.location.reload(); return; }
+            navigator.serviceWorker.getRegistration().then((reg) => {
+                if (reg && reg.waiting) {
+                    reg.waiting.postMessage('SKIP_WAITING');
+                } else {
+                    window.location.reload();
+                }
+            });
         }
     </script>
 </body>
