@@ -1,8 +1,10 @@
 {
+  "id": "/shukkin-search/",
   "name": "学A - 出退勤検索くん",
   "short_name": "学A",
   "description": "北大和・学園前Aダイヤ 出退勤検索くん",
   "start_url": "https://silvaoo.github.io/shukkin-search/",
+  "scope": "https://silvaoo.github.io/shukkin-search/",
   "display": "standalone",
   "background_color": "#0a0e27",
   "theme_color": "#0a0e27",
