@@ -77,6 +77,17 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
   font-size: 16px;
   transition: all 0.3s;
 }
+#shareButton {
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  text-decoration: none;
+  display: inline-block;
+}
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -310,6 +321,7 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
 <canvas id="fw"></canvas>
 
 <header>
+  <a href="share.html" id="shareButton" aria-label="アプリを共有">📤</a>
   <div>
     <h1>🚌 出退勤検索くん</h1>
     <h1 style="font-size: 13px; margin-top: 4px;">二人同時検索版</h1>

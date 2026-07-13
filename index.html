@@ -80,6 +80,12 @@ body {
   color: var(--text); padding: 5px 10px; border-radius: 20px;
   cursor: pointer; font-size: 15px;
 }
+.share-btn {
+  position: absolute; top: 0; left: 0;
+  background: var(--bg-card2); border: 1px solid var(--border);
+  color: var(--text); padding: 5px 10px; border-radius: 20px;
+  cursor: pointer; font-size: 15px; text-decoration: none; display: inline-block;
+}
 
 /* ==== 今日のダイヤ入力カード ==== */
 .today-card {
@@ -273,6 +279,7 @@ input[type="date"] {
 <div class="toast" id="toast"></div>
 
 <div class="header">
+  <a href="share.html" class="share-btn" aria-label="アプリを共有">📤</a>
   <h1>🚌 出退勤検索くん</h1>
   <p>北大和・学園前 Aダイヤ ／ 2026年3月14日改正 ／ 1〜92番</p>
   <button class="mode-btn" onclick="toggleMode()">🌙/☀️</button>
