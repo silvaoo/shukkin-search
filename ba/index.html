@@ -96,7 +96,7 @@
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 16px;
-            border: 1px solid var(--border-color);
+            border: 2px solid var(--border-color);
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             transition: background-color 0.25s ease, border-color 0.25s ease;
         }
@@ -124,7 +124,7 @@
 
         input[type="number"] {
             background-color: var(--input-bg);
-            border: 2px solid var(--accent-orange);
+            border: 3px solid var(--accent-orange);
             border-radius: 8px;
             color: var(--text-color);
             font-size: 28px;
@@ -132,6 +132,7 @@
             width: 90px;
             text-align: center;
             padding: 4px;
+            box-shadow: 0 0 0 1px var(--border-color);
         }
 
         input[type="date"] {
@@ -165,35 +166,68 @@
         .btn-speak { background: var(--btn-green); }
         .btn-search { background: var(--btn-purple); }
 
+        /* 出退勤結果を表(テーブル)のようにきっちり枠で囲んで見やすくする */
         .result-box {
             background-color: var(--bg-color);
             border-radius: 8px;
-            padding: 12px;
+            padding: 0;
             margin-top: 12px;
-            border: 1px solid var(--border-color);
+            border: 2px solid var(--border-color);
+            overflow: hidden;
         }
 
         .result-row {
             display: flex;
             justify-content: space-between;
-            padding: 6px 0;
+            align-items: center;
+            padding: 10px 12px;
             border-bottom: 1px solid var(--border-color);
         }
 
         .result-row:last-child { border-bottom: none; }
-        .row-label { color: var(--muted-text); }
+        .row-label { color: var(--muted-text); font-size: 13px; }
         .row-val { font-weight: bold; color: var(--text-color); }
         .row-val.highlight { color: var(--accent-cyan); }
+
+        /* 日区分ごとの色分けタグ(平日/土曜/日祝) */
+        .day-badge {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            margin-right: 6px;
+        }
+        .day-badge.day-平 { background: var(--card-bg); color: var(--text-color); }
+        .day-badge.day-土 { background: rgba(0, 151, 167, 0.18); color: var(--accent-cyan); border-color: var(--accent-cyan); }
+        .day-badge.day-日祝 { background: rgba(255, 77, 77, 0.15); color: #ff4d4d; border-color: #ff4d4d; }
 
         .list-item {
             background-color: var(--list-bg);
             border-radius: 6px;
-            padding: 10px;
+            padding: 10px 12px;
             margin-bottom: 8px;
-            border-left: 4px solid var(--accent-cyan);
+            border: 2px solid var(--border-color);
+            border-left: 5px solid var(--accent-cyan);
         }
-        .list-item.holiday { border-left: 4px solid #ff4d4d; }
-        .list-item.bon { border-left: 4px solid #ffcc00; }
+        .list-item.holiday { border-left: 5px solid #ff4d4d; }
+        .list-item.bon { border-left: 5px solid #ffcc00; }
+
+        .list-item-header {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .list-item-date {
+            font-weight: bold;
+            font-size: 15px;
+        }
 
         .quick-buttons {
             display: flex;
@@ -459,14 +493,17 @@
 
             let html = '';
             if (bon) {
-                html += `<div style="text-align:center; margin-bottom:8px;"><span class="bon-tag">お盆休みで土曜ダイヤ</span></div>`;
+                html += `<div style="text-align:center; margin:8px 0;"><span class="bon-tag">お盆休みで土曜ダイヤ</span></div>`;
             }
-            matches.forEach(m => {
+            matches.forEach((m, idx) => {
+                // 枠で囲んだブロック単位で表示(複数パターンある場合は区切り線を入れる)
+                html += `<div style="${idx > 0 ? 'border-top:2px solid var(--border-color);' : ''}">`;
+                html += `<div class="result-row"><span class="row-label">曜日区分</span><span class="day-badge day-${m.dayType === '全' ? '平' : m.dayType}">${m.dayType === '全' ? '毎日' : m.dayType}</span></div>`;
                 if(m.start === "公休" || m.dayType === "全") {
                     html += `<div class="result-row"><span class="row-label">勤務区分</span><span class="row-val" style="color:#ff4d4d;">公休</span></div>`;
                 } else {
                     if(m.memo) {
-                        html += `<div class="result-row"><span class="row-label">記事・備考</span><span class="row-val" style="color:var(--accent-orange);">${m.memo}</span></div>`;
+                        html += `<div class="result-row"><span class="row-label">記事・備考</span><span class="row-val" style="color:var(--accent-orange); text-align:right;">${m.memo}</span></div>`;
                     }
                     html += `
                         <div class="result-row"><span class="row-label">出勤時間</span><span class="row-val highlight">${m.start}</span></div>
@@ -474,6 +511,7 @@
                         <div class="result-row"><span class="row-label">労働時間</span><span class="row-val">${m.workTime}</span></div>
                     `;
                 }
+                html += `</div>`;
             });
             resultEl.innerHTML = html;
         }
@@ -531,13 +569,24 @@
                 const bonTag = bon ? '<span class="bon-tag">お盆休みで土曜ダイヤ</span>' : '';
 
                 matches.forEach(m => {
+                    const badgeType = m.dayType === '全' ? '平' : m.dayType;
                     if (m.start === "公休" || m.dayType === "全") {
-                        html += `<div class="list-item holiday"><strong>${dateLabel}</strong>: <span style="color:#ff4d4d; font-weight:bold;">公休</span>${bonTag}</div>`;
+                        html += `
+                            <div class="list-item holiday">
+                                <div class="list-item-header">
+                                    <span class="list-item-date">${dateLabel}</span>${bonTag}
+                                </div>
+                                <span style="color:#ff4d4d; font-weight:bold;">公休</span>
+                            </div>`;
                     } else {
-                        const memoStr = m.memo ? ` [${m.memo}]` : '';
+                        const memoStr = m.memo ? `<div style="font-size:12px; color:var(--accent-orange); margin-bottom:4px;">${m.memo}</div>` : '';
                         html += `
                             <div class="list-item ${bon ? 'bon' : ''}">
-                                <strong>${dateLabel}</strong> <span style="color:var(--muted-text)">(${m.dayType})</span>${memoStr}${bonTag}<br>
+                                <div class="list-item-header">
+                                    <span class="list-item-date">${dateLabel}</span>
+                                    <span class="day-badge day-${badgeType}">${m.dayType}</span>${bonTag}
+                                </div>
+                                ${memoStr}
                                 ⏰ <span style="color:var(--accent-cyan)">${m.start} 〜 ${m.end}</span> (労 ${m.workTime})
                             </div>`;
                     }
