@@ -214,6 +214,45 @@ input[type="date"] {
 .sb-long { background: rgba(255,0,128,0.12); color: var(--pink); border: 1px solid var(--pink); }
 
 /* ==== アクションボタン ==== */
+/* ==== メモ機能 ==== */
+.memo-area {
+  margin-top: 10px; padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+.memo-line {
+  font-size: 12px; color: var(--text); line-height: 1.5;
+  background: var(--bg-card2); border-left: 3px solid var(--cyan);
+  border-radius: 4px; padding: 6px 8px; margin-bottom: 6px;
+  white-space: pre-wrap; word-break: break-word;
+}
+.memo-line.memo-dial-line { border-left-color: var(--orange); }
+.memo-btn {
+  width: 100%; padding: 8px; font-size: 12px; font-weight: 700;
+  background: transparent; color: var(--dim);
+  border: 1px dashed var(--border); border-radius: 8px; cursor: pointer;
+}
+.memo-btn:active { border-color: var(--cyan); color: var(--cyan); }
+.memo-edit { margin-top: 8px; }
+.memo-label {
+  display: block; font-size: 10px; font-weight: 700;
+  color: var(--dim); margin: 6px 0 4px;
+}
+.memo-input {
+  width: 100%; padding: 8px; font-size: 13px;
+  background: var(--bg-card2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  resize: vertical; font-family: inherit; box-sizing: border-box;
+}
+.memo-input:focus { outline: none; border-color: var(--cyan); }
+.memo-actions { display: flex; gap: 6px; margin-top: 8px; }
+.memo-act {
+  flex: 1; padding: 9px 4px; font-size: 12px; font-weight: 700;
+  border: none; border-radius: 6px; cursor: pointer; color: #fff;
+}
+.memo-save { background: var(--cyan); color: #04241a; }
+.memo-del { background: rgba(255,0,128,0.15); color: var(--pink); border: 1px solid rgba(255,0,128,0.4); }
+.memo-close { background: var(--bg-card2); color: var(--dim); border: 1px solid var(--border); }
+
 .action-row { display: flex; gap: 8px; margin-top: 4px; }
 .act-btn {
   flex: 1; padding: 11px 4px; border-radius: 10px; cursor: pointer; font-size: 13px;
@@ -631,6 +670,98 @@ window.addEventListener('pagehide',stopSpeakIfNeeded);
    誤って発火し読み上げが即座に止まってしまうことがあるため削除した */
 
 /* ==== 検索結果の描画 ==== */
+/* ==== メモ機能 ====
+   ・日付メモ  : その日1日だけに紐づくメモ（例: 年休申請済み）
+   ・ダイヤメモ: そのダイヤ番号すべてに紐づくメモ（例: 2番は朝の道が混む）
+   保存先はこの端末のブラウザ内(localStorage)のみ。同僚には共有されない。 */
+const MEMO_DATE_KEY='a-memos-date';
+const MEMO_DIAL_KEY='a-memos-dial';
+
+/* メモ本文をそのままHTMLに埋め込むと崩れる/危険なので必ずエスケープする */
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function loadMemos(key){
+  try{ return JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){ return {}; }
+}
+function saveMemos(key,obj){
+  try{ localStorage.setItem(key,JSON.stringify(obj)); return true; }
+  catch(e){ showToast('⚠️ メモを保存できませんでした'); return false; }
+}
+function getDateMemo(iso){ return loadMemos(MEMO_DATE_KEY)[iso]||''; }
+function getDialMemo(dn){ return loadMemos(MEMO_DIAL_KEY)[dn]||''; }
+
+/* 1日分のカードに差し込むメモ欄のHTML */
+function memoBlockHtml(iso,dn){
+  return `<div class="memo-area" data-iso="${iso}" data-dial="${dn}">
+    <div class="memo-view">${memoViewHtml(iso,dn)}</div>
+    <button class="memo-btn" onclick="toggleMemo('${iso}',${dn})">${memoBtnLabel(iso,dn)}</button>
+    <div class="memo-edit" style="display:none"></div>
+  </div>`;
+}
+function memoViewHtml(iso,dn){
+  const dm=getDateMemo(iso), dlm=getDialMemo(dn);
+  let h='';
+  if(dm) h+=`<div class="memo-line">📝 ${escapeHtml(dm)}</div>`;
+  if(dlm) h+=`<div class="memo-line memo-dial-line">🔖 ${dn}番: ${escapeHtml(dlm)}</div>`;
+  return h;
+}
+function memoBtnLabel(iso,dn){
+  return (getDateMemo(iso)||getDialMemo(dn))?'✏️ メモを編集':'📝 メモを追加';
+}
+
+/* メモ編集欄の開閉（同じボタンを再タップで閉じる） */
+function toggleMemo(iso,dn){
+  const area=document.querySelector(`.memo-area[data-iso="${iso}"]`);
+  if(!area)return;
+  const edit=area.querySelector('.memo-edit');
+  if(edit.style.display!=='none'){ edit.style.display='none'; edit.innerHTML=''; return; }
+  const md=iso.slice(5).replace('-','/');
+  edit.innerHTML=`
+    <label class="memo-label">📝 ${md} だけのメモ</label>
+    <textarea class="memo-input" id="mi-date-${iso}" rows="2" placeholder="例: 年休申請済み">${escapeHtml(getDateMemo(iso))}</textarea>
+    <label class="memo-label">🔖 ${dn}番ダイヤ共通のメモ（この番号の日すべてに表示）</label>
+    <textarea class="memo-input" id="mi-dial-${iso}" rows="2" placeholder="例: 朝の道が混む">${escapeHtml(getDialMemo(dn))}</textarea>
+    <div class="memo-actions">
+      <button class="memo-act memo-save" onclick="saveMemo('${iso}',${dn})">💾 保存</button>
+      <button class="memo-act memo-del" onclick="deleteMemo('${iso}',${dn})">🗑 削除</button>
+      <button class="memo-act memo-close" onclick="toggleMemo('${iso}',${dn})">✕ 閉じる</button>
+    </div>`;
+  edit.style.display='block';
+}
+
+function saveMemo(iso,dn){
+  const dv=document.getElementById('mi-date-'+iso).value.trim();
+  const lv=document.getElementById('mi-dial-'+iso).value.trim();
+  const dm=loadMemos(MEMO_DATE_KEY);
+  if(dv) dm[iso]=dv; else delete dm[iso];
+  const lm=loadMemos(MEMO_DIAL_KEY);
+  if(lv) lm[dn]=lv; else delete lm[dn];
+  if(saveMemos(MEMO_DATE_KEY,dm)&&saveMemos(MEMO_DIAL_KEY,lm)) showToast('💾 メモを保存しました');
+  toggleMemo(iso,dn);      // 編集欄を閉じる
+  refreshMemoViews();      // 表示を更新（ダイヤメモは他の日にも反映される）
+}
+
+function deleteMemo(iso,dn){
+  const md=iso.slice(5).replace('-','/');
+  if(!confirm(`${md}のメモと、${dn}番ダイヤ共通のメモを削除します。よろしいですか？\n（${dn}番のメモは他の日からも消えます）`))return;
+  const dm=loadMemos(MEMO_DATE_KEY); delete dm[iso]; saveMemos(MEMO_DATE_KEY,dm);
+  const lm=loadMemos(MEMO_DIAL_KEY); delete lm[dn]; saveMemos(MEMO_DIAL_KEY,lm);
+  showToast('🗑 メモを削除しました');
+  const area=document.querySelector(`.memo-area[data-iso="${iso}"]`);
+  if(area){ const e=area.querySelector('.memo-edit'); e.style.display='none'; e.innerHTML=''; }
+  refreshMemoViews();
+}
+
+/* 画面上のメモ表示だけを更新する（再検索せずに済ませるため） */
+function refreshMemoViews(){
+  document.querySelectorAll('.memo-area').forEach(area=>{
+    const iso=area.dataset.iso, dn=area.dataset.dial;
+    area.querySelector('.memo-view').innerHTML=memoViewHtml(iso,dn);
+    area.querySelector('.memo-btn').textContent=memoBtnLabel(iso,dn);
+  });
+}
+
 function render(rows){
   const el=document.getElementById('resultsArea');
   if(!rows.length){el.innerHTML='<div class="empty">📋 該当する日がありません</div>';return;}
@@ -675,6 +806,7 @@ function render(rows){
       </div>
       <div class="day-dial">${r.dn}<span> 番</span></div>
       ${bodyHtml}
+      ${memoBlockHtml(r.iso,r.dn)}
     </div>`;
   });
 
@@ -754,7 +886,7 @@ function buildAndRender(dial,from,to){
     const hol=isHol(cur);
     const obon=isObon(cur);
     const rec=DB[dn];
-    rows.push({m:cur.getMonth()+1,d:cur.getDate(),dw:DW[cur.getDay()],dt,hol,obon,dn,rec,slot:rec?rec[dt]:null});
+    rows.push({iso:toISO(cur),m:cur.getMonth()+1,d:cur.getDate(),dw:DW[cur.getDay()],dt,hol,obon,dn,rec,slot:rec?rec[dt]:null});
     cur.setDate(cur.getDate()+1);
   }
   render(rows);
