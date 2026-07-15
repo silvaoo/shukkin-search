@@ -98,6 +98,24 @@ body {
   overflow: hidden;
   box-shadow: 0 0 20px rgba(255,140,0,0.08);
 }
+#update-banner {
+  position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 9999;
+  padding: 12px; border: none; border-radius: 10px; cursor: pointer;
+  background: linear-gradient(135deg, var(--cyan), var(--orange));
+  color: #06060f; font-size: 13px; font-weight: 800;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+}
+.today-clock {
+  font-size: 17px; color: var(--orange); font-weight: 800;
+  margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+  letter-spacing: 0.5px;
+}
+.today-clock::before {
+  content: ''; width: 3px; height: 18px; background: var(--orange);
+  border-radius: 2px; box-shadow: 0 0 6px var(--orange); display: inline-block;
+  flex: none;
+}
+.clock-ss { font-size: 13px; color: var(--dim); font-weight: 700; }
 .today-label {
   font-size: 11px; color: var(--orange); letter-spacing: 2px;
   margin-bottom: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px;
@@ -313,6 +331,8 @@ input[type="date"] {
 </style>
 </head>
 <body>
+<button id="update-banner" onclick="handleUpdateClick()" style="display:none;">🔄 新しいバージョンがあります。タップで更新</button>
+
 
 <canvas id="fw"></canvas>
 <div class="toast" id="toast"></div>
@@ -326,7 +346,7 @@ input[type="date"] {
 
 <!-- 今日のダイヤ入力 -->
 <div class="today-card">
-  <div class="today-label">本日7/12(土)のダイヤ番号を入力</div>
+  <div class="today-clock" id="todayClock">本日は—</div>
   <div class="dial-row">
     <span>今日は</span>
     <input type="number" id="todayInput" min="1" max="92" inputmode="numeric" autocomplete="off">
@@ -762,6 +782,66 @@ function refreshMemoViews(){
   });
 }
 
+
+/* ==== 本日の日付＋時刻(24時間表示・秒あり) ====
+   以前は日付をHTMLに直書きしていたため更新されないバグがあった。
+   1秒ごとに書き換えることで日付も必ず最新になる。 */
+function updateClock(){
+  const el=document.getElementById('todayClock');
+  if(!el)return;
+  const n=new Date();
+  const DWJ=['日','月','火','水','木','金','土'];
+  const hh=n.getHours();                                   // 24時間表示
+  const mm=String(n.getMinutes()).padStart(2,'0');
+  const ss=String(n.getSeconds()).padStart(2,'0');
+  el.innerHTML=`本日は${n.getMonth()+1}/${n.getDate()}(${DWJ[n.getDay()]}) ${hh}:${mm} <span class="clock-ss">${ss}</span>`;
+
+  // 日付が変わったら今日の勤務表示も作り直す(日をまたいでも正しく表示させるため)
+  const key=toISO(n);
+  if(window._clockDay && window._clockDay!==key){
+    updateTodayPreview();
+    const t=new Date();t.setHours(0,0,0,0);
+    const df=document.getElementById('dateFrom');
+    if(df && df.value===window._clockDay) df.value=toISO(t); // 未変更なら開始日も今日に更新
+  }
+  window._clockDay=key;
+}
+
+
+/* ==== オフライン対応 (Service Worker) ====
+   一度オンラインで開けば、以降は圏外・機内モードでも起動できる。
+   新しい版を公開した時は「更新があります」バナーで知らせる。 */
+function initSW(){
+  if(!('serviceWorker' in navigator))return;
+  navigator.serviceWorker.register('sw.js').then((reg)=>{
+    reg.addEventListener('updatefound',()=>{
+      const nw=reg.installing; if(!nw)return;
+      nw.addEventListener('statechange',()=>{
+        // 既に旧SWが動いている状態で新SWが入った=更新あり
+        if(nw.state==='installed'&&navigator.serviceWorker.controller){
+          const b=document.getElementById('update-banner');
+          if(b)b.style.display='block';
+        }
+      });
+    });
+  }).catch((e)=>{console.warn('Service Workerの登録に失敗しました',e);});
+
+  // 新しいSWに切り替わったら自動で読み込み直す
+  let refreshing=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(refreshing)return; refreshing=true; window.location.reload();
+  });
+}
+function handleUpdateClick(){
+  const b=document.getElementById('update-banner');
+  if(b)b.style.display='none';
+  if(!('serviceWorker' in navigator)){window.location.reload();return;}
+  navigator.serviceWorker.getRegistration().then((reg)=>{
+    if(reg&&reg.waiting){reg.waiting.postMessage('SKIP_WAITING');}
+    else{window.location.reload();}
+  }).catch(()=>window.location.reload());
+}
+
 function render(rows){
   const el=document.getElementById('resultsArea');
   if(!rows.length){el.innerHTML='<div class="empty">📋 該当する日がありません</div>';return;}
@@ -1041,6 +1121,8 @@ function closeSourceModal(){
 }
 
 window.onload=function(){
+  initSW(); // オフライン対応を開始
+  updateClock(); setInterval(updateClock,1000); // 時計を開始
   // 注意: このツールは同僚とも共有するため、特定の個人のダイヤ番号を
   // 「値」として自動入力してはいけない。あくまで「プレースホルダー(薄いヒント)」
   // として見せるだけにし、実際の値は各自が必ず自分で入力する形にする。
