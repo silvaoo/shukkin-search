@@ -105,6 +105,8 @@ body {
   color: #06060f; font-size: 13px; font-weight: 800;
   box-shadow: 0 6px 20px rgba(0,0,0,0.5);
 }
+/* ヘッダーのダイヤ名だけテーマ色にして、アプリを見分けやすくする(サイズは据え置き) */
+.dia-name { color: var(--orange); font-weight: 800; }
 .today-clock {
   font-size: 17px; color: var(--orange); font-weight: 800;
   margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
@@ -341,7 +343,7 @@ input[type="date"] {
 <div class="header">
   <a href="#" class="share-btn" onclick="shareApp(); return false;" aria-label="アプリを共有">📤</a>
   <h1>🚌 出退勤検索くん</h1>
-  <p>北大和・学園前 Aダイヤ ／ 2026年3月14日改正 ／ 1〜92番</p>
+  <p><span class="dia-name">北大和・学園前 Aダイヤ</span> ／ 2026年3月14日改正 ／ 1〜92番</p>
   <button class="mode-btn" onclick="toggleMode()">🌙/☀️</button>
 </div>
 
