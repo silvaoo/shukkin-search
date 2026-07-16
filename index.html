@@ -329,6 +329,7 @@ input[type="date"] {
   background: rgba(0,245,255,0.15); border: 1px solid var(--cyan); color: var(--cyan);
   padding: 10px 24px; border-radius: 20px; font-size: 13px; z-index: 10000;
   opacity: 0; transition: opacity 0.3s; white-space: nowrap;
+  pointer-events: none; /* 見えていない時に下のボタン(更新バナー等)のタップを邪魔しないようにする */
 }
 .toast.show { opacity: 1; }
 </style>

@@ -103,6 +103,7 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
   opacity: 0;
   transition: opacity 0.3s;
   white-space: nowrap;
+  pointer-events: none; /* 見えていない時に下のボタン(更新バナー等)のタップを邪魔しないようにする */
 }
 .toast.show { opacity: 1; }
 #update-banner {
