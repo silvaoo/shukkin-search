@@ -10,7 +10,7 @@
 
 // キャッシュ名にバージョンを入れておき、更新のたびにこの値を変えることで
 // 新しいService Workerが「更新あり」と判定されるようにする
-const CACHE_VERSION = 'a-shukkin-v5';
+const CACHE_VERSION = 'a-shukkin-v6';
 const CACHE_FILES = [
     './',
     './index.html',
@@ -62,4 +62,17 @@ self.addEventListener('message', (event) => {
     if (event.data === 'SKIP_WAITING') {
         self.skipWaiting();
     }
+});
+
+// 通知をタップしたらアプリを開く(既に開いていればそれを前面に出す)
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+            for (const c of list) {
+                if ('focus' in c) return c.focus();
+            }
+            if (clients.openWindow) return clients.openWindow('./');
+        })
+    );
 });

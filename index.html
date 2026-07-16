@@ -107,6 +107,67 @@ body {
 }
 /* ヘッダーのダイヤ名だけテーマ色にして、アプリを見分けやすくする(サイズは据え置き) */
 .dia-name { color: var(--orange); font-weight: 800; }
+/* ==== 更新のお知らせ(通知)ボタン ==== */
+.notify-btn {
+  background: var(--bg-card2); color: var(--dim);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 7px 14px; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.notify-btn.on { color: var(--cyan); border-color: var(--cyan); }
+/* ==== 使い方と更新履歴モーダル ==== */
+.guide-modal {
+  display: none; position: fixed; inset: 0; z-index: 10001;
+  background: rgba(0,0,0,0.9); padding: 16px; overflow-y: auto;
+}
+.guide-modal.active { display: block; }
+.guide-box {
+  max-width: 560px; margin: 0 auto 40px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px;
+}
+.guide-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.guide-head h2 { font-size: 15px; color: var(--cyan); font-weight: 800; margin: 0; }
+.guide-close {
+  background: var(--bg-card2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.guide-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.guide-tab {
+  flex: 1; padding: 9px; font-size: 12px; font-weight: 800; cursor: pointer;
+  background: var(--bg-card2); color: var(--dim);
+  border: 1px solid var(--border); border-radius: 8px;
+}
+.guide-tab.on { background: var(--cyan); color: #04202a; border-color: var(--cyan); }
+.guide-pane { display: none; }
+.guide-pane.on { display: block; }
+.guide-step { margin-bottom: 18px; }
+.guide-step h3 {
+  font-size: 13px; color: var(--orange); font-weight: 800; margin: 0 0 6px;
+  display: flex; align-items: center; gap: 6px;
+}
+.guide-step p { font-size: 12px; color: var(--text); line-height: 1.7; margin: 0 0 8px; }
+.guide-step img {
+  width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block;
+}
+.guide-note {
+  font-size: 11px; color: var(--dim); line-height: 1.7;
+  background: var(--bg-card2); border-left: 3px solid var(--orange);
+  border-radius: 4px; padding: 8px 10px; margin-top: 8px;
+}
+.log-item { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--border); }
+.log-item:last-child { border-bottom: none; }
+.log-date { font-size: 11px; color: var(--cyan); font-weight: 800; margin-bottom: 3px; }
+.log-body { font-size: 12px; color: var(--text); line-height: 1.7; }
+.log-body .tag {
+  display: inline-block; font-size: 10px; font-weight: 800; padding: 1px 6px;
+  border-radius: 6px; margin-right: 5px;
+}
+.tag-new { background: rgba(0,230,118,0.18); color: var(--cyan); }
+.tag-fix { background: rgba(255,0,128,0.15); color: var(--pink); }
+.tag-up  { background: rgba(29,233,182,0.15); color: var(--orange); }
 .today-clock {
   font-size: 17px; color: var(--orange); font-weight: 800;
   margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
@@ -394,8 +455,89 @@ input[type="date"] {
 <div class="footer">
   <div>⚠ あくまでも目安としてお使いください。</div>
   <div>出退勤時間に誤りがあっても当方は責任を負いかねます。</div>
-  <div class="credit">by AIタケタニ</div>
-  <div style="opacity:0.4;font-size:9px;margin-top:6px;">ver.21 ／ 元データ画像リンクを追加</div>
+  <div style="margin-top:8px;"><span class="source-link" onclick="openGuide()">📖 本アプリの使い方と更新履歴</span></div>
+  <div style="margin-top:8px;">
+    <button id="notifyBtn" class="notify-btn" onclick="toggleNotify()">🔕 更新のお知らせ：オフ</button>
+  </div>
+  <div class="credit" style="margin-top:10px;">by AIタケタニ</div>
+</div>
+
+<!-- 使い方と更新履歴 -->
+<div id="guideModal" class="guide-modal" onclick="if(event.target===this)closeGuide()">
+  <div class="guide-box">
+    <div class="guide-head">
+      <h2>📖 本アプリの使い方と更新履歴</h2>
+      <button class="guide-close" onclick="closeGuide()">✕ 閉じる</button>
+    </div>
+
+    <div class="guide-tabs">
+      <button class="guide-tab on" id="tabUse" onclick="switchGuide('use')">使い方</button>
+      <button class="guide-tab" id="tabLog" onclick="switchGuide('log')">更新履歴</button>
+    </div>
+
+    <!-- ===== 使い方 ===== -->
+    <div class="guide-pane on" id="paneUse">
+      <div class="guide-step">
+        <h3>① 今日のダイヤ番号を入れる</h3>
+        <p>一番上の枠に、今日の自分のダイヤ番号(1〜92)を入れます。入れるとすぐ下に今日の勤務が出ます。</p>
+        <img src="images/guide-1.jpg" alt="ダイヤ番号を入力する画面">
+        <div class="guide-note">上に出ている日付と時刻は自動で動きます。薄く出ている数字は目安なので、必ず自分の番号を入れてください。</div>
+      </div>
+
+      <div class="guide-step">
+        <h3>② 期間を選んで検索する</h3>
+        <p>「今日 / 1週間 / 2週間」を押すか、日付を選んで検索します。入れた番号を基準に、翌日以降は1日ずつ番号が進んだ状態で表示されます。</p>
+        <img src="images/guide-2.jpg" alt="クイック検索と期間検索">
+      </div>
+
+      <div class="guide-step">
+        <h3>③ 検索結果を見る</h3>
+        <p>日ごとに、ダイヤ番号・出退勤時間・労働時間が並びます。公休の日は「公休」と出ます。</p>
+        <img src="images/guide-3.jpg" alt="検索結果の見方">
+      </div>
+
+      <div class="guide-step">
+        <h3>④ メモを残す</h3>
+        <p>各日の「📝 メモを追加」から、2種類のメモが書けます。💾保存・🗑削除もその場でできます。</p>
+        <img src="images/guide-4.jpg" alt="メモ機能">
+        <div class="guide-note">
+          <b>日付のメモ</b>…その日だけに出ます（例：年休申請済み）<br>
+          <b>ダイヤ番号のメモ</b>…その番号の日すべてに出ます（例：さつき最終便に注意）<br><br>
+          ⚠ メモはこの端末の中だけに保存されます。同僚には見えません。機種変更やブラウザのデータ削除で消えるのでご注意ください。
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <h3>⑤ オフラインでも使えます</h3>
+        <p>一度オンラインで開いておけば、その後は圏外や機内モードでも起動できます。通信は使いません。</p>
+        <div class="guide-note">「🔄 新しいバージョンがあります」と出たらタップしてください。最新のダイヤ表に更新されます。</div>
+      </div>
+    </div>
+
+    <!-- ===== 更新履歴 ===== -->
+    <div class="guide-pane" id="paneLog">
+      <div class="log-item">
+        <div class="log-date">2026/07/16</div>
+        <div class="log-body"><span class="tag tag-up">改善</span>アプリを見分けやすくするため、ヘッダーのダイヤ名を色分け表示にしました。</div>
+      </div>
+      <div class="log-item">
+        <div class="log-date">2026/07/15</div>
+        <div class="log-body"><span class="tag tag-new">新機能</span>オフライン対応。一度開けば圏外でも起動できるようになりました。</div>
+      </div>
+      <div class="log-item">
+        <div class="log-date">2026/07/15</div>
+        <div class="log-body"><span class="tag tag-new">新機能</span>本日の日付と時刻(24時間表示・秒あり)を表示するようにしました。</div>
+      </div>
+      <div class="log-item">
+        <div class="log-date">2026/07/15</div>
+        <div class="log-body"><span class="tag tag-new">新機能</span>検索結果にメモ機能を追加(日付ごと・ダイヤ番号ごと、編集・保存・削除)。</div>
+      </div>
+      <div class="log-item">
+        <div class="log-date">2026/03/14</div>
+        <div class="log-body"><span class="tag tag-new">ダイヤ改正</span>2026年3月14日改正のダイヤに対応しました(1〜92番)。</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- 元データ画像モーダル -->
@@ -846,6 +988,85 @@ function handleUpdateClick(){
   }).catch(()=>window.location.reload());
 }
 
+/* ==== 更新のお知らせ(通知) ====
+   注意: サーバーを持たない構成のため「アプリを閉じている間に届く通知」は出せない。
+   アプリを開いた時に新しい版を見つけたら、端末の通知として知らせる方式にしている。 */
+const NOTIFY_KEY='a-notify-enabled';
+function isNotifyOn(){ try{return localStorage.getItem(NOTIFY_KEY)==='on';}catch(e){return false;} }
+function updateNotifyUI(){
+  const b=document.getElementById('notifyBtn');
+  if(!b)return;
+  const on=isNotifyOn();
+  b.textContent = on ? '🔔 更新のお知らせ：オン' : '🔕 更新のお知らせ：オフ';
+  b.classList.toggle('on',on);
+}
+function toggleNotify(){
+  if(isNotifyOn()){
+    try{localStorage.setItem(NOTIFY_KEY,'off');}catch(e){}
+    updateNotifyUI(); showToast('🔕 更新のお知らせをオフにしました'); return;
+  }
+  if(!('Notification' in window)){ showToast('この端末は通知に対応していません'); return; }
+  Notification.requestPermission().then((p)=>{
+    if(p==='granted'){
+      try{localStorage.setItem(NOTIFY_KEY,'on');}catch(e){}
+      updateNotifyUI(); showToast('🔔 更新のお知らせをオンにしました');
+    }else{
+      showToast('通知が許可されていません。端末の設定から許可してください');
+    }
+  }).catch(()=>showToast('通知の設定に失敗しました'));
+}
+/* ==== このバージョンのお知らせ ====
+   ダイヤ改正や新機能を追加した時だけ notify を true にして message を書く。
+   細かい不具合修正の時は notify:false のままにしておけば、通知は出ず黙って更新される。 */
+const RELEASE = {
+  id: 'a-2026-07-16',   // お知らせの識別子(内容を変えたらこれも変える)
+  notify: false,        // ダイヤ改正・新機能の時だけ true にする
+  message: '更新しました！詳しくは更新履歴をご覧下さい。'
+};
+const NOTIFIED_KEY='a-last-notified';
+
+async function announceRelease(){
+  if(!RELEASE.notify)return;
+  if(!isNotifyOn())return;
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  let seen=null;
+  try{ seen=localStorage.getItem(NOTIFIED_KEY); }catch(e){ return; }
+  // 初めて使う人に「更新しました」と出さないようにする
+  if(seen===null){ try{localStorage.setItem(NOTIFIED_KEY,RELEASE.id);}catch(e){} return; }
+  if(seen===RELEASE.id)return;   // 同じお知らせは一度だけ
+  try{
+    const reg=await navigator.serviceWorker.getRegistration();
+    // スマホのChromeでは new Notification() が使えないため、Service Worker経由で出す
+    if(reg&&reg.showNotification){
+      await reg.showNotification('出退勤検索くん (北大和・学園前Aダイヤ)',{
+        body:RELEASE.message,
+        icon:'icons/icon-192.png',
+        badge:'icons/icon-192.png',
+        tag:'app-update'
+      });
+      try{localStorage.setItem(NOTIFIED_KEY,RELEASE.id);}catch(e){}
+    }
+  }catch(e){ console.warn('通知の表示に失敗',e); }
+}
+
+/* ==== 使い方と更新履歴モーダル ==== */
+function openGuide(){
+  document.getElementById('guideModal').classList.add('active');
+  document.body.style.overflow='hidden';   // 背面のスクロールを止める
+}
+function closeGuide(){
+  document.getElementById('guideModal').classList.remove('active');
+  document.body.style.overflow='';
+}
+function switchGuide(which){
+  const use=which==='use';
+  document.getElementById('paneUse').classList.toggle('on',use);
+  document.getElementById('paneLog').classList.toggle('on',!use);
+  document.getElementById('tabUse').classList.toggle('on',use);
+  document.getElementById('tabLog').classList.toggle('on',!use);
+  document.getElementById('guideModal').scrollTop=0;
+}
+
 function render(rows){
   const el=document.getElementById('resultsArea');
   if(!rows.length){el.innerHTML='<div class="empty">📋 該当する日がありません</div>';return;}
@@ -1126,6 +1347,8 @@ function closeSourceModal(){
 
 window.onload=function(){
   initSW(); // オフライン対応を開始
+  updateNotifyUI(); // 通知ボタンの表示を復元
+  announceRelease(); // ダイヤ改正・新機能の時だけ通知を出す
   updateClock(); setInterval(updateClock,1000); // 時計を開始
   // 注意: このツールは同僚とも共有するため、特定の個人のダイヤ番号を
   // 「値」として自動入力してはいけない。あくまで「プレースホルダー(薄いヒント)」
