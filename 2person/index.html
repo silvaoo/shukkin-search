@@ -112,6 +112,8 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
   color: #06060f; font-size: 13px; font-weight: 800;
   box-shadow: 0 6px 20px rgba(0,0,0,0.5);
 }
+/* ヘッダーのダイヤ名だけテーマ色にして、アプリを見分けやすくする(サイズは据え置き) */
+.dia-name { color: var(--orange); font-weight: 800; }
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -352,7 +354,7 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
   <div>
     <h1>🚌 出退勤検索くん</h1>
     <h1 style="font-size: 13px; margin-top: 4px;">二人同時検索版</h1>
-    <div class="subtitle">北大和・学園前 Aダイヤ ／ 1〜92番</div>
+    <div class="subtitle"><span class="dia-name">北大和・学園前 Aダイヤ</span> ／ 1〜92番</div>
   </div>
   <button id="themeToggle" onclick="toggleTheme()">🌙</button>
 </header>
