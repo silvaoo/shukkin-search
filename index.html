@@ -127,33 +127,35 @@ body {
   background: rgba(0,0,0,0.92); padding: 14px; overflow-y: auto;
 }
 .cal-modal.active { display: block; }
+/* カレンダーは暗いと見にくいので、テーマに関係なく白ベースにする */
 .cal-inner {
   max-width: 400px; margin: 0 auto;
-  background: var(--bg-card); border: 1px solid var(--border);
+  background: #ffffff; border: 1px solid #d8d8e0;
   border-radius: 14px; padding: 14px;
+  color: #1a1a2e;
 }
 .cal-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.cal-title { font-size: 14px; font-weight: 800; color: var(--text); }
+.cal-title { font-size: 14px; font-weight: 800; color: #1a1a2e; }
 .cal-x {
-  background: var(--bg-card2); border: 1px solid var(--border); color: var(--dim);
+  background: #f0f0f5; border: 1px solid #d8d8e0; color: #55556a;
   border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 800; cursor: pointer;
 }
 .cal-hint {
-  font-size: 10px; color: var(--dim); text-align: center; margin-bottom: 10px;
+  font-size: 10.5px; color: #6a6a80; text-align: center; margin-bottom: 10px;
   line-height: 1.5;
 }
 .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .cal-arrow {
-  background: none; border: 1px solid var(--border); color: var(--text);
-  border-radius: 6px; width: 36px; height: 32px; font-size: 16px; font-weight: 800; cursor: pointer;
+  background: #f0f0f5; border: 1px solid #d8d8e0; color: #1a1a2e;
+  border-radius: 6px; width: 40px; height: 34px; font-size: 18px; font-weight: 800; cursor: pointer;
 }
-.cal-month { font-size: 15px; font-weight: 800; color: var(--text); }
+.cal-month { font-size: 16px; font-weight: 800; color: #1a1a2e; }
 
 /* minmax(0,1fr) にしないと中身の最小幅で列が広がり、横にはみ出してしまう */
 .cal-dw { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 2px; margin-bottom: 2px; }
-.cal-dw div { text-align: center; font-size: 10px; font-weight: 700; color: var(--dim); padding: 3px 0; }
-.cal-dw .sun { color: #d96b6b; }
-.cal-dw .sat { color: #6b8fd9; }
+.cal-dw div { text-align: center; font-size: 11px; font-weight: 700; color: #6a6a80; padding: 3px 0; }
+.cal-dw .sun { color: #d92626; }
+.cal-dw .sat { color: #2660d9; }
 
 .cal-grid {
   display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 2px;
@@ -161,30 +163,108 @@ body {
 .cal-day {
   aspect-ratio: 1 / 1; min-width: 0;
   display: flex; align-items: center; justify-content: center;
-  background: var(--bg-card2); border: 1px solid transparent;
-  border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--text);
+  background: #f5f5fa; border: 1px solid #e6e6ee;
+  border-radius: 6px; font-size: 14px; font-weight: 600; color: #1a1a2e;
   cursor: pointer; user-select: none; -webkit-user-select: none;
 }
-.cal-day.empty { background: none; cursor: default; }
-.cal-day.sun { color: #d96b6b; }
-.cal-day.sat { color: #6b8fd9; }
-.cal-day.today { border-color: var(--dim); font-weight: 800; }
-.cal-day.inrange { background: rgba(255,255,255,0.10); }
+.cal-day.empty { background: none; border-color: transparent; cursor: default; }
+.cal-day.sun { color: #d92626; }
+.cal-day.sat { color: #2660d9; }
+.cal-day.today { border-color: #ff8c00; border-width: 2px; font-weight: 800; }
+.cal-day.inrange { background: #d8f5e6; }
 .cal-day.edge { background: var(--cyan); color: #04202a; font-weight: 800; }
 
 .cal-sel {
-  margin-top: 10px; text-align: center; font-size: 12px; font-weight: 700;
-  color: var(--text); padding: 8px;
-  background: var(--bg-card2); border-radius: 8px;
+  margin-top: 10px; text-align: center; font-size: 13px; font-weight: 700;
+  color: #1a1a2e; padding: 9px;
+  background: #f0f0f5; border-radius: 8px;
 }
 .cal-actions { display: flex; gap: 6px; margin-top: 10px; }
 .cal-btn {
-  flex: 1; padding: 11px 4px; border-radius: 8px; font-size: 12px;
-  font-weight: 800; cursor: pointer; border: 1px solid var(--border);
-  background: var(--bg-card2); color: var(--dim);
+  flex: 1; padding: 12px 4px; border-radius: 8px; font-size: 12.5px;
+  font-weight: 800; cursor: pointer; border: 1px solid #d8d8e0;
+  background: #f0f0f5; color: #55556a;
 }
 .cal-ok { background: var(--cyan); color: #04202a; border-color: var(--cyan); flex: 1.3; }
 .cal-ok:disabled { opacity: 0.35; cursor: default; }
+
+/* ==== 検索結果カレンダー（番号と出退勤時間を一覧表示） ==== */
+.act-cal {
+  width: 100%; margin-top: 8px;
+  background: rgba(0,230,118,0.12); color: var(--cyan);
+  border: 1px solid rgba(0,230,118,0.35);
+}
+/* 画面の縦を目一杯使って、マスと文字を大きくする */
+.rescal-grid .cal-day {
+  aspect-ratio: auto; min-height: 104px;
+  flex-direction: column; justify-content: flex-start;
+  gap: 0; padding: 4px 1px; border: 1px solid #e6e6ee;
+  cursor: pointer;
+}
+/* 日付は公休の日も勤務の日も必ず同じ高さに揃うよう、常に上端に置く */
+.rescal-grid .rc-date { flex: none; }
+/* 勤務内容(番号・時間・公休)は日付の下の残り部分で中央に寄せる */
+.rc-body {
+  flex: 1; width: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1px;
+}
+.rescal-grid .cal-day.empty { border-color: transparent; }
+.rc-date { font-size: 11px; color: #6a6a80; line-height: 1.1; font-weight: 700; }
+.rc-dial { font-size: 23px; font-weight: 800; color: #e07000; line-height: 1.15; }
+.rc-t { font-size: 12.5px; color: #1a1a2e; line-height: 1.3; letter-spacing: -0.4px; font-weight: 600; }
+.rc-off { font-size: 13px; font-weight: 800; color: #00915a; line-height: 1.5; }
+.rescal-grid .cal-day.nodata { opacity: 0.3; }
+/* 今日の枠を太くする分、内側の余白を1px減らして日付の位置がズレないようにする */
+.rescal-grid .cal-day.today { border-color: #ff8c00; border-width: 2px; padding: 3px 0; }
+.rescal-grid .cal-day.hol .rc-date { color: #d92626; }
+.rescal-grid .cal-day:active { background: #e8f5ff; }
+.rescal-legend {
+  margin-top: 8px; font-size: 10.5px; color: #6a6a80;
+  text-align: center; line-height: 1.6;
+}
+.rc-legend-off { color: #00915a; font-weight: 700; }
+
+/* ==== マスをタップした時の詳細表示（拡大して読めるようにする） ==== */
+.rc-detail {
+  display: none; position: fixed; inset: 0; z-index: 10003;
+  background: rgba(0,0,0,0.6); padding: 20px;
+  align-items: center; justify-content: center;
+}
+.rc-detail.active { display: flex; }
+.rc-detail-box {
+  background: #fff; border-radius: 16px; padding: 20px;
+  width: 100%; max-width: 340px; color: #1a1a2e;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+.rcd-date { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+.rcd-date .rcd-badge {
+  font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 10px;
+  margin-left: 8px; vertical-align: middle;
+}
+.rcd-badge.hei { background: #e8eefc; color: #2660d9; }
+.rcd-badge.dosun { background: #ffe9e9; color: #d92626; }
+.rcd-badge.bon { background: #fff3d6; color: #a86800; }
+.rcd-dial { font-size: 34px; font-weight: 800; color: #e07000; line-height: 1.2; margin-bottom: 10px; }
+.rcd-dial span { font-size: 15px; color: #6a6a80; font-weight: 700; }
+.rcd-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-top: 1px solid #eaeaf0; font-size: 15px;
+}
+.rcd-row .lbl { color: #6a6a80; font-size: 13px; font-weight: 700; }
+.rcd-row .val { font-weight: 800; font-size: 17px; }
+.rcd-note {
+  margin-top: 10px; padding: 10px; background: #fff6e5; border-radius: 8px;
+  font-size: 13px; color: #8a5000; font-weight: 600; line-height: 1.6;
+}
+.rcd-off-big {
+  text-align: center; font-size: 26px; font-weight: 800; color: #00915a;
+  padding: 18px 0;
+}
+.rcd-close {
+  width: 100%; margin-top: 14px; padding: 13px; border: none; border-radius: 10px;
+  background: #1a1a2e; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer;
+}
 
 /* ==== 更新のお知らせ(通知)ボタン ==== */
 .notify-btn {
@@ -555,6 +635,34 @@ input[type="date"] {
   </div>
 </div>
 
+<!-- 検索結果をカレンダーで見る -->
+<div id="resCalModal" class="cal-modal">
+  <div class="cal-inner">
+    <div class="cal-top">
+      <div class="cal-title">📅 検索結果カレンダー</div>
+      <button class="cal-x" onclick="closeResultCal()">✕ 閉じる</button>
+    </div>
+    <div class="cal-nav">
+      <button class="cal-arrow" id="rcPrev" onclick="resCalMove(-1)">‹</button>
+      <div class="cal-month" id="resCalMonth"></div>
+      <button class="cal-arrow" id="rcNext" onclick="resCalMove(1)">›</button>
+    </div>
+    <div class="cal-dw">
+      <div class="sun">日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="sat">土</div>
+    </div>
+    <div class="cal-grid rescal-grid" id="resCalGrid"></div>
+    <div class="rescal-legend">
+      上段＝ダイヤ番号 ／ 下段＝出退勤時間<br>
+      <span class="rc-legend-off">緑は公休</span>・薄い日は検索範囲外です
+    </div>
+  </div>
+</div>
+
+<!-- マスをタップした時の詳細（拡大表示） -->
+<div id="rcDetail" class="rc-detail" onclick="if(event.target===this)closeRcDetail()">
+  <div class="rc-detail-box" id="rcDetailBox"></div>
+</div>
+
 <!-- 検索結果 -->
 <div id="resultsArea"></div>
 
@@ -622,7 +730,20 @@ input[type="date"] {
       </div>
 
       <div class="guide-step">
-        <h3>⑤ メモを残す</h3>
+        <h3>⑤ カレンダーで一覧を見る</h3>
+        <p>結果の一番下にある「📅 カレンダーで見る」を押すと、<b>1ヶ月分のダイヤ番号と出退勤時間が一目で分かります</b>。</p>
+        <img src="images/guide-rescal.jpg" alt="検索結果をカレンダーで一覧">
+        <p style="margin-top:10px;"><b>マスをタップすると大きく表示されます。</b>細かい字が見えにくい時や、分割勤務の詳しい時間を見たい時はこちらをどうぞ。</p>
+        <img src="images/guide-rcdetail.jpg" alt="マスをタップすると拡大して詳細が読める">
+        <div class="guide-note">
+          マスの中は 上段＝ダイヤ番号 / 下段＝出退勤時間 です。緑の「公休」は休みの日、薄い日は検索した期間の外です。<br>
+          月をまたいで検索した時は ‹ › で移動できます。<br>
+          ※ 出退勤時間の後ろに「※」が付く日は、途中で一度退勤する分割勤務です。マスをタップすると全部の時間が読めます。
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <h3>⑥ メモを残す</h3>
         <p>各日の「📝 メモを追加」から、2種類のメモが書けます。💾保存・🗑削除もその場でできます。</p>
         <img src="images/guide-4.jpg" alt="メモ機能">
         <div class="guide-note">
@@ -633,7 +754,7 @@ input[type="date"] {
       </div>
 
       <div class="guide-step">
-        <h3>⑥ オフラインでも使えます</h3>
+        <h3>⑦ オフラインでも使えます</h3>
         <p>一度オンラインで開いておけば、その後は圏外や機内モードでも起動できます。通信は使いません。</p>
         <div class="guide-note">「🔄 新しいバージョンがあります」と出たらタップしてください。最新のダイヤ表に更新されます。</div>
       </div>
@@ -641,6 +762,14 @@ input[type="date"] {
 
     <!-- ===== 更新履歴 ===== -->
     <div class="guide-pane" id="paneLog">
+      <div class="log-item">
+        <div class="log-date">2026/07/17</div>
+        <div class="log-body"><span class="tag tag-new">新機能</span>検索結果を「📅 カレンダーで見る」を追加。1ヶ月分のダイヤ番号と出退勤時間が一目で分かります。マスをタップすると大きく表示され、分割勤務の詳しい時間も読めます。</div>
+      </div>
+      <div class="log-item">
+        <div class="log-date">2026/07/17</div>
+        <div class="log-body"><span class="tag tag-up">改善</span>カレンダーを白ベースの見やすい配色にし、文字とマスを大きくしました。クイック検索の後も自動で結果まで移動します。</div>
+      </div>
       <div class="log-item">
         <div class="log-date">2026/07/16</div>
         <div class="log-body"><span class="tag tag-new">新機能</span>ダイヤ番号を保存するようにしました。一度入れれば、翌日からは自動で1つ進んだ番号が入るので毎回の入力が不要になります。</div>
@@ -1153,7 +1282,7 @@ function toggleNotify(){
    ダイヤ改正や新機能を追加した時だけ notify を true にして message を書く。
    細かい不具合修正の時は notify:false のままにしておけば、通知は出ず黙って更新される。 */
 const RELEASE = {
-  id: 'a-2026-07-16-cal',   // お知らせの識別子(内容を変えたらこれも変える)
+  id: 'a-2026-07-16-cal-rescal',   // お知らせの識別子(内容を変えたらこれも変える)
   notify: true,              // ダイヤ改正・新機能の時だけ true にする
   message: '更新しました！詳しくは更新履歴をご覧下さい。'
 };
@@ -1252,7 +1381,8 @@ function render(rows){
   html+=`<div class="action-row">
     <button class="act-btn act-copy" onclick="copyResults()">📋 結果をコピー</button>
     <button class="act-btn act-tts" id="speakResBtn" onclick="handleSpeakResults()">🔊 読み上げ</button>
-  </div>`;
+  </div>
+  <button class="act-btn act-cal" onclick="openResultCal()">📅 カレンダーで見る</button>`;
 
   el.innerHTML=html;
   window._lastRows=rows;
@@ -1529,6 +1659,129 @@ function showMyDialNote(on){
   if(el)el.style.display = on ? 'block' : 'none';
 }
 
+/* ==== 検索結果をカレンダーで見る ====
+   検索した結果を、月ごとのカレンダーに並べて一目で分かるようにする。
+   マスにはダイヤ番号と出退勤時間だけを出す。 */
+let _rcMonths=[];   // 結果に含まれる月の一覧
+let _rcIdx=0;       // 今表示している月
+
+function openResultCal(){
+  const rows=window._lastRows;
+  if(!rows||!rows.length){showToast('先に検索してください');return;}
+  // 結果に含まれる月を拾い出す
+  const set=new Set(rows.map(r=>r.iso.slice(0,7)));
+  _rcMonths=[...set].sort();
+  _rcIdx=0;
+  renderResultCal();
+  document.getElementById('resCalModal').classList.add('active');
+  document.body.style.overflow='hidden';
+  beep(880,70,0);   // 開いた時の音
+}
+function closeResultCal(){
+  document.getElementById('resCalModal').classList.remove('active');
+  document.body.style.overflow='';
+}
+function resCalMove(n){
+  const i=_rcIdx+n;
+  if(i<0||i>=_rcMonths.length)return;
+  _rcIdx=i; renderResultCal();
+  beep(760,50,0);
+}
+/* 出退勤時間を狭いマスでも読める形にする（分割勤務は最初と最後だけ出す） */
+function rcTimes(o){
+  if(!o||o==='—')return null;
+  const parts=o.split('〜');
+  if(parts.length<2)return null;
+  const s=parts[0].split('/')[0].trim();                    // 最初の出勤
+  const e=parts[1].split('/').pop().trim();                 // 最後の退勤
+  const split=o.includes('/');
+  return {s,e,split};
+}
+function renderResultCal(){
+  const rows=window._lastRows||[];
+  const ym=_rcMonths[_rcIdx];
+  const [y,m]=ym.split('-').map(Number);
+  document.getElementById('resCalMonth').textContent=`${y}年 ${m}月`;
+  document.getElementById('rcPrev').style.visibility=_rcIdx>0?'visible':'hidden';
+  document.getElementById('rcNext').style.visibility=_rcIdx<_rcMonths.length-1?'visible':'hidden';
+
+  const byIso={}; rows.forEach(r=>byIso[r.iso]=r);
+  const first=new Date(y,m-1,1);
+  const days=new Date(y,m,0).getDate();
+  const t=new Date();t.setHours(0,0,0,0);
+  const todayIso=toISO(t);
+
+  let html='';
+  for(let i=0;i<first.getDay();i++) html+='<div class="cal-day empty"></div>';
+  for(let d=1;d<=days;d++){
+    const dt=new Date(y,m-1,d);
+    const iso=toISO(dt);
+    const r=byIso[iso];
+    const dw=dt.getDay();
+    let cls='cal-day';
+    if(dw===0)cls+=' sun'; if(dw===6)cls+=' sat';
+    if(iso===todayIso)cls+=' today';
+    if(r&&(r.hol||r.obon))cls+=' hol';
+    if(!r)cls+=' nodata';
+
+    let body='';
+    if(r){
+      const off = !r.rec || !r.slot;                        // 公休
+      if(off){
+        body=`<div class="rc-dial">${r.dn}</div><div class="rc-off">公休</div>`;
+      }else{
+        const t2=rcTimes(r.slot.o);
+        body=`<div class="rc-dial">${r.dn}</div>`;
+        if(t2) body+=`<div class="rc-t">${t2.s}</div><div class="rc-t">${t2.e}${t2.split?'※':''}</div>`;
+        else   body+=`<div class="rc-t">要確認</div>`;
+      }
+    }
+    html+=`<div class="${cls}"${r?` onclick="openRcDetail('${iso}')"`:''}><div class="rc-date">${d}</div><div class="rc-body">${body}</div></div>`;
+  }
+  document.getElementById('resCalGrid').innerHTML=html;
+}
+
+/* ==== マスをタップした時の詳細（文字を大きくして読めるようにする） ==== */
+function openRcDetail(iso){
+  const rows=window._lastRows||[];
+  const r=rows.find(x=>x.iso===iso);
+  if(!r)return;
+  beep(760,50,0);
+  if(navigator.vibrate)navigator.vibrate(12);
+
+  const dt=new Date(iso+'T00:00:00');
+  const off = !r.rec || !r.slot;
+  // 曜日区分のラベル
+  let badge='', bcls='hei';
+  if(r.obon){ badge='お盆(土曜ダイヤ)'; bcls='bon'; }
+  else if(r.hol){ badge='祝日(日祝ダイヤ)'; bcls='dosun'; }
+  else if(r.dt==='土'){ badge='土曜'; bcls='dosun'; }
+  else if(r.dt==='日祝'){ badge='日祝'; bcls='dosun'; }
+  else { badge='平日'; bcls='hei'; }
+
+  let html=`<div class="rcd-date">${dt.getMonth()+1}/${dt.getDate()}（${DW[dt.getDay()]}）<span class="rcd-badge ${bcls}">${badge}</span></div>`;
+  html+=`<div class="rcd-dial">${r.dn}<span> 番ダイヤ</span></div>`;
+
+  if(off){
+    html+='<div class="rcd-off-big">🎉 公休</div>';
+  }else{
+    html+=`<div class="rcd-row"><span class="lbl">出退勤時間</span><span class="val">${r.slot.o}</span></div>`;
+    html+=`<div class="rcd-row"><span class="lbl">労働時間</span><span class="val">${r.slot.w}</span></div>`;
+    if(r.slot.n) html+=`<div class="rcd-note">📌 ${escapeHtml(r.slot.n)}</div>`;
+  }
+  // メモがあれば見せる
+  const dm=getDateMemo(iso), dlm=getDialMemo(r.dn);
+  if(dm) html+=`<div class="rcd-note">📝 ${escapeHtml(dm)}</div>`;
+  if(dlm) html+=`<div class="rcd-note">🔖 ${r.dn}番: ${escapeHtml(dlm)}</div>`;
+
+  html+='<button class="rcd-close" onclick="closeRcDetail()">閉じる</button>';
+  document.getElementById('rcDetailBox').innerHTML=html;
+  document.getElementById('rcDetail').classList.add('active');
+}
+function closeRcDetail(){
+  document.getElementById('rcDetail').classList.remove('active');
+}
+
 /* ==== 期間・クイック検索 ==== */
 function buildAndRender(dial,from,to){
   const rows=[];
@@ -1558,6 +1811,7 @@ function quickSearch(type){
   _selStart=toISO(from); _selEnd=toISO(to); // カレンダー側にも反映
   updateRangeLabel();
   buildAndRender(dial,from,to);
+  autoScrollResults();   // 結果の一番下(カレンダーで見るボタン)まで自動で流す
 }
 
 /* ==== コピー機能 ==== */
