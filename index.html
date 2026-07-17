@@ -612,6 +612,62 @@ input[type="date"] {
   pointer-events: none; /* 見えていない時に下のボタン(更新バナー等)のタップを邪魔しないようにする */
 }
 .toast.show { opacity: 1; }
+
+/* ==== 追加: かんたん3ステップ・見出し・入れ方タブ ==== */
+.guide-tabs .guide-tab { padding: 9px 3px; font-size: 11.5px; white-space: nowrap; }
+.guide-banner {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  background: var(--bg-card2); border: 1px dashed var(--cyan); border-radius: 10px;
+  padding: 11px 12px; margin-bottom: 14px;
+  font-size: 12.5px; font-weight: 800; color: var(--cyan); line-height: 1.6;
+}
+.guide-banner span { display: block; font-size: 10.5px; font-weight: 600; color: var(--dim); margin-top: 3px; }
+.guide-quick {
+  background: var(--bg-card2); border: 1px solid var(--cyan); border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 6px;
+}
+.guide-quick h4 { font-size: 13px; color: var(--cyan); font-weight: 800; margin: 0 0 8px; }
+.guide-quick ol { margin: 0; padding-left: 20px; }
+.guide-quick li { font-size: 13px; color: var(--text); line-height: 1.9; font-weight: 700; }
+.guide-quick li b { color: var(--orange); }
+.guide-quick .qq { font-size: 11px; color: var(--dim); line-height: 1.7; margin-top: 9px; }
+.guide-sec {
+  font-size: 11px; font-weight: 800; color: var(--dim); letter-spacing: 2px;
+  margin: 22px 0 12px; display: flex; align-items: center; gap: 8px;
+}
+.guide-sec::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+/* ==== 入れ方(ホーム画面に追加) ==== */
+.inst-lead { font-size: 12.5px; color: var(--text); line-height: 1.8; margin: 0 0 12px; }
+.inst-lead b { color: var(--orange); }
+.inst-warn {
+  background: var(--bg-card2); border-left: 3px solid var(--pink); border-radius: 4px;
+  padding: 10px 12px; margin-bottom: 18px; font-size: 11.5px; color: var(--dim); line-height: 1.8;
+}
+.inst-warn b { color: var(--pink); }
+.inst-os { margin-bottom: 22px; }
+.inst-os h3 {
+  font-size: 13.5px; font-weight: 800; color: var(--orange); margin: 0 0 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.inst-step { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+.inst-num {
+  flex: none; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--cyan); color: #04202a;
+  font-size: 12px; font-weight: 900; margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+}
+.inst-txt { font-size: 12.5px; color: var(--text); line-height: 1.75; }
+.inst-txt b { color: var(--orange); }
+.inst-key {
+  display: inline-block; background: var(--bg-card2); border: 1px solid var(--border);
+  border-radius: 5px; padding: 0 6px; margin: 0 1px; font-weight: 800; color: var(--text);
+}
+.inst-done {
+  background: var(--bg-card2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; margin-top: 6px; font-size: 11.5px; color: var(--dim); line-height: 1.75;
+}
+.inst-done b { color: var(--orange); }
+
 </style>
 </head>
 <body>
@@ -734,7 +790,7 @@ input[type="date"] {
   <div>⚠ あくまでも目安としてお使いください。</div>
   <div>出退勤時間に誤りがあっても当方は責任を負いかねます。</div>
   <div style="margin-top:8px;"><span class="source-link" onclick="openMemoList()">📝 保存したメモの一覧</span></div>
-  <div style="margin-top:8px;"><span class="source-link" onclick="openGuide()">📖 本アプリの使い方と更新履歴</span></div>
+  <div style="margin-top:8px;"><span class="source-link" onclick="openGuide()">📖 使い方・アプリの入れ方・更新履歴</span></div>
   <div style="margin-top:8px;">
     <button id="notifyBtn" class="notify-btn" onclick="toggleNotify()">🔕 更新のお知らせ：オフ</button>
   </div>
@@ -761,67 +817,89 @@ input[type="date"] {
 <div id="guideModal" class="guide-modal" onclick="if(event.target===this)closeGuide()">
   <div class="guide-box">
     <div class="guide-head">
-      <h2>📖 本アプリの使い方と更新履歴</h2>
+      <h2>📖 使い方・入れ方・更新履歴</h2>
       <button class="guide-close" onclick="closeGuide()">✕ 閉じる</button>
     </div>
 
     <div class="guide-tabs">
       <button class="guide-tab on" id="tabUse" onclick="switchGuide('use')">使い方</button>
+      <button class="guide-tab" id="tabInst" onclick="switchGuide('inst')">📱 入れ方</button>
       <button class="guide-tab" id="tabLog" onclick="switchGuide('log')">更新履歴</button>
     </div>
 
     <!-- ===== 使い方 ===== -->
     <div class="guide-pane on" id="paneUse">
+
+      <button class="guide-banner" onclick="switchGuide('inst')">
+        📱 まだホーム画面に入れてない人は → 「入れ方」を見る
+        <span>アイコンを押すだけで一発で開けるようになります</span>
+      </button>
+
+      <div class="guide-quick">
+        <h4>⚡ まずはこの3つだけ</h4>
+        <ol>
+          <li>自分の<b>ダイヤ番号</b>を入れる</li>
+          <li><b>「今日」</b>を押す</li>
+          <li>出勤・退勤の時間が出る</li>
+        </ol>
+        <div class="qq">
+          これだけで使えます。番号は保存されるので、次の日からは<b>開くだけ</b>でOKです。<br>
+          ④から下は「もっと便利に使いたい人」向けなので、読まなくても大丈夫です。
+        </div>
+      </div>
+
+      <div class="guide-sec">きほんの使い方</div>
+
       <div class="guide-step">
-        <h3>① 今日のダイヤ番号を入れる</h3>
-        <p>一番上の枠に、今日の自分のダイヤ番号(1〜92)を入れます。入れるとすぐ下に今日の勤務が出ます。</p>
+        <h3>① ダイヤ番号を入れる</h3>
+        <p>一番上の枠に、今日の自分のダイヤ番号(1〜92)を入れるだけ。すぐ下に今日の勤務が出ます。</p>
         <img src="images/guide-1.jpg" alt="ダイヤ番号を入力する画面">
         <div class="guide-note">
-          <b>一度入れたら保存されます。</b>明日からは開くだけで自動的に1つ進んだ番号が入っているので、毎回入力する必要はありません。<br>
-          番号がズレた時や、保存を消したい時は「保存を消す」を押して入れ直してください。<br>
-          ※ 保存先はこの端末の中だけです。同僚の番号と混ざることはありません。
+          <b>次の日からは入れ直さなくてOK。</b>開くだけで、自動で1つ進んだ番号が入っています。<br>
+          番号がズレた時は「保存を消す」を押して入れ直してください。<br>
+          ※ 保存されるのはこの端末の中だけです。同僚の番号と混ざることはありません。
         </div>
       </div>
 
       <div class="guide-step">
-        <h3>② クイック検索</h3>
-        <p>「今日 / 1週間 / 2週間」を押すと、すぐに結果が出ます。入れた番号を基準に、翌日以降は1日ずつ番号が進んだ状態で表示されます。</p>
+        <h3>② 「今日」「1週間」「2週間」を押す</h3>
+        <p>押すだけで、その分がまとめて出ます。次の日以降は、番号が1日ずつ進んだ状態で出ます。</p>
         <img src="images/guide-2.jpg" alt="クイック検索と指定して検索">
       </div>
 
       <div class="guide-step">
-        <h3>③ 指定して検索（カレンダー）</h3>
-        <p>「📅 指定して検索」を押すとカレンダーが開きます。<b>1回目のタップで開始日、2回目のタップで終了日</b>。その間の期間がまとめて検索できます。</p>
+        <h3>③ 結果の見方</h3>
+        <p>日ごとに <b>ダイヤ番号・出退勤の時間・労働時間</b> が並びます。休みの日は「公休」と出ます。</p>
+        <img src="images/guide-3.jpg" alt="検索結果の見方">
+      </div>
+
+      <div class="guide-sec">もっと便利に（読まなくてもOK）</div>
+
+      <div class="guide-step">
+        <h3>④ 日にちを指定して調べる</h3>
+        <p>「📅 指定して検索」を押すとカレンダーが開きます。<b>1回目のタップ＝開始日、2回目のタップ＝終了日</b>。その間をまとめて調べられます。</p>
         <img src="images/guide-cal.jpg" alt="カレンダーで期間を指定する">
         <div class="guide-note">
           同じ日を2回タップすれば、その日1日だけを調べられます。<br>
-          ‹ › で月を移動できるので、月をまたいだ期間も指定できます。<br><br>
-          「設定」を押すとカレンダーが閉じ、検索結果が出ます。画面が自動で下まで流れて、最終日とコピー・読み上げボタンが見える位置で止まります。
+          ‹ › で月を移動できるので、月をまたいだ期間もOKです。<br>
+          「設定」を押すと結果が出て、画面が自動で下まで流れます。
         </div>
       </div>
 
       <div class="guide-step">
-        <h3>④ 検索結果を見る</h3>
-        <p>日ごとに、ダイヤ番号・出退勤時間・労働時間が並びます。公休の日は「公休」と出ます。</p>
-        <img src="images/guide-3.jpg" alt="検索結果の見方">
-      </div>
-
-      <div class="guide-step">
         <h3>⑤ カレンダーで一覧を見る</h3>
-        <p>結果の一番下にある「📅 カレンダーで見る」を押すと、<b>1ヶ月分のダイヤ番号と出退勤時間が一目で分かります</b>。</p>
+        <p>結果の一番下の「📅 カレンダーで見る」を押すと、<b>1ヶ月分が一目で分かります</b>。マスをタップすると大きく表示されます。</p>
         <img src="images/guide-rescal.jpg" alt="検索結果をカレンダーで一覧">
-        <p style="margin-top:10px;"><b>マスをタップすると大きく表示されます。</b>細かい字が見えにくい時や、分割勤務の詳しい時間を見たい時はこちらをどうぞ。</p>
-        <img src="images/guide-rcdetail.jpg" alt="マスをタップすると拡大して詳細が読める">
+        <img src="images/guide-rcdetail.jpg" alt="マスをタップすると拡大して詳細が読める" style="margin-top:8px;">
         <div class="guide-note">
-          マスの中は 上段＝ダイヤ番号 / 下段＝出退勤時間 です。緑の「公休」は休みの日、薄い日は検索した期間の外です。<br>
-          月をまたいで検索した時は ‹ › で移動できます。<br>
-          ※ 出退勤時間の後ろに「※」が付く日は、途中で一度退勤する分割勤務です。マスをタップすると全部の時間が読めます。
+          マスの中は 上＝ダイヤ番号 / 下＝出退勤時間。緑の「公休」は休みの日、薄い日は検索した期間の外です。<br>
+          ※ 時間の後ろに「※」が付く日は、途中で一度退勤する分割勤務です。タップすると全部の時間が読めます。
         </div>
       </div>
 
       <div class="guide-step">
         <h3>⑥ メモを残す</h3>
-        <p>各日の「📝 メモを追加」から、2種類のメモが書けます。💾保存・🗑削除もその場でできます。</p>
+        <p>各日の「📝 メモを追加」から書けます。2種類あります。</p>
         <img src="images/guide-4.jpg" alt="メモ機能">
         <div class="guide-note">
           <b>日付のメモ</b>…その日だけに出ます（例：年休申請済み）<br>
@@ -832,23 +910,94 @@ input[type="date"] {
 
       <div class="guide-step">
         <h3>⑦ 書いたメモをまとめて見る</h3>
-        <p>フッターの「📝 保存したメモの一覧」を押すと、<b>これまでに書いたメモを全部まとめて見られます</b>。いつ・何番に書いたか探し回る必要はありません。</p>
+        <p>下の「📝 保存したメモの一覧」を押すと、<b>これまでのメモを全部まとめて見られます</b>。その場で編集・削除もできます。</p>
         <img src="images/guide-memolist.jpg" alt="メモ一覧">
         <div class="guide-note">
-          「日付のメモ」と「ダイヤ番号のメモ」がタブで分かれています。日付のメモは古い順に並び、<b>過ぎた日には印</b>が付きます。<br>
-          その場で「編集」「削除」ができます。<b>🧹 過ぎた日のメモをまとめて削除</b>で、要らなくなった分を一度に片付けられます。
+          「日付のメモ」と「ダイヤ番号のメモ」がタブで分かれています。過ぎた日には印が付き、<b>🧹 過ぎた日のメモをまとめて削除</b>で一度に片付けられます。
         </div>
       </div>
 
       <div class="guide-step">
-        <h3>⑧ オフラインでも使えます</h3>
-        <p>一度オンラインで開いておけば、その後は圏外や機内モードでも起動できます。通信は使いません。</p>
+        <h3>⑧ 圏外でも使えます</h3>
+        <p>一度オンラインで開いておけば、その後は圏外や機内モードでも起動できます。</p>
         <div class="guide-note">「🔄 新しいバージョンがあります」と出たらタップしてください。最新のダイヤ表に更新されます。</div>
+      </div>
+    </div>
+
+
+    <!-- ===== アプリの入れ方(ホーム画面に追加) ===== -->
+    <div class="guide-pane" id="paneInst">
+
+      <p class="inst-lead">
+        ホーム画面に入れておくと、<b>アイコンを押すだけで一発で開けます</b>。<br>
+        毎回LINEをさかのぼって探す必要も、URLを打ち直す必要もありません。圏外でも開けます。
+      </p>
+
+      <div class="inst-warn">
+        <b>⚠ ここだけ先に読んでください</b><br>
+        LINEから開いた画面のままでは、ホーム画面に追加できません。<br>
+        まず <b>iPhoneなら「Safari」／Androidなら「Chrome」で開き直して</b> から、下の手順をやってください。
+      </div>
+
+      <div class="inst-os">
+        <h3>🍎 iPhone の人</h3>
+        <div class="inst-step"><div class="inst-num">1</div><div class="inst-txt">
+          LINEでこのアプリを開いたら、画面のすみにある <span class="inst-key">⋯</span> や <span class="inst-key">↗</span> のマークを押して、<b>「Safariで開く」</b>（または「他のアプリで開く」→ Safari）を選びます。
+        </div></div>
+        <div class="inst-step"><div class="inst-num">2</div><div class="inst-txt">
+          Safariで開いたら、画面の<b>下の真ん中にある共有ボタン</b> <span class="inst-key">⬆︎</span>（四角から上矢印が出たマーク）を押します。<br>
+          ※ ボタンが出ていない時は、画面を少し下にスワイプすると出てきます。
+        </div></div>
+        <div class="inst-step"><div class="inst-num">3</div><div class="inst-txt">
+          出てきたメニューを<b>下にスクロール</b>して、<b>「ホーム画面に追加」</b>を押します。
+        </div></div>
+        <div class="inst-step"><div class="inst-num">4</div><div class="inst-txt">
+          右上の<b>「追加」</b>を押したら完成です。
+        </div></div>
+        <div class="inst-done">
+          ホーム画面に <b>「学A」</b> というアイコンができていればOK。次からはそれを押すだけです。<br>
+          ※「Safariで開く」が見つからない時は、リンクを長押しして<b>コピー</b>し、Safariのアドレス欄に貼り付けて開いてもOKです。
+        </div>
+      </div>
+
+      <div class="inst-os">
+        <h3>🤖 Android の人</h3>
+        <div class="inst-step"><div class="inst-num">1</div><div class="inst-txt">
+          LINEでこのアプリを開いたら、画面のすみにある <span class="inst-key">⋮</span> のマークを押して、<b>「他のアプリで開く」→ Chrome</b>（または「ブラウザで開く」）を選びます。
+        </div></div>
+        <div class="inst-step"><div class="inst-num">2</div><div class="inst-txt">
+          Chromeで開いたら、<b>右上の</b> <span class="inst-key">⋮</span> を押します。
+        </div></div>
+        <div class="inst-step"><div class="inst-num">3</div><div class="inst-txt">
+          メニューの中の <b>「ホーム画面に追加」</b>（機種によっては<b>「アプリをインストール」</b>）を押します。
+        </div></div>
+        <div class="inst-step"><div class="inst-num">4</div><div class="inst-txt">
+          <b>「追加」</b>や<b>「インストール」</b>を押したら完成です。
+        </div></div>
+        <div class="inst-done">
+          ホーム画面に <b>「学A」</b> というアイコンができていればOK。次からはそれを押すだけです。<br>
+          ※ 画面の下に「アプリをインストール」というバーが自動で出ることもあります。その時はそれを押すだけでOKです。
+        </div>
+      </div>
+
+      <div class="inst-warn" style="margin-bottom:0;">
+        <b>💡 うまくいかない時</b><br>
+        ・LINEの画面のままだと「ホーム画面に追加」は出てきません。SafariかChromeで開き直してください。<br>
+        ・iPhoneはSafari、AndroidはChromeが確実です。他のブラウザだと出ないことがあります。<br>
+        ・入れたあとにこのアプリを一度開いておくと、圏外でも使えるようになります。
       </div>
     </div>
 
     <!-- ===== 更新履歴 ===== -->
     <div class="guide-pane" id="paneLog">
+      <div class="log-item">
+        <div class="log-date">2026/07/18</div>
+        <div class="log-body"><span class="tag tag-new">新機能</span>「📱 入れ方」タブを追加。iPhone・Androidそれぞれの、ホーム画面へのアイコンの入れ方を載せました。LINEで受け取った人もこれを見れば入れられます。</div>
+      </div>
+      <div class="log-item">
+        <div class="log-date">2026/07/18</div>
+        <div class="log-body"><span class="tag tag-up">改善</span>使い方を「まずはこの3つだけ」の形に整理し、文章を短くしました。「きほん」と「もっと便利に」に分けたので、必要なところだけ読めます。</div>
+      </div>
       <div class="log-item">
         <div class="log-date">2026/07/17</div>
         <div class="log-body"><span class="tag tag-new">新機能</span>「📝 保存したメモの一覧」を追加。これまでに書いたメモを一覧で確認でき、その場で編集・削除もできます。過ぎた日のメモはまとめて片付けられます。</div>
@@ -1543,12 +1692,16 @@ function closeGuide(){
   document.body.style.overflow='';
 }
 function switchGuide(which){
-  const use=which==='use';
-  document.getElementById('paneUse').classList.toggle('on',use);
-  document.getElementById('paneLog').classList.toggle('on',!use);
-  document.getElementById('tabUse').classList.toggle('on',use);
-  document.getElementById('tabLog').classList.toggle('on',!use);
-  document.getElementById('guideModal').scrollTop=0;
+  // 使い方 / 入れ方 / 更新履歴 の3タブを切り替える
+  const map = { use:['paneUse','tabUse'], inst:['paneInst','tabInst'], log:['paneLog','tabLog'] };
+  for (const k in map){
+    const on = (k === which);
+    const pane = document.getElementById(map[k][0]);
+    const tab  = document.getElementById(map[k][1]);
+    if (pane) pane.classList.toggle('on', on);
+    if (tab)  tab.classList.toggle('on', on);
+  }
+  document.getElementById('guideModal').scrollTop = 0;
 }
 
 function render(rows){
