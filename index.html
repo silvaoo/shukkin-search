@@ -535,8 +535,8 @@ input[type="date"] {
 .memo-btn:active { border-color: var(--cyan); color: var(--cyan); }
 .memo-edit { margin-top: 8px; }
 .memo-label {
-  display: block; font-size: 10px; font-weight: 700;
-  color: var(--dim); margin: 6px 0 4px;
+  display: block; font-size: 11.5px; font-weight: 700;
+  color: var(--text); margin: 6px 0 4px;
 }
 .memo-input {
   width: 100%; padding: 8px; font-size: 13px;
@@ -1237,9 +1237,9 @@ function toggleMemo(iso,dn){
   if(edit.style.display!=='none'){ edit.style.display='none'; edit.innerHTML=''; return; }
   const md=iso.slice(5).replace('-','/');
   edit.innerHTML=`
-    <label class="memo-label">📝 ${md} だけのメモ</label>
+    <label class="memo-label">📝 ${md} 日付にメモ</label>
     <textarea class="memo-input" id="mi-date-${iso}" rows="2" placeholder="例: 年休申請済み">${escapeHtml(getDateMemo(iso))}</textarea>
-    <label class="memo-label">🔖 ${dn}番ダイヤ共通のメモ（この番号の日すべてに表示）</label>
+    <label class="memo-label">🔖 ${dn}番 ダイヤにメモ（この番号の日すべてに表示）</label>
     <textarea class="memo-input" id="mi-dial-${iso}" rows="2" placeholder="例: 朝の道が混む">${escapeHtml(getDialMemo(dn))}</textarea>
     <div class="memo-actions">
       <button class="memo-act memo-save" onclick="saveMemo('${iso}',${dn})">💾 保存</button>
@@ -1263,7 +1263,7 @@ function saveMemo(iso,dn){
 
 function deleteMemo(iso,dn){
   const md=iso.slice(5).replace('-','/');
-  if(!confirm(`${md}のメモと、${dn}番ダイヤ共通のメモを削除します。よろしいですか？\n（${dn}番のメモは他の日からも消えます）`))return;
+  if(!confirm(`${md}のメモと、${dn}番のダイヤにメモを削除します。よろしいですか？\n（${dn}番のメモは他の日からも消えます）`))return;
   const dm=loadMemos(MEMO_DATE_KEY); delete dm[iso]; saveMemos(MEMO_DATE_KEY,dm);
   const lm=loadMemos(MEMO_DIAL_KEY); delete lm[dn]; saveMemos(MEMO_DIAL_KEY,lm);
   showToast('🗑 メモを削除しました');
