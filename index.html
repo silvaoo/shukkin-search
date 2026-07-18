@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>学A</title>
 
 <!-- ホーム画面追加時のアイコン・タイトル設定 -->
@@ -600,9 +600,6 @@ input[type="date"] {
   max-width: 100%;
   margin: 0 auto;
 }
-/* 全体表示のとき（初期・「全体」ボタン）は幅基準で3段すべてを画面内に収める */
-.source-img-scroll.fit { align-items: flex-start; }
-.source-img-scroll.fit img { width: 100%; height: auto; max-height: none; }
 .source-img-scroll {
   flex: 1;
   min-height: 0;
@@ -610,45 +607,31 @@ input[type="date"] {
   -webkit-overflow-scrolling: touch;
   border-radius: 8px;
   background: #fff;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
 }
 .source-img-scroll img {
-  width: var(--src-zoom, 100%);
-  max-width: none;
+  width: 100%;
   height: auto;
   display: block;
   border-radius: 8px;
-  transition: width 0.15s ease;
-  user-select: none;
 }
-.source-zoom-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: center;
-  padding: 10px 4px 2px;
-  flex-wrap: wrap;
+.source-zoom-hint {
+  text-align: center;
+  color: #eee;
+  font-size: 13px;
+  margin-top: 10px;
 }
-.source-zoom-bar button {
-  min-width: 54px;
-  padding: 8px 14px;
-  font-size: 16px;
+.source-close {
+  display: block;
+  margin: 10px auto 0;
+  padding: 10px 24px;
+  font-size: 15px;
   font-weight: 700;
   border: 0;
-  border-radius: 8px;
-  background: #2a6cff;
-  color: #fff;
+  border-radius: 22px;
+  background: #fff;
+  color: #333;
 }
-.source-zoom-bar button:active { background: #1a4fcc; }
-.source-zoom-hint {
-  width: 100%;
-  text-align: center;
-  color: #ddd;
-  font-size: 12px;
-  margin-top: 4px;
-}
+.source-close:active { background: #ddd; }
 .source-pdf-link {
   text-align: center;
   color: #fff;
@@ -1104,15 +1087,10 @@ input[type="date"] {
     <div class="source-img-scroll" id="srcScroll">
       <img id="srcImg"
            src="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/shift_table_hires.jpg"
-           alt="学園前Ａダイヤ 出退勤表"
-           ondblclick="resetSrcZoom()">
+           alt="学園前Ａダイヤ 出退勤表">
     </div>
-    <div class="source-zoom-bar">
-      <button onclick="zoomSrc(-1)">－</button>
-      <button onclick="resetSrcZoom()">全体</button>
-      <button onclick="zoomSrc(1)">＋</button>
-      <span class="source-zoom-hint">＋で拡大／「全体」で戻る（画像はドラッグで移動）</span>
-    </div>
+    <div class="source-zoom-hint">🔍 指を広げて拡大／狭めて縮小。とじるには右上の×</div>
+    <button class="source-close" onclick="closeSourceModal()">×&nbsp;とじる</button>
   </div>
 </div>
 
@@ -2365,29 +2343,11 @@ function drawFw(){
 /* 元データ画像モーダルの開閉 */
 function openSourceModal(){
   document.getElementById('sourceModal').classList.add('active');
-  resetSrcZoom();   // 開いたら必ず「全体表示」から始める
+  const sc = document.getElementById('srcScroll');
+  if(sc){ sc.scrollTop = 0; sc.scrollLeft = 0; }   // 開くたび先頭から
 }
 function closeSourceModal(){
   document.getElementById('sourceModal').classList.remove('active');
-}
-/* コチラ画像のズーム制御 ---------------------------- */
-let srcZoom = 0;   // 0=全体表示。1以上で拡大倍率の段階
-function resetSrcZoom(){
-  srcZoom = 0;
-  const sc = document.getElementById('srcScroll');
-  const img = document.getElementById('srcImg');
-  sc.classList.add('fit');          // 高さ基準で1画面に収める
-  img.style.removeProperty('--src-zoom');
-  sc.scrollTop = 0; sc.scrollLeft = 0;
-}
-function zoomSrc(dir){
-  const sc = document.getElementById('srcScroll');
-  const img = document.getElementById('srcImg');
-  srcZoom = Math.max(0, Math.min(5, srcZoom + dir));  // 0〜5段階
-  if(srcZoom === 0){ resetSrcZoom(); return; }
-  sc.classList.remove('fit');       // 幅基準に切替（縦スクロールで読む）
-  // 段階1で画面幅ぴったり、以降1段ごとに40%ずつ拡大
-  img.style.setProperty('--src-zoom', (100 + srcZoom*40) + '%');
 }
 
 window.onload=function(){
