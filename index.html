@@ -921,7 +921,7 @@ input[type="date"] {
         <img src="images/guide-cal.jpg" alt="カレンダーで期間を指定する">
         <div class="guide-note">
           同じ日を2回タップすれば、その日1日だけを調べられます。<br>
-          ‹ › で月を移動できるので、月をまたいだ期間もOKです。<br>
+          ‹ › で月を移動できるので、月をまたいだ期間もOKです。カレンダーを<b>左右に指ではらっても</b>月を移動できます。<br>
           「設定」を押すと結果が出て、画面が自動で下まで流れます。
         </div>
       </div>
@@ -1874,6 +1874,7 @@ function openCal(){
   if(!_selStart){ _selStart=toISO(t); _selEnd=toISO(t); }
   _calView=new Date(_selStart+'T00:00:00');
   renderCal();
+  attachCalSwipe(document.getElementById('calGrid'), calMove);   // 横スワイプで月移動
   document.getElementById('calModal').classList.add('active');
   document.body.style.overflow='hidden';
 }
@@ -2093,6 +2094,7 @@ function openResultCal(){
   _rcMonths=[...set].sort();
   _rcIdx=0;
   renderResultCal();
+  attachCalSwipe(document.getElementById('resCalGrid'), resCalMove);   // 横スワイプで月移動
   document.getElementById('resCalModal').classList.add('active');
   document.body.style.overflow='hidden';
   beep(880,70,0);   // 開いた時の音
@@ -2106,6 +2108,25 @@ function resCalMove(n){
   if(i<0||i>=_rcMonths.length)return;
   _rcIdx=i; renderResultCal();
   beep(760,50,0);
+}
+/* カレンダーに横スワイプで月移動を付ける。
+   横に十分動いたら onMove(方向) を呼ぶ。縦スクロールやタップと誤認しないよう、
+   横移動が縦移動より大きい時だけ反応する。 */
+function attachCalSwipe(el, onMove){
+  if(!el || el._swipeBound) return;   // 二重登録を防ぐ
+  el._swipeBound=true;
+  let x0=0, y0=0, t0=0;
+  el.addEventListener('touchstart',function(e){
+    const t=e.changedTouches[0];
+    x0=t.clientX; y0=t.clientY; t0=Date.now();
+  },{passive:true});
+  el.addEventListener('touchend',function(e){
+    const t=e.changedTouches[0];
+    const dx=t.clientX-x0, dy=t.clientY-y0, dt=Date.now()-t0;
+    if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)*1.5 && dt<800){
+      onMove(dx<0 ? 1 : -1);   // 左へ払う=次の月 / 右へ払う=前の月
+    }
+  },{passive:true});
 }
 /* 出退勤時間を狭いマスでも読める形にする（分割勤務は最初と最後だけ出す） */
 function rcTimes(o){
