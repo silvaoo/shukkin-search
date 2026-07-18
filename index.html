@@ -214,6 +214,7 @@ body {
 .rc-dial { font-size: 23px; font-weight: 800; color: #e07000; line-height: 1.15; }
 .rc-t { font-size: 12.5px; color: #1a1a2e; line-height: 1.3; letter-spacing: -0.4px; font-weight: 600; }
 .rc-off { font-size: 13px; font-weight: 800; color: #00915a; line-height: 1.5; }
+.rc-memo-mark { font-size: 9.5px; font-weight: 800; color: #d0700a; background: #fff2df; border-radius: 4px; margin-top: 1px; line-height: 1.4; }
 .rescal-grid .cal-day.nodata { opacity: 0.3; }
 /* 今日の枠を太くする分、内側の余白を1px減らして日付の位置がズレないようにする */
 .rescal-grid .cal-day.today { border-color: #ff8c00; border-width: 2px; padding: 3px 0; }
@@ -916,7 +917,7 @@ input[type="date"] {
 
       <div class="guide-step">
         <h3>④ 日にちを指定して調べる</h3>
-        <p>「📅 指定して検索」を押すとカレンダーが開きます。<b>1回目のタップ＝開始日、2回目のタップ＝終了日</b>。その間をまとめて調べられます。</p>
+        <p>「📅 指定して検索」を押すとカレンダーが開きます。<b>1回目のタップ＝開始日、2回目のタップ＝終了日</b>。その間をまとめて調べられます。期間の長さに<b>制限はありません</b>ので、何ヶ月先でも指定できます。</p>
         <img src="images/guide-cal.jpg" alt="カレンダーで期間を指定する">
         <div class="guide-note">
           同じ日を2回タップすれば、その日1日だけを調べられます。<br>
@@ -927,7 +928,7 @@ input[type="date"] {
 
       <div class="guide-step">
         <h3>⑤ カレンダーで一覧を見る</h3>
-        <p>結果の一番下の「📅 カレンダーで見る」を押すと、<b>1ヶ月分が一目で分かります</b>。マスをタップすると大きく表示されます。</p>
+        <p>結果の一番下の「📅 カレンダーで見る」を押すと、<b>1ヶ月分が一目で分かります</b>。マスをタップすると大きく表示されます。メモを保存した日には「●メモ」の印が付き、タップすると内容も見られます。</p>
         <img src="images/guide-rescal.jpg" alt="検索結果をカレンダーで一覧">
         <img src="images/guide-rcdetail.jpg" alt="マスをタップすると拡大して詳細が読める" style="margin-top:8px;">
         <div class="guide-note">
@@ -2153,6 +2154,10 @@ function renderResultCal(){
         body=`<div class="rc-dial">${r.dn}</div>`;
         if(t2) body+=`<div class="rc-t">${t2.s}</div><div class="rc-t">${t2.e}${t2.split?'※':''}</div>`;
         else   body+=`<div class="rc-t">要確認</div>`;
+      }
+      // その日にメモ（日付メモ or その日のダイヤ番号のメモ）があれば印を付ける
+      if(getDateMemo(iso) || (r.dn && getDialMemo(r.dn))){
+        body+=`<div class="rc-memo-mark">●メモ</div>`;
       }
     }
     html+=`<div class="${cls}"${r?` onclick="openRcDetail('${iso}')"`:''}><div class="rc-date">${d}</div><div class="rc-body">${body}</div></div>`;
