@@ -432,39 +432,52 @@
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.9);
             z-index: 10000;
-            padding: 16px;
+            padding: 12px;
+            box-sizing: border-box;
         }
-        .source-modal.active { display: flex; align-items: center; }
+        .source-modal.active { display: flex; flex-direction: column; }
         .source-modal-content {
+            flex: 1;
+            min-height: 0;
             display: flex;
-            gap: 10px;
-            overflow-x: auto;
-            width: 100%;
-            padding: 4px;
+            flex-direction: column;
+            max-width: 100%;
+            margin: 0 auto;
         }
-        .source-modal-content img {
-            max-height: 82vh;
-            width: auto;
-            flex-shrink: 0;
+        .source-img-scroll {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
             border-radius: 8px;
-            border: 2px solid #444;
+            background: #fff;
         }
-        .source-modal-close {
-            position: fixed;
-            top: 14px;
-            right: 16px;
-            background: rgba(255,255,255,0.15);
-            color: #fff;
-            border: none;
-            border-radius: 50%;
-            width: 36px;
-            height: 36px;
-            font-size: 18px;
-            z-index: 10001;
+        .source-img-scroll img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 8px;
         }
-
+        .source-zoom-hint {
+            text-align: center;
+            color: #eee;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+        .source-close {
+            display: block;
+            margin: 10px auto 0;
+            padding: 10px 24px;
+            font-size: 15px;
+            font-weight: 700;
+            border: 0;
+            border-radius: 22px;
+            background: #fff;
+            color: #333;
+        }
+        .source-close:active { background: #ddd; }
         /* 花火アニメーション用キャンバスは画面全体を覆う(操作を邪魔しないようクリック無効) */
         #fireworks-canvas {
             position: fixed;
@@ -545,12 +558,15 @@
         <div class="credit">by AIタケタニ</div>
     </footer>
 
-    <!-- 元データ画像モーダル(2枚並べて表示) -->
+    <!-- 元データ画像モーダル -->
     <div id="sourceModal" class="source-modal" onclick="closeSourceModal()">
-        <button class="source-modal-close" onclick="closeSourceModal()">✕</button>
-        <div class="source-modal-content">
-            <img src="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/images/genpage-1.jpg" alt="出退勤表 元データ 1枚目" onerror="this.replaceWith(Object.assign(document.createElement('div'),{style:'color:#fff;padding:20px;',innerText:'画像準備中です'}))">
-            <img src="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/images/genpage-2.jpg" alt="出退勤表 元データ 2枚目" onerror="this.replaceWith(Object.assign(document.createElement('div'),{style:'color:#fff;padding:20px;',innerText:'画像準備中です'}))">
+        <div class="source-modal-content" onclick="event.stopPropagation()">
+            <div class="source-img-scroll" id="srcScroll">
+                <img id="srcImg" src="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/ba/images/genpage-1.jpg" alt="北大和Bダイヤ 出退勤表"
+                     onerror="this.replaceWith(Object.assign(document.createElement('div'),{style:'color:#fff;padding:20px;',innerText:'画像準備中です'}))">
+            </div>
+            <div class="source-zoom-hint">🔍 指を広げて拡大／狭めて縮小。とじるには下の「とじる」ボタン（戻らない時はページを再読み込み）</div>
+            <button class="source-close" onclick="closeSourceModal()">×&nbsp;とじる</button>
         </div>
     </div>
 
@@ -1075,6 +1091,8 @@
            ========================================================= */
         function openSourceModal() {
             document.getElementById('sourceModal').classList.add('active');
+            var sc=document.getElementById('srcScroll');
+            if(sc){ sc.scrollTop=0; sc.scrollLeft=0; }
         }
         function closeSourceModal() {
             document.getElementById('sourceModal').classList.remove('active');
