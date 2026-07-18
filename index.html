@@ -593,13 +593,27 @@ input[type="date"] {
 }
 .source-modal.active { display: block; }
 .source-modal-content {
-  max-width: 100%;
+  max-width: 900px;
   margin: 0 auto;
 }
 .source-modal-content img {
   width: 100%;
   border-radius: 8px;
 }
+.source-pdf {
+  width: 100%;
+  height: 88vh;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+}
+.source-pdf-link {
+  text-align: center;
+  color: #fff;
+  font-size: 13px;
+  margin-top: 10px;
+}
+.source-pdf-link a { color: #7ec8ff; font-weight: 700; }
 .footer .credit { color: var(--green); font-weight: 700; margin-top: 4px; }
 
 /* ==== 花火・トースト ==== */
@@ -1044,8 +1058,15 @@ input[type="date"] {
 
 <!-- 元データ画像モーダル -->
 <div id="sourceModal" class="source-modal" onclick="closeSourceModal()">
-  <div class="source-modal-content">
-    <img src="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/shift_table.jpg" alt="出退勤表 元データ">
+  <div class="source-modal-content" onclick="event.stopPropagation()">
+    <iframe class="source-pdf"
+            src="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/gakuen_source.pdf"
+            title="学園前Ａダイヤ 出退勤表"></iframe>
+    <div class="source-pdf-link">
+      うまく開かないときは
+      <a href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/gakuen_source.pdf"
+         target="_blank" rel="noopener">こちらをタップ</a>
+    </div>
   </div>
 </div>
 
