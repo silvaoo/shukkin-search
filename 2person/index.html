@@ -65,7 +65,7 @@ header {
   justify-content: space-between;
   align-items: center;
 }
-header h1 { font-size: 18px; font-weight: bold; color: var(--cyan); }
+header h1 { font-size: 26px; font-weight: bold; color: var(--cyan); }
 header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
 #themeToggle {
   background: var(--bg-card2);
@@ -107,11 +107,52 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
 }
 .toast.show { opacity: 1; }
 #update-banner {
-  position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 9999;
-  padding: 12px; border: none; border-radius: 10px; cursor: pointer;
+  position: fixed; left: 0; right: 0; top: 0; z-index: 9999;
+  padding: 14px 12px; border: none; cursor: pointer;
   background: linear-gradient(135deg, var(--cyan), var(--orange));
-  color: #06060f; font-size: 13px; font-weight: 800;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+  color: #06060f; font-size: 14px; font-weight: 800;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  transform-origin: center;
+  /* 最初の数秒は元気に脈打ち、その後ゆっくりに落ち着く */
+  animation: ub-pulse-strong 0.7s ease-in-out 6, ub-pulse-soft 2.4s ease-in-out 4.2s infinite;
+}
+/* ドクンドクン（元気）：拡大縮小＋うずうず横揺れ */
+@keyframes ub-pulse-strong {
+  0%   { transform: scale(1) translateX(0); }
+  15%  { transform: scale(1.04) translateX(-1.5px); }
+  30%  { transform: scale(0.99) translateX(1.5px); }
+  45%  { transform: scale(1.05) translateX(-1px); }
+  60%  { transform: scale(1) translateX(1px); }
+  100% { transform: scale(1) translateX(0); }
+}
+/* 落ち着いたら、ゆっくり呼吸するだけ */
+@keyframes ub-pulse-soft {
+  0%,100% { transform: scale(1); }
+  50%     { transform: scale(1.02); }
+}
+/* タップ後の破裂 */
+#update-banner.burst { animation: ub-burst 0.5s ease-out forwards; pointer-events: none; }
+@keyframes ub-burst {
+  0%   { transform: scale(1); opacity: 1; }
+  25%  { transform: scale(1.12) rotate(-0.5deg); opacity: 1; }
+  45%  { transform: scale(1.4); opacity: 0.95; filter: brightness(1.5); }
+  100% { transform: scale(0.2); opacity: 0; filter: brightness(2); }
+}
+/* 煙の粒（移動先はJSがCSS変数で渡す） */
+.ub-smoke {
+  position: fixed; z-index: 9998; border-radius: 50%;
+  background: radial-gradient(circle, rgba(220,220,230,0.95), rgba(185,185,195,0.4) 55%, transparent 72%);
+  pointer-events: none; will-change: transform, opacity;
+  animation: ub-smoke-rise 1s ease-out forwards;
+}
+@keyframes ub-smoke-rise {
+  0%   { transform: translate(0,0) scale(0.35); opacity: 0.9; }
+  100% { transform: translate(var(--sx), var(--sy)) scale(2.6); opacity: 0; }
+}
+/* 動きを控えたい人の端末設定は尊重する */
+@media (prefers-reduced-motion: reduce){
+  #update-banner{ animation: none; }
+  #update-banner.burst{ animation: ub-burst 0.3s ease-out forwards; }
 }
 /* ヘッダーのダイヤ名だけテーマ色にして、アプリを見分けやすくする(サイズは据え置き) */
 .dia-name { color: var(--orange); font-weight: 800; }
@@ -515,6 +556,7 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
   <div>⚠ あくまでも目安としてお使いください。</div>
   <div>出退勤時間に誤りがあっても当方は責任を負いかねます。</div>
   <div style="margin-top:8px;"><span class="guide-link" onclick="openGuide()">📖 使い方・アプリの入れ方・更新履歴</span></div>
+  <div style="margin-top:8px;"><span class="guide-link" style="font-size:12px;opacity:0.7;" onclick="previewUpdateBanner()">✨ 更新ボタンの動きを見る</span></div>
   <div class="credit">by AIタケタニ</div>
 </div>
 
@@ -793,7 +835,7 @@ function initSW(){
       const nw=reg.installing; if(!nw)return;
       nw.addEventListener('statechange',()=>{
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
-          const b=document.getElementById('update-banner'); if(b)b.style.display='block';
+          const b=document.getElementById('update-banner'); if(b){ b.style.display='block'; document.body.style.paddingTop=b.offsetHeight+'px'; }
         }
       });
     });
@@ -803,13 +845,120 @@ function initSW(){
     if(refreshing)return; refreshing=true; window.location.reload();
   });
 }
+/* 更新帯の動きを、実際の更新をせずに確認するためのプレビュー */
+let _audioCtx=null;
+function getAudioCtx(){
+  try{
+    if(!_audioCtx)_audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(_audioCtx.state==='suspended')_audioCtx.resume();
+  }catch(e){}
+  return _audioCtx;
+}
+function beep(freq,durationMs,delaySec){
+  const ctx=getAudioCtx();
+  if(!ctx)return;
+  const t0=ctx.currentTime+(delaySec||0);
+  const osc=ctx.createOscillator();
+  const gain=ctx.createGain();
+  osc.type='sine';
+  osc.frequency.value=freq;
+  gain.gain.setValueAtTime(0.16,t0);
+  gain.gain.exponentialRampToValueAtTime(0.001,t0+durationMs/1000);
+  osc.connect(gain);gain.connect(ctx.destination);
+  osc.start(t0);osc.stop(t0+durationMs/1000);
+}
+
+function previewUpdateBanner(){
+  const b=document.getElementById('update-banner');
+  if(!b || b._bursting) return;
+  b.classList.remove('burst');
+  b.style.display='block';
+  b.style.animation='none';           // いったんアニメを止めて…
+  void b.offsetWidth;                 // 強制リフロー（アニメを最初から再生させる）
+  b.style.animation='';               // CSSの脈打ちアニメを再開
+  document.body.style.paddingTop=b.offsetHeight+'px';
+  showToast('この帯をタップすると更新します（今はお試し）');
+  // 2.5秒ほど脈打ちを見せてから、自動で破裂させる
+  b._preview=setTimeout(()=>{
+    playUpdateBurst(b);
+    setTimeout(()=>{                  // 破裂後、帯を元の非表示に戻す（リロードしない）
+      b.classList.remove('burst');
+      b.style.display='none';
+      b._bursting=false;
+      document.body.style.paddingTop='';
+    },1100);
+  },2500);
+}
+/* 「プシュー」と空気が抜ける音。ホワイトノイズをだんだん絞って作る。 */
+function hissSound(){
+  const ctx=getAudioCtx();
+  if(!ctx)return;
+  const dur=0.6;
+  const buf=ctx.createBuffer(1, ctx.sampleRate*dur, ctx.sampleRate);
+  const data=buf.getChannelData(0);
+  for(let i=0;i<data.length;i++) data[i]=Math.random()*2-1;   // ホワイトノイズ
+  const src=ctx.createBufferSource(); src.buffer=buf;
+  const bp=ctx.createBiquadFilter(); bp.type='bandpass';
+  bp.frequency.setValueAtTime(1800,ctx.currentTime);
+  bp.frequency.exponentialRampToValueAtTime(600,ctx.currentTime+dur); // だんだん低く=抜ける感じ
+  bp.Q.value=0.7;
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0.0001,ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.35,ctx.currentTime+0.04);     // 一気に立ち上がり
+  g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+dur);    // すーっと消える
+  src.connect(bp); bp.connect(g); g.connect(ctx.destination);
+  src.start(); src.stop(ctx.currentTime+dur);
+}
 function handleUpdateClick(){
-  const b=document.getElementById('update-banner'); if(b)b.style.display='none';
-  if(!('serviceWorker' in navigator)){window.location.reload();return;}
-  navigator.serviceWorker.getRegistration().then((reg)=>{
-    if(reg&&reg.waiting){reg.waiting.postMessage('SKIP_WAITING');}
-    else{window.location.reload();}
-  }).catch(()=>window.location.reload());
+  const b=document.getElementById('update-banner');
+  if(!b || b._bursting) return;
+  // プレビュー中のタップ：更新はせず、その場で破裂だけ見せて戻す
+  if(b._preview){
+    clearTimeout(b._preview); b._preview=null;
+    b._bursting=true;
+    playUpdateBurst(b);
+    setTimeout(()=>{
+      b.classList.remove('burst'); b.style.display='none';
+      b._bursting=false; document.body.style.paddingTop='';
+    },1100);
+    return;
+  }
+  b._bursting=true;
+  playUpdateBurst(b);                 // 破裂＆煙の演出
+  // 演出(約0.8秒)を見せてから更新を適用する
+  setTimeout(()=>{
+    if(!('serviceWorker' in navigator)){window.location.reload();return;}
+    navigator.serviceWorker.getRegistration().then((reg)=>{
+      if(reg&&reg.waiting){reg.waiting.postMessage('SKIP_WAITING');}
+      else{window.location.reload();}
+    }).catch(()=>window.location.reload());
+  },950);
+}
+/* 更新帯をタップした時の「破裂→煙」演出 */
+function playUpdateBurst(b){
+  try{ hissSound(); beep(520,90,0.02); beep(260,160,0.1); }catch(e){}   // プシュー＋破裂の低音
+  if(navigator.vibrate) navigator.vibrate([20,30,50,30,80]);
+  const r=b.getBoundingClientRect();
+  const cx=r.left+r.width/2, cy=r.top+r.height/2;
+  b.classList.add('burst');           // 帯がしぼんで消える
+  // 煙の粒を放射状に飛ばす（多め・大きめ・遠くまで）
+  const N=28;
+  for(let i=0;i<N;i++){
+    const s=document.createElement('div');
+    s.className='ub-smoke';
+    const size=30+Math.random()*46;
+    s.style.width=size+'px'; s.style.height=size+'px';
+    // 帯の幅方向に散らして出す（1点からではなく帯全体から噴く感じ）
+    const ox=(Math.random()-0.5)*r.width*0.7;
+    s.style.left=(cx+ox-size/2)+'px'; s.style.top=(cy-size/2)+'px';
+    const ang=(Math.PI*2*i/N)+(Math.random()-0.5)*0.6;
+    const dist=90+Math.random()*140;
+    s.style.setProperty('--sx',(Math.cos(ang)*dist).toFixed(0)+'px');
+    s.style.setProperty('--sy',(Math.sin(ang)*dist-40).toFixed(0)+'px'); // 上に流す
+    s.style.animationDuration=(0.9+Math.random()*0.4).toFixed(2)+'s';    // 粒ごとに速さを変える
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(),1400);
+  }
 }
 function speakText(text){if(!('speechSynthesis'in window)){alert('読み上げに対応していません');return;}if(window.speechSynthesis.speaking||window.speechSynthesis.pending){window.speechSynthesis.cancel();return;}const utter=new SpeechSynthesisUtterance(text);utter.lang='ja-JP';utter.rate=0.95;const v=window.speechSynthesis.getVoices();const jp=v.find(x=>x.lang.startsWith('ja'));if(jp)utter.voice=jp;window.speechSynthesis.speak(utter);}
 
