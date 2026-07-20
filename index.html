@@ -768,7 +768,7 @@ input[type="date"] {
   </div>
   <div class="today-preview empty" id="todayPreviewBox">↑ 1〜92の番号を入力してください</div>
   <div class="mydial-note" id="myDialNote" style="display:none;">
-    ✅ この番号を保存しました。明日からは自動で1つ進みます。
+    ✅ この番号を保存します。明日からは自動で1つ進みます。
     <span class="mydial-forget" onclick="forgetMyDial()">保存を消す</span>
   </div>
   <button class="speak-today-btn" id="speakTodayBtn" onclick="handleSpeakToday()">🔊 今日の勤務を読み上げ</button>
@@ -1200,19 +1200,21 @@ function formatDisplayTime(o){
   if(!o.includes('/'))return o;
   const parts=o.split('〜');
   if(parts.length!==2)return o;
-  const starts=parts[0].split('/'),ends=parts[1].split('/');
+  const starts=parts[0].split('/').map(x=>x.trim()),ends=parts[1].split('/').map(x=>x.trim());
   if(starts.length<2||ends.length<2)return o;
-  const labels=starts.length===2?['前半','後半']:starts.map((_,i)=>`${i+1}本目`);
-  const lines=[];
-  for(let i=0;i<starts.length;i++)lines.push(`${labels[i]} ${starts[i]}〜${ends[i]}`);
-  return lines.join('<br>');
+  // 前半＝出勤側ペア(入り〜出)、後半＝退勤側ペア(入り〜出)。横ペアだと誤読するため正しく組む
+  if(starts.length===2&&ends.length===2){
+    return `前半 ${starts[0]}〜${starts[1]}<br>後半 ${ends[0]}〜${ends[1]}`;
+  }
+  // 3分割以上はペアが確定できないため元の並びをそのまま表示(誤ペア回避)
+  return o;
 }
 
 /* 労働時間を画面表示用に整形する（2分割は前半/後半、3分割以上は番号表記） */
 function formatDisplayLabor(w){
   if(!w||w==='—')return '—';
   if(!w.includes('/'))return w+'h';
-  const parts=w.split('/');
+  const parts=w.split('/').map(x=>x.trim());
   const labels=parts.length===2?['前半','後半']:parts.map((_,i)=>`${i+1}本目`);
   return parts.map((p,i)=>`${labels[i]} ${p}h`).join('<br>');
 }
@@ -1239,11 +1241,11 @@ function timeToSpeech(o,w){
   const tildeSplit=o.split('〜');
   if(tildeSplit.length===2){
     const starts=tildeSplit[0].split('/'),ends=tildeSplit[1].split('/');
-    const wParts=w?w.split('/'):[];
+    const wParts=w?w.split('/').map(x=>x.trim()):[];
     if(starts.length>=2&&ends.length>=2){
-      let text=`前半、${fmtT(starts[0])}から${fmtT(ends[0])}`;
+      let text=`前半、${fmtT(starts[0])}から${fmtT(starts[1])}`;
       if(wParts[0])text+=`、労働${wParts[0].replace(':','時間')}分`;
-      text+=`。後半、${fmtT(starts[1])}から${fmtT(ends[1])}`;
+      text+=`。後半、${fmtT(ends[0])}から${fmtT(ends[1])}`;
       if(wParts[1])text+=`、労働${wParts[1].replace(':','時間')}分`;
       text+='。';
       return text;
@@ -1291,7 +1293,7 @@ function updateTodayPreview(){
     box.innerHTML=`<b>${v}番ダイヤ</b> → ${m}/${d}（${dtLabel}）勤務: <span class="warn-text">要確認</span>${slot.n?' 📌'+slot.n:''}`;
     return;
   }
-  box.innerHTML=`<b>${v}番</b> ${m}/${d}（${dtLabel}）▶ 勤務: <b>${slot.o}</b> ／ 労働: <b>${slot.w}h</b>${slot.n?` <small>（${slot.n}）</small>`:''}`;
+  box.innerHTML=`<b>${v}番</b> ${m}/${d}（${dtLabel}）▶ 勤務: <b>${formatDisplayTime(slot.o)}</b> ／ 労働: <b>${formatDisplayLabor(slot.w)}</b>${slot.n?` <small>（${slot.n}）</small>`:''}`;
 }
 
 /* ==== 今日の勤務を読み上げ ==== */
