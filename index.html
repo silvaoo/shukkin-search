@@ -2285,8 +2285,8 @@ function openRcDetail(iso){
   if(off){
     html+='<div class="rcd-off-big">🎉 公休</div>';
   }else{
-    html+=`<div class="rcd-row"><span class="lbl">出退勤時間</span><span class="val">${r.slot.o}</span></div>`;
-    html+=`<div class="rcd-row"><span class="lbl">労働時間</span><span class="val">${r.slot.w}</span></div>`;
+    html+=`<div class="rcd-row"><span class="lbl">出退勤時間</span><span class="val">${formatDisplayTime(r.slot.o)}</span></div>`;
+    html+=`<div class="rcd-row"><span class="lbl">労働時間</span><span class="val">${formatDisplayLabor(r.slot.w)}</span></div>`;
     if(r.slot.n) html+=`<div class="rcd-note">📌 ${escapeHtml(r.slot.n)}</div>`;
   }
   // メモがあれば見せる
