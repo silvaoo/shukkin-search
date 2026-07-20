@@ -251,16 +251,24 @@ body {
   align-items: center; justify-content: center; gap: 1px;
 }
 .rescal-grid .cal-day.empty { border-color: transparent; }
-.rc-date { font-size: 11px; color: #6a6a80; line-height: 1.1; font-weight: 700; }
-.rc-dial { font-size: 23px; font-weight: 800; color: #e07000; line-height: 1.15; }
+.rc-date { font-size: 18px; color: #1a1a2e; line-height: 1.15; font-weight: 800; }
+.rc-dial { font-size: 14px; font-weight: 800; color: #e07000; line-height: 1.15; }
 .rc-t { font-size: 12.5px; color: #1a1a2e; line-height: 1.3; letter-spacing: -0.4px; font-weight: 600; }
 .rc-off { font-size: 13px; font-weight: 800; color: #00915a; line-height: 1.5; }
 .rc-memo-mark { font-size: 9.5px; font-weight: 800; color: #d0700a; background: #fff2df; border-radius: 4px; margin-top: 1px; line-height: 1.4; }
 .rescal-grid .cal-day.nodata { opacity: 0.3; }
 /* 今日の枠を太くする分、内側の余白を1px減らして日付の位置がズレないようにする */
 .rescal-grid .cal-day.today { border-color: #ff8c00; border-width: 2px; padding: 3px 0; }
+.rescal-grid .cal-day.sat .rc-date { color: #2660d9; }
+.rescal-grid .cal-day.sun .rc-date { color: #d92626; }
 .rescal-grid .cal-day.hol .rc-date { color: #d92626; }
 .rescal-grid .cal-day:active { background: #e8f5ff; }
+.rc-save-btn {
+  width: 100%; margin-top: 10px; padding: 12px; border: none; border-radius: 10px;
+  background: #ff8c00; color: #3a2400; font-size: 15px; font-weight: 800;
+  cursor: pointer; font-family: 'Noto Sans JP', sans-serif;
+}
+.rc-save-btn:active { transform: scale(0.98); filter: brightness(0.95); }
 .rescal-legend {
   margin-top: 8px; font-size: 10.5px; color: #6a6a80;
   text-align: center; line-height: 1.6;
@@ -836,7 +844,7 @@ input[type="date"] {
 <div id="resCalModal" class="cal-modal">
   <div class="cal-inner">
     <div class="cal-top">
-      <div class="cal-title">📅 検索結果カレンダー</div>
+      <div class="cal-title">📅 検索くん 私のカレンダー</div>
       <button class="cal-x" onclick="closeResultCal()">✕ 閉じる</button>
     </div>
     <div class="cal-nav">
@@ -852,6 +860,7 @@ input[type="date"] {
       上段＝ダイヤ番号 ／ 下段＝出退勤時間<br>
       <span class="rc-legend-off">緑は公休</span>・薄い日は検索範囲外です
     </div>
+    <button class="rc-save-btn" onclick="saveCurrentCal()">⭐ このカレンダーを保存</button>
   </div>
 </div>
 
@@ -885,9 +894,11 @@ input[type="date"] {
     <div class="ml-tabs">
       <button class="ml-tab on" id="mlTabDate" onclick="switchMemoList('date')">日付のメモ</button>
       <button class="ml-tab" id="mlTabDial" onclick="switchMemoList('dial')">ダイヤ番号のメモ</button>
+      <button class="ml-tab" id="mlTabCal" onclick="switchMemoList('cal')">保存したカレンダー</button>
     </div>
     <div class="ml-pane on" id="mlPaneDate"></div>
     <div class="ml-pane" id="mlPaneDial"></div>
+    <div class="ml-pane" id="mlPaneCal"></div>
   </div>
 </div>
 
@@ -1441,6 +1452,8 @@ window.addEventListener('pagehide',stopSpeakIfNeeded);
    保存先はこの端末のブラウザ内(localStorage)のみ。同僚には共有されない。 */
 const MEMO_DATE_KEY='a-memos-date';
 const MEMO_DIAL_KEY='a-memos-dial';
+const SAVED_CAL_KEY='a-saved-cals';
+const SAVED_CAL_SEQ_KEY='a-saved-cals-seq';
 
 /* メモ本文をそのままHTMLに埋め込むと崩れる/危険なので必ずエスケープする */
 function escapeHtml(s){
@@ -1684,12 +1697,39 @@ function closeMemoList(){
   document.getElementById('memoListModal').classList.remove('active');
   document.body.style.overflow='';
 }
+/* ==== 保存したカレンダー ==== */
+function loadCalList(){ try{ return JSON.parse(localStorage.getItem(SAVED_CAL_KEY)||'[]'); }catch(e){ return []; } }
+function saveCalList(a){ try{ localStorage.setItem(SAVED_CAL_KEY, JSON.stringify(a)); }catch(e){} }
+function saveCurrentCal(){
+  const rows=window._lastRows;
+  if(!rows||!rows.length){ showToast('先に検索してください'); return; }
+  let seq=parseInt(localStorage.getItem(SAVED_CAL_SEQ_KEY)||'0',10)+1;
+  try{ localStorage.setItem(SAVED_CAL_SEQ_KEY, String(seq)); }catch(e){}
+  const label='検索くん 私のカレンダー'+seq;
+  const list=loadCalList();
+  list.unshift({ id:'c'+Date.now(), label, savedAt:Date.now(), rows });
+  saveCalList(list);
+  showToast('⭐ カレンダー保存しました！メモ一覧からご覧下さい');
+}
+function openSavedCal(id){
+  const item=loadCalList().find(c=>c.id===id);
+  if(!item){ showToast('見つかりませんでした'); return; }
+  closeMemoList();
+  window._lastRows=item.rows;
+  openResultCal();
+}
+function deleteSavedCal(id){
+  if(!confirm('この保存カレンダーを削除しますか？')) return;
+  saveCalList(loadCalList().filter(c=>c.id!==id));
+  renderMemoList();
+}
 function switchMemoList(which){
-  const isDate=which==='date';
-  document.getElementById('mlPaneDate').classList.toggle('on',isDate);
-  document.getElementById('mlPaneDial').classList.toggle('on',!isDate);
-  document.getElementById('mlTabDate').classList.toggle('on',isDate);
-  document.getElementById('mlTabDial').classList.toggle('on',!isDate);
+  const panes={date:'mlPaneDate',dial:'mlPaneDial',cal:'mlPaneCal'};
+  const tabs={date:'mlTabDate',dial:'mlTabDial',cal:'mlTabCal'};
+  for(const k in panes){
+    document.getElementById(panes[k]).classList.toggle('on',k===which);
+    document.getElementById(tabs[k]).classList.toggle('on',k===which);
+  }
   document.getElementById('memoListModal').scrollTop=0;
 }
 function renderMemoList(){
@@ -1748,6 +1788,28 @@ function renderMemoList(){
     });
   }
   document.getElementById('mlPaneDial').innerHTML=h2;
+
+  const cals=loadCalList();
+  let h3='';
+  if(cals.length===0){
+    h3='<div class="ml-empty">保存したカレンダーはまだありません。<br>「検索くん 私のカレンダー」を開いて⭐で保存すると、ここに並びます。</div>';
+  }else{
+    h3=`<div class="ml-count">${cals.length}件</div>`;
+    cals.forEach(c=>{
+      const d=new Date(c.savedAt);
+      const sub=`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} 保存`;
+      h3+=`<div class="ml-item">
+        <div class="ml-top">
+          <div class="ml-key">${escapeHtml(c.label)}<span class="ml-sub">${sub}</span></div>
+          <div class="ml-acts">
+            <button class="ml-act" onclick="openSavedCal('${c.id}')">開く</button>
+            <button class="ml-act del" onclick="deleteSavedCal('${c.id}')">削除</button>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+  document.getElementById('mlPaneCal').innerHTML=h3;
 }
 /* 一覧の中で直接編集する */
 function editMemoItem(type,key){
