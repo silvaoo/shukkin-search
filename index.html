@@ -540,6 +540,14 @@ input[type="date"] {
 .day-box-label { font-size: 10px; color: var(--dim); margin-bottom: 4px; letter-spacing: 1px; }
 .day-box-val { font-family: 'Share Tech Mono', monospace; font-size: 14px; color: var(--text); line-height: 1.5; }
 .day-box-val.holiday-val { color: var(--pink); font-family: 'Noto Sans JP', sans-serif; font-size: 17px; font-weight: 700; }
+/* 今日の表示だけBA風の枠付きカードにする(検索結果の.day-boxesには影響させない) */
+.today-boxes { grid-template-columns: 1.7fr 1fr; margin-top: 2px; }
+.today-boxes .day-box-val { font-weight: 700; }
+.today-boxes .day-box-val.is-day { font-size: 24px; white-space: nowrap; }
+.today-boxes .day-box-val.is-split { font-size: 16px; line-height: 1.5; }
+.today-head { margin-bottom: 8px; color: var(--text); font-size: 13px; }
+.today-head b { color: var(--orange); font-size: 20px; }
+.today-note { margin-top: 8px; font-size: 12px; color: var(--dim); line-height: 1.5; }
 .day-note { font-size: 11.5px; color: var(--dim); margin-top: 8px; font-style: italic; line-height: 1.6; }
 .teiire-label {
   display: inline-block; margin-bottom: 8px; padding: 4px 10px;
@@ -768,7 +776,7 @@ input[type="date"] {
   </div>
   <div class="today-preview empty" id="todayPreviewBox">↑ 1〜92の番号を入力してください</div>
   <div class="mydial-note" id="myDialNote" style="display:none;">
-    ✅ この番号を保存します。明日からは自動で1つ進みます。
+    ✅ この番号を保存し、明日から自動で1つずつ進みます。
     <span class="mydial-forget" onclick="forgetMyDial()">保存を消す</span>
   </div>
   <button class="speak-today-btn" id="speakTodayBtn" onclick="handleSpeakToday()">🔊 今日の勤務を読み上げ</button>
@@ -1293,7 +1301,14 @@ function updateTodayPreview(){
     box.innerHTML=`<b>${v}番ダイヤ</b> → ${m}/${d}（${dtLabel}）勤務: <span class="warn-text">要確認</span>${slot.n?' 📌'+slot.n:''}`;
     return;
   }
-  box.innerHTML=`<b>${v}番</b> ${m}/${d}（${dtLabel}）▶ 勤務: <b>${formatDisplayTime(slot.o)}</b> ／ 労働: <b>${formatDisplayLabor(slot.w)}</b>${slot.n?` <small>（${slot.n}）</small>`:''}`;
+  const isSplit=slot.o.includes('/');
+  const tcls=isSplit?'is-split':'is-day';
+  const noteHtml=slot.n?`<div class="today-note">📌 ${slot.n}</div>`:'';
+  box.innerHTML=`<div class="today-head"><b>${v}番ダイヤ</b> ／ ${m}/${d}（${dtLabel}）</div>
+    <div class="day-boxes today-boxes">
+      <div class="day-box"><div class="day-box-label">勤務時間</div><div class="day-box-val ${tcls}">${formatDisplayTime(slot.o)}</div></div>
+      <div class="day-box"><div class="day-box-label">労働時間</div><div class="day-box-val ${tcls}">${formatDisplayLabor(slot.w)}</div></div>
+    </div>${noteHtml}`;
 }
 
 /* ==== 今日の勤務を読み上げ ==== */
