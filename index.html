@@ -1707,11 +1707,8 @@ function saveCalList(a){ try{ localStorage.setItem(SAVED_CAL_KEY, JSON.stringify
 function saveCurrentCal(){
   const rows=window._lastRows;
   if(!rows||!rows.length){ showToast('先に検索してください'); return; }
-  let seq=parseInt(localStorage.getItem(SAVED_CAL_SEQ_KEY)||'0',10)+1;
-  try{ localStorage.setItem(SAVED_CAL_SEQ_KEY, String(seq)); }catch(e){}
-  const label='検索くん 私のカレンダー'+seq;
   const list=loadCalList();
-  list.unshift({ id:'c'+Date.now(), label, savedAt:Date.now(), rows });
+  list.push({ id:'c'+Date.now(), savedAt:Date.now(), rows });
   saveCalList(list);
   showToast('⭐ カレンダー保存しました！メモ一覧からご覧下さい');
 }
@@ -1799,12 +1796,12 @@ function renderMemoList(){
     h3='<div class="ml-empty">保存したカレンダーはまだありません。<br>「検索くん 私のカレンダー」を開いて⭐で保存すると、ここに並びます。</div>';
   }else{
     h3=`<div class="ml-count">${cals.length}件</div>`;
-    cals.forEach(c=>{
+    cals.forEach((c,i)=>{
       const d=new Date(c.savedAt);
       const sub=`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} 保存`;
       h3+=`<div class="ml-item">
         <div class="ml-top">
-          <div class="ml-key">${escapeHtml(c.label)}<span class="ml-sub">${sub}</span></div>
+          <div class="ml-key">検索くん 私のカレンダー${i+1}<span class="ml-sub">${sub}</span></div>
           <div class="ml-acts">
             <button class="ml-act" onclick="openSavedCal('${c.id}')">開く</button>
             <button class="ml-act del" onclick="deleteSavedCal('${c.id}')">削除</button>
