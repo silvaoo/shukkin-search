@@ -1709,6 +1709,7 @@ function closeMemoList(){
 function loadCalList(){ try{ return JSON.parse(localStorage.getItem(SAVED_CAL_KEY)||'[]'); }catch(e){ return []; } }
 function saveCalList(a){ try{ localStorage.setItem(SAVED_CAL_KEY, JSON.stringify(a)); }catch(e){} }
 function clearRangeResults(){ const c=document.getElementById('resultsArea'); if(c) c.innerHTML=''; window._lastRows=null; }
+window.addEventListener('pageshow', function(e){ if(e.persisted){ clearRangeResults(); } }); // iOS: リロード/キャッシュ復元時に検索結果を消す(Androidと同じ挙動に)
 function saveCurrentCal(){
   const rows=window._lastRows;
   if(!rows||!rows.length){ showToast('先に検索してください'); return; }
