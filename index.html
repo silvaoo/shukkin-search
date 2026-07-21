@@ -797,9 +797,9 @@ input[type="date"] {
 <div class="card">
   <div class="card-title">クイック検索</div>
   <div class="quick-grid">
-    <button class="qbtn" onclick="quickSearch('today')">今日</button>
     <button class="qbtn" onclick="quickSearch('week1')">1週間</button>
     <button class="qbtn" onclick="quickSearch('week2')">2週間</button>
+    <button class="qbtn" onclick="quickSearch('month1')">1ヶ月</button>
   </div>
 </div>
 
@@ -2393,6 +2393,7 @@ function quickSearch(type){
   if(type==='today'){from=to=t;}
   else if(type==='week1'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+6);}   // 今日から7日間
   else if(type==='week2'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+13);}  // 今日から14日間
+  else if(type==='month1'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+29);}  // 今日から30日間(1ヶ月)
   document.getElementById('dateFrom').value=toISO(from);
   document.getElementById('dateTo').value=toISO(to);
   _selStart=toISO(from); _selEnd=toISO(to); // カレンダー側にも反映
