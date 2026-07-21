@@ -696,12 +696,15 @@ input[type="date"] {
 #fw { position: fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; }
 .toast {
   position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-  background: rgba(0,245,255,0.15); border: 1px solid var(--cyan); color: var(--cyan);
+  background: rgba(15,23,30,0.96); border: 1px solid var(--cyan); color: #ffffff; font-weight: 700;
   padding: 10px 24px; border-radius: 20px; font-size: 13px; z-index: 10010;
   opacity: 0; transition: opacity 0.3s; white-space: nowrap;
   pointer-events: none; /* 見えていない時に下のボタン(更新バナー等)のタップを邪魔しないようにする */
 }
 .toast.show { opacity: 1; }
+.clear-results-btn { display: block; width: 100%; margin: 12px 0 4px; padding: 11px; border: 1.5px solid #ff6b5e; border-radius: 10px; background: transparent; color: #ff6b5e; font-size: 14px; font-weight: 800; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; }
+.clear-results-btn:active { background: rgba(255,107,94,0.14); }
+#resultsArea:empty + .clear-results-btn { display: none; }
 
 /* ==== 追加: かんたん3ステップ・見出し・入れ方タブ ==== */
 .guide-tabs .guide-tab { padding: 9px 3px; font-size: 11.5px; white-space: nowrap; }
@@ -871,6 +874,7 @@ input[type="date"] {
 
 <!-- 検索結果 -->
 <div id="resultsArea"></div>
+    <button class="clear-results-btn" onclick="clearRangeResults()">🗑 検索結果を消す</button>
 
 <div class="data-source-notice">
   このアプリは<span class="source-link" onclick="openSourceModal()">コチラ</span>のデータを元に作成しております。
@@ -1704,6 +1708,7 @@ function closeMemoList(){
 /* ==== 保存したカレンダー ==== */
 function loadCalList(){ try{ return JSON.parse(localStorage.getItem(SAVED_CAL_KEY)||'[]'); }catch(e){ return []; } }
 function saveCalList(a){ try{ localStorage.setItem(SAVED_CAL_KEY, JSON.stringify(a)); }catch(e){} }
+function clearRangeResults(){ const c=document.getElementById('resultsArea'); if(c) c.innerHTML=''; window._lastRows=null; }
 function saveCurrentCal(){
   const rows=window._lastRows;
   if(!rows||!rows.length){ showToast('先に検索してください'); return; }
