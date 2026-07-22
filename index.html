@@ -231,10 +231,10 @@ body {
 
 /* ==== 検索結果カレンダー（番号と出退勤時間を一覧表示） ==== */
 .act-cal {
-  width: 100%; margin-top: 8px;
-  background: rgba(0,230,118,0.12); color: var(--cyan);
-  border: 1px solid rgba(0,230,118,0.35);
+  background: rgba(0,230,118,0.16); color: var(--cyan);
+  border: 1px solid rgba(0,230,118,0.55);
 }
+.act-cal:active { background: rgba(0,230,118,0.85); color: #002; }
 /* 画面の縦を目一杯使って、マスと文字を大きくする */
 .rescal-grid .cal-day {
   aspect-ratio: auto; min-height: 104px;
@@ -269,6 +269,12 @@ body {
   cursor: pointer; font-family: 'Noto Sans JP', sans-serif;
 }
 .rc-save-btn:active { transform: scale(0.98); filter: brightness(0.95); }
+.ml-cal-btn {
+  width: 100%; margin-top: 8px; padding: 10px; border: none; border-radius: 8px;
+  background: #2e7d5b; color: #ffffff; font-size: 13px; font-weight: 800;
+  cursor: pointer; font-family: 'Noto Sans JP', sans-serif;
+}
+.ml-cal-btn:active { filter: brightness(0.92); }
 .rescal-legend {
   margin-top: 8px; font-size: 10.5px; color: #6a6a80;
   text-align: center; line-height: 1.6;
@@ -863,7 +869,7 @@ input[type="date"] {
       上段＝ダイヤ番号 ／ 下段＝出退勤時間<br>
       <span class="rc-legend-off">緑は公休</span>・薄い日は検索範囲外です
     </div>
-    <button class="rc-save-btn" onclick="saveCurrentCal()">⭐ このカレンダーを保存</button>
+    <button class="rc-save-btn" onclick="saveCurrentCal()">⭐ メモ一覧に保存</button>
   </div>
 </div>
 
@@ -1710,6 +1716,50 @@ function loadCalList(){ try{ return JSON.parse(localStorage.getItem(SAVED_CAL_KE
 function saveCalList(a){ try{ localStorage.setItem(SAVED_CAL_KEY, JSON.stringify(a)); }catch(e){} }
 function clearRangeResults(){ const c=document.getElementById('resultsArea'); if(c) c.innerHTML=''; window._lastRows=null; }
 window.addEventListener('pageshow', function(e){ if(e.persisted){ clearRangeResults(); } }); // iOS: リロード/キャッシュ復元時に検索結果を消す(Androidと同じ挙動に)
+function icsEsc(t){ return String(t==null?'':t).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n'); }
+function icsDT(iso, hhmm){
+  const pr=String(hhmm).split(':'); const h=parseInt(pr[0],10), mi=parseInt(pr[1],10);
+  const d=new Date(iso+'T00:00:00'); d.setMinutes(h*60+mi);
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}T${p(d.getHours())}${p(d.getMinutes())}00`;
+}
+function exportCalendarICS(rows){
+  rows = rows || window._lastRows;
+  if(!rows||!rows.length){ showToast('データがありません'); return; }
+  const stamp=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+  let ev='', count=0;
+  rows.forEach(r=>{
+    const slot=r.slot;
+    if(!slot || !slot.o || !String(slot.o).includes('〜')) return;
+    const parts=String(slot.o).split('〜');
+    if(parts.length!==2) return;
+    const starts=parts[0].split('/').map(x=>x.trim());
+    const ends=parts[1].split('/').map(x=>x.trim());
+    let blocks;
+    if(starts.length>=2 && ends.length>=2){ blocks=[['前半',starts[0],starts[1]],['後半',ends[0],ends[1]]]; }
+    else { blocks=[['',starts[0],ends[0]]]; }
+    blocks.forEach((bl,bi)=>{
+      if(!String(bl[1]).includes(':')||!String(bl[2]).includes(':')) return;
+      const dts=icsDT(r.iso,bl[1]), dte=icsDT(r.iso,bl[2]);
+      const sum=`🚌${r.dn}番ダイヤ${bl[0]?'('+bl[0]+')':''}`;
+      const desc=`労働時間 ${slot.w||'-'}${slot.n?'\n'+slot.n:''}`;
+      ev+='BEGIN:VEVENT\r\nUID:sk-'+r.iso+'-'+r.dn+'-'+bi+'-'+Date.now()+Math.random().toString(36).slice(2,6)+'@shukkin\r\n'
+        +'DTSTAMP:'+stamp+'\r\nDTSTART:'+dts+'\r\nDTEND:'+dte+'\r\nSUMMARY:'+icsEsc(sum)+'\r\nDESCRIPTION:'+icsEsc(desc)+'\r\n'
+        +'BEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER:-PT60M\r\nDESCRIPTION:'+icsEsc('まもなく出勤 '+sum)+'\r\nEND:VALARM\r\nEND:VEVENT\r\n';
+      count++;
+    });
+  });
+  if(!count){ showToast('登録できる勤務がありません'); return; }
+  const ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//出退勤検索くん//JP\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n'+ev+'END:VCALENDAR\r\n';
+  try{
+    const blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='勤務カレンダー.ics';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    showToast('📅 '+count+'件をカレンダー用に書き出しました');
+  }catch(e){ showToast('書き出しに失敗しました'); }
+}
 function saveCurrentCal(){
   const rows=window._lastRows;
   if(!rows||!rows.length){ showToast('先に検索してください'); return; }
@@ -1729,6 +1779,11 @@ function deleteSavedCal(id){
   if(!confirm('この保存カレンダーを削除しますか？')) return;
   saveCalList(loadCalList().filter(c=>c.id!==id));
   renderMemoList();
+}
+function exportSavedCal(id){
+  const item=loadCalList().find(c=>c.id===id);
+  if(!item){ showToast('見つかりませんでした'); return; }
+  exportCalendarICS(item.rows);
 }
 function switchMemoList(which){
   const panes={date:'mlPaneDate',dial:'mlPaneDial',cal:'mlPaneCal'};
@@ -1813,6 +1868,7 @@ function renderMemoList(){
             <button class="ml-act del" onclick="deleteSavedCal('${c.id}')">削除</button>
           </div>
         </div>
+        <button class="ml-cal-btn" onclick="exportSavedCal('${c.id}')">📅 カレンダーアプリに一括保存</button>
       </div>`;
     });
   }
@@ -1942,10 +1998,9 @@ function render(rows){
   });
 
   html+=`<div class="action-row">
-    <button class="act-btn act-copy" onclick="copyResults()">📋 結果をコピー</button>
+    <button class="act-btn act-cal" onclick="openResultCal()">📅 カレンダーを見る</button>
     <button class="act-btn act-tts" id="speakResBtn" onclick="handleSpeakResults()">🔊 読み上げ</button>
-  </div>
-  <button class="act-btn act-cal" onclick="openResultCal()">📅 カレンダーで見る</button>`;
+  </div>`;
 
   el.innerHTML=html;
   window._lastRows=rows;
