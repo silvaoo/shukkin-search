@@ -1733,6 +1733,17 @@ function exportCalendarICS(rows){
   let ev='', count=0;
   rows.forEach(r=>{
     const slot=r.slot;
+    // 公休の日も番号入りで終日予定として登録する(このダイヤ番号は公休=DBに勤務が無い)
+    if((!slot || !slot.o) && r.dn>=1 && r.dn<=92){
+      const d0=new Date(r.iso+'T00:00:00'), d1=new Date(r.iso+'T00:00:00'); d1.setDate(d1.getDate()+1);
+      const p=n=>String(n).padStart(2,'0');
+      const ymd=(d)=>`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}`;
+      ev+='BEGIN:VEVENT\r\nUID:sk-'+r.iso+'-'+r.dn+'-off-'+Date.now()+Math.random().toString(36).slice(2,6)+'@shukkin\r\n'
+        +'DTSTAMP:'+stamp+'\r\nDTSTART;VALUE=DATE:'+ymd(d0)+'\r\nDTEND;VALUE=DATE:'+ymd(d1)+'\r\n'
+        +'SUMMARY:'+icsEsc('🚌'+r.dn+'番ダイヤ（公休）')+'\r\nDESCRIPTION:'+icsEsc('公休')+'\r\nTRANSP:TRANSPARENT\r\nEND:VEVENT\r\n';
+      count++;
+      return;
+    }
     if(!slot || !slot.o || !String(slot.o).includes('〜')) return;
     const parts=String(slot.o).split('〜');
     if(parts.length!==2) return;
