@@ -637,6 +637,12 @@ input[type="date"] {
 .act-tts { border-color: var(--yellow); color: var(--yellow); }
 .act-tts:active { background: var(--yellow); color: #000; }
 .act-tts.speaking { background: rgba(255,0,128,0.15); color: var(--pink); border-color: var(--pink); }
+.act-cal, .act-more {
+  background: var(--bg-card2);
+  border: 1px solid var(--blue);
+  color: var(--blue);
+}
+.act-cal:active, .act-more:active { background: var(--blue); color: #fff; }
 
 /* ==== フッター ==== */
 .footer { text-align: center; font-size: 11px; color: var(--dim); margin-top: 10px; line-height: 1.8; }
@@ -829,8 +835,8 @@ input[type="date"] {
 <div class="card">
   <div class="card-title">クイック検索</div>
   <div class="quick-grid">
+    <button class="qbtn" onclick="quickSearch('tomorrow')">明日</button>
     <button class="qbtn" onclick="quickSearch('week1')">1週間</button>
-    <button class="qbtn" onclick="quickSearch('week2')">2週間</button>
     <button class="qbtn" onclick="quickSearch('month1')">1ヶ月</button>
   </div>
 </div>
@@ -2199,8 +2205,8 @@ function render(rows){
   });
 
   html+=`<div class="action-row">
+    <button class="act-btn act-more" onclick="continueSearch()">➕ 続けて検索</button>
     <button class="act-btn act-cal" onclick="openResultCal()">📅 カレンダーを見る</button>
-    <button class="act-btn act-tts" id="speakResBtn" onclick="handleSpeakResults()">🔊 読み上げ</button>
   </div>`;
 
   el.innerHTML=html;
@@ -2368,6 +2374,7 @@ function applyCal(){
   boomSound();                       // バーン！
   if(navigator.vibrate)navigator.vibrate([60,40,90]);
   launchMultipleFireworks(4);
+  try{_lastPeriodDays=Math.max(Math.round((to-from)/86400000)+1,1);}catch(e){_lastPeriodDays=null;}
   buildAndRender(dial,from,to);
   autoScrollResults();               // 上から下まで自動で流す
 }
@@ -2653,14 +2660,36 @@ function quickSearch(type){
   let from,to;
   if(type==='today'){from=to=t;}
   else if(type==='week1'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+6);}   // 今日から7日間
+  else if(type==='tomorrow'){from=new Date(t);from.setDate(t.getDate()+1);to=new Date(from);}  // 明日1日だけ
   else if(type==='week2'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+13);}  // 今日から14日間
   else if(type==='month1'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+29);}  // 今日から30日間(1ヶ月)
   document.getElementById('dateFrom').value=toISO(from);
   document.getElementById('dateTo').value=toISO(to);
   _selStart=toISO(from); _selEnd=toISO(to); // カレンダー側にも反映
+  _lastPeriodDays=Math.max(Math.round((to-from)/86400000)+1,1);   // 続けて検索はこの幅ずつ伸ばす
   updateRangeLabel();
   buildAndRender(dial,from,to);
-  autoScrollResults();   // 結果の一番下(カレンダーで見るボタン)まで自動で流す
+  autoScrollResults();   // 結果の一番下(ボタン)まで自動で流す
+}
+
+/* 続けて検索で伸ばす幅(日数) */
+let _lastPeriodDays=null;
+/* 表示中の期間を、同じ幅だけ後ろに伸ばして検索し直す */
+function continueSearch(){
+  const dial=parseInt(document.getElementById('todayInput').value);
+  if(!dial||dial<1||dial>92){showToast('今日のダイヤ番号を入力してください');return;}
+  const s=document.getElementById('dateFrom').value, e=document.getElementById('dateTo').value;
+  if(!s||!e){showToast('先に検索してください');return;}
+  const sd=new Date(s+'T00:00:00'), ed=new Date(e+'T00:00:00');
+  const span=Math.round((ed-sd)/86400000)+1;
+  const unit=_lastPeriodDays||span;              // 最初に検索した幅を引き継ぐ
+  const ne=new Date(ed); ne.setDate(ed.getDate()+unit);
+  document.getElementById('dateTo').value=toISO(ne);
+  _selEnd=toISO(ne); _lastPeriodDays=unit;
+  updateRangeLabel();
+  buildAndRender(dial,sd,ne);
+  autoScrollResults();
+  showToast('📅 '+unit+'日分を追加しました');
 }
 
 /* ==== コピー機能 ==== */
