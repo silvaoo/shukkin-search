@@ -686,6 +686,17 @@ input[type="date"] {
   display: block;
   border-radius: 8px;
 }
+.source-pdf-btn {
+  display: block; margin: 0 auto 10px; padding: 11px 14px; max-width: 520px; width: 100%;
+  background: linear-gradient(135deg, #ff8c00, #ff6a00); color: #fff;
+  border-radius: 10px; text-align: center; text-decoration: none;
+  font-size: 15px; font-weight: 800; line-height: 1.4;
+  box-shadow: 0 3px 10px rgba(255,140,0,0.35);
+}
+.source-pdf-btn span {
+  display: block; margin-top: 3px; font-size: 11px; font-weight: 500; opacity: 0.95;
+}
+.source-pdf-btn:active { filter: brightness(0.93); }
 .source-zoom-hint {
   text-align: center;
   color: #eee;
@@ -1175,6 +1186,10 @@ input[type="date"] {
 <!-- 元データ画像モーダル -->
 <div id="sourceModal" class="source-modal" onclick="closeSourceModal()">
   <div class="source-modal-content" onclick="event.stopPropagation()">
+    <a class="source-pdf-btn" href="kinmu-keitou-a.pdf" target="_blank" rel="noopener">
+      📄 勤務系統表（全16ページ）を開く
+      <span>系統・行先・中間解放まで載った詳しい表です。拡大しても文字がきれいです</span>
+    </a>
     <div class="source-img-scroll" id="srcScroll">
       <img id="srcImg"
            src="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/shift_table_hires.jpg"
