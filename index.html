@@ -602,6 +602,21 @@ input[type="date"] {
   resize: vertical; font-family: inherit; box-sizing: border-box;
 }
 .memo-input:focus { outline: none; border-color: var(--cyan); }
+        /* ==== メモに貼る画像 ==== */
+        .mimg-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; }
+        .mimg-item { position: relative; width: 64px; height: 64px; }
+        .mimg-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid rgba(150,150,180,0.5); cursor: pointer; }
+        .mimg-del { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; border: none; background: #d92626; color: #fff; font-size: 11px; font-weight: 900; line-height: 20px; text-align: center; cursor: pointer; padding: 0; }
+        .mimg-add { display: block; margin-top: 6px; padding: 8px; text-align: center; border: 1px dashed rgba(120,180,220,0.8); border-radius: 8px; color: #55b8e0; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .mimg-add input { display: none; }
+        .mimg-view { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 2px; }
+        .mimg-view img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(150,150,180,0.5); cursor: pointer; }
+        #imgViewer { display: none; position: fixed; inset: 0; z-index: 10060; background: rgba(0,0,0,0.94); overflow: auto; text-align: center; }
+        #imgViewer.on { display: block; }
+        #imgViewer img { max-width: 100%; margin-top: 54px; }
+        .iv-close { position: fixed; top: 12px; right: 12px; z-index: 2; background: rgba(255,255,255,0.92); color: #222; border: none; border-radius: 20px; padding: 8px 14px; font-size: 13px; font-weight: 800; cursor: pointer; }
+        .rcd-imgs { justify-content: center; margin: 8px 0 2px; }
+        .rcd-imgs img { width: 60px; height: 60px; border: 1px solid #d8d8e0; }
 .memo-actions { display: flex; gap: 6px; margin-top: 8px; }
 .memo-act {
   flex: 1; padding: 9px 4px; font-size: 12px; font-weight: 700;
@@ -1090,6 +1105,10 @@ input[type="date"] {
     <!-- ===== 更新履歴 ===== -->
     <div class="guide-pane" id="paneLog">
       <div class="log-item">
+        <div class="log-date">2026/07/25</div>
+        <div class="log-body"><span class="tag tag-new">新機能</span>メモに画像を貼れるようにしました。日付のメモ・ダイヤ番号のメモの両方に、写真を何枚でも貼れます。貼った画像はメモ一覧やカレンダーからも見られ、タップすると大きく表示されます。</div>
+      </div>
+      <div class="log-item">
         <div class="log-date">2026/07/20</div>
         <div class="log-body"><span class="tag tag-new">新機能</span>検索結果のカレンダーを「保存したカレンダー」としてメモ一覧に保存できるようにしました。さらに、そこから勤務をスマホのカレンダーアプリに一括登録できるようにしました（出勤1時間前のお知らせ付き）。</div>
       </div>
@@ -1470,6 +1489,133 @@ window.addEventListener('pagehide',stopSpeakIfNeeded);
    保存先はこの端末のブラウザ内(localStorage)のみ。同僚には共有されない。 */
 const MEMO_DATE_KEY='a-memos-date';
 const MEMO_DIAL_KEY='a-memos-dial';
+/* メモに貼る画像（長辺800px・画質60%に縮小して端末内に保存） */
+const MEMOIMG_DATE_KEY='a-memoimgs-date';
+const MEMOIMG_DIAL_KEY='a-memoimgs-dial';
+function loadImgs(key){ try{ return JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){ return {}; } }
+function saveImgs(key,obj){
+  try{ localStorage.setItem(key,JSON.stringify(obj)); return true; }
+  catch(e){ showToast('⚠️ 画像を保存できませんでした（容量がいっぱいかもしれません）'); return false; }
+}
+function getDateImgs(iso){ return loadImgs(MEMOIMG_DATE_KEY)[iso]||[]; }
+function getDialImgs(dn){ return loadImgs(MEMOIMG_DIAL_KEY)[dn]||[]; }
+function shrinkImage(file){
+  return new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onload=()=>{
+      const im=new Image();
+      im.onload=()=>{
+        const MAX=800;
+        let w=im.width,h=im.height;
+        if(w>h){ if(w>MAX){ h=Math.round(h*MAX/w); w=MAX; } }
+        else { if(h>MAX){ w=Math.round(w*MAX/h); h=MAX; } }
+        const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+        cv.getContext('2d').drawImage(im,0,0,w,h);
+        resolve(cv.toDataURL('image/jpeg',0.6));
+      };
+      im.onerror=reject; im.src=fr.result;
+    };
+    fr.onerror=reject; fr.readAsDataURL(file);
+  });
+}
+async function pickMemoImages(kind, iso, dn, input){
+  const files=[...(input.files||[])];
+  if(!files.length) return;
+  showToast('画像を読み込んでいます…');
+  const store = kind==='date' ? MEMOIMG_DATE_KEY : MEMOIMG_DIAL_KEY;
+  const key   = kind==='date' ? iso : dn;
+  const obj=loadImgs(store);
+  const list=(obj[key]||[]).slice();
+  for(const f of files){
+    if(!/^image\//.test(f.type)) continue;
+    try{ list.push(await shrinkImage(f)); }catch(e){}
+  }
+  obj[key]=list;
+  if(saveImgs(store,obj)){
+    showToast('📷 画像を追加しました');
+    renderMemoImgList(kind,iso,dn);
+    refreshMemoViews();
+  }
+  input.value='';
+}
+function renderMemoImgList(kind,iso,dn){
+  const box=document.getElementById('mimg-'+kind+'-'+iso);
+  if(!box) return;
+  const list = kind==='date' ? getDateImgs(iso) : getDialImgs(dn);
+  box.innerHTML = list.map((src,i)=>
+    `<div class="mimg-item">
+       <img src="${src}" onclick="openImgViewer('${kind}','${iso}',${dn},${i})">
+       <button class="mimg-del" onclick="deleteMemoImage('${kind}','${iso}',${dn},${i})">✕</button>
+     </div>`).join('');
+}
+function deleteMemoImage(kind,iso,dn,idx){
+  if(!confirm('この画像を削除しますか？')) return;
+  const store = kind==='date' ? MEMOIMG_DATE_KEY : MEMOIMG_DIAL_KEY;
+  const key   = kind==='date' ? iso : dn;
+  const obj=loadImgs(store);
+  const list=(obj[key]||[]).slice();
+  list.splice(idx,1);
+  if(list.length) obj[key]=list; else delete obj[key];
+  if(saveImgs(store,obj)){
+    showToast('🗑 画像を削除しました');
+    renderMemoImgList(kind,iso,dn);
+    refreshMemoViews();
+  }
+}
+function openImgViewer(kind,iso,dn,idx){
+  const list = kind==='date' ? getDateImgs(iso) : getDialImgs(dn);
+  showImgViewer(list[idx]);
+}
+function openImgViewerSrc(key,kind,idx){
+  const list = kind==='date' ? getDateImgs(key) : getDialImgs(key);
+  showImgViewer(list[idx]);
+}
+function showImgViewer(src){
+  if(!src) return;
+  let v=document.getElementById('imgViewer');
+  if(!v){
+    v=document.createElement('div'); v.id='imgViewer';
+    v.innerHTML='<button class="iv-close" onclick="closeImgViewer()">✕ 閉じる</button><img id="ivImg">';
+    v.addEventListener('click',(e)=>{ if(e.target===v) closeImgViewer(); });
+    document.body.appendChild(v);
+  }
+  document.getElementById('ivImg').src=src;
+  v.classList.add('on');
+}
+function closeImgViewer(){
+  const v=document.getElementById('imgViewer'); if(v) v.classList.remove('on');
+}
+function deleteMemoListImage(type,key,idx){
+  if(!confirm('この画像を削除しますか？')) return;
+  const store=type==='date'?MEMOIMG_DATE_KEY:MEMOIMG_DIAL_KEY;
+  const obj=loadImgs(store);
+  const list=(obj[key]||[]).slice();
+  list.splice(idx,1);
+  if(list.length) obj[key]=list; else delete obj[key];
+  if(saveImgs(store,obj)){
+    showToast('🗑 画像を削除しました');
+    renderMemoList(); refreshMemoViews(); editMemoItem(type,key);
+  }
+}
+async function addMemoListImages(type,key,input){
+  const files=[...(input.files||[])];
+  if(!files.length) return;
+  showToast('画像を読み込んでいます…');
+  const store=type==='date'?MEMOIMG_DATE_KEY:MEMOIMG_DIAL_KEY;
+  const obj=loadImgs(store);
+  const list=(obj[key]||[]).slice();
+  for(const f of files){
+    if(!/^image\//.test(f.type)) continue;
+    try{ list.push(await shrinkImage(f)); }catch(e){}
+  }
+  obj[key]=list;
+  if(saveImgs(store,obj)){
+    showToast('📷 画像を追加しました');
+    renderMemoList(); refreshMemoViews(); editMemoItem(type,key);
+  }
+  input.value='';
+}
+
 const SAVED_CAL_KEY='a-saved-cals';
 const SAVED_CAL_SEQ_KEY='a-saved-cals-seq';
 
@@ -1500,10 +1646,12 @@ function memoViewHtml(iso,dn){
   let h='';
   if(dm) h+=`<div class="memo-line">📝 ${escapeHtml(dm)}</div>`;
   if(dlm) h+=`<div class="memo-line memo-dial-line">🔖 ${dn}番: ${escapeHtml(dlm)}</div>`;
+  if(getDateImgs(iso).length) h+=`<div class="mimg-view">${getDateImgs(iso).map((s,i)=>`<img src="${s}" onclick="openImgViewer('date','${iso}',${dn},${i})">`).join('')}</div>`;
+  if(getDialImgs(dn).length) h+=`<div class="mimg-view">${getDialImgs(dn).map((s,i)=>`<img src="${s}" onclick="openImgViewer('dial','${iso}',${dn},${i})">`).join('')}</div>`;
   return h;
 }
 function memoBtnLabel(iso,dn){
-  return (getDateMemo(iso)||getDialMemo(dn))?'✏️ メモを編集':'📝 メモを追加';
+  return (getDateMemo(iso)||getDialMemo(dn)||getDateImgs(iso).length||getDialImgs(dn).length)?'✏️ メモを編集':'📝 メモを追加';
 }
 
 /* メモ編集欄の開閉（同じボタンを再タップで閉じる） */
@@ -1516,14 +1664,24 @@ function toggleMemo(iso,dn){
   edit.innerHTML=`
     <label class="memo-label">📝 ${md} 日付にメモ</label>
     <textarea class="memo-input" id="mi-date-${iso}" rows="2" placeholder="例: 年休申請済み">${escapeHtml(getDateMemo(iso))}</textarea>
+    <div class="mimg-list" id="mimg-date-${iso}"></div>
+    <label class="mimg-add">📷 この日に画像を追加
+      <input type="file" accept="image/*" multiple onchange="pickMemoImages('date','${iso}',${dn},this)">
+    </label>
     <label class="memo-label">🔖 ${dn}番 ダイヤにメモ（この番号の日すべてに表示）</label>
     <textarea class="memo-input" id="mi-dial-${iso}" rows="2" placeholder="例: 朝の道が混む">${escapeHtml(getDialMemo(dn))}</textarea>
+    <div class="mimg-list" id="mimg-dial-${iso}"></div>
+    <label class="mimg-add">📷 ${dn}番ダイヤに画像を追加
+      <input type="file" accept="image/*" multiple onchange="pickMemoImages('dial','${iso}',${dn},this)">
+    </label>
     <div class="memo-actions">
       <button class="memo-act memo-save" onclick="saveMemo('${iso}',${dn})">💾 保存</button>
       <button class="memo-act memo-del" onclick="deleteMemo('${iso}',${dn})">🗑 削除</button>
       <button class="memo-act memo-close" onclick="toggleMemo('${iso}',${dn})">✕ 閉じる</button>
     </div>`;
   edit.style.display='block';
+  renderMemoImgList('date',iso,dn);
+  renderMemoImgList('dial',iso,dn);
 }
 
 function saveMemo(iso,dn){
@@ -1543,6 +1701,8 @@ function deleteMemo(iso,dn){
   if(!confirm(`${md}のメモと、${dn}番のダイヤにメモを削除します。よろしいですか？\n（${dn}番のメモは他の日からも消えます）`))return;
   const dm=loadMemos(MEMO_DATE_KEY); delete dm[iso]; saveMemos(MEMO_DATE_KEY,dm);
   const lm=loadMemos(MEMO_DIAL_KEY); delete lm[dn]; saveMemos(MEMO_DIAL_KEY,lm);
+  const di=loadImgs(MEMOIMG_DATE_KEY); delete di[iso]; saveImgs(MEMOIMG_DATE_KEY,di);
+  const li=loadImgs(MEMOIMG_DIAL_KEY); delete li[dn]; saveImgs(MEMOIMG_DIAL_KEY,li);
   showToast('🗑 メモを削除しました');
   const area=document.querySelector(`.memo-area[data-iso="${iso}"]`);
   if(area){ const e=area.querySelector('.memo-edit'); e.style.display='none'; e.innerHTML=''; }
@@ -1815,7 +1975,8 @@ function renderMemoList(){
 
   // --- 日付のメモ（日付順。過ぎた日は薄く表示する） ---
   const dm=loadMemos(MEMO_DATE_KEY);
-  const dkeys=Object.keys(dm).sort();
+  const dimgs=loadImgs(MEMOIMG_DATE_KEY);
+  const dkeys=[...new Set([...Object.keys(dm), ...Object.keys(dimgs)])].sort();
   let h='';
   if(dkeys.length===0){
     h='<div class="ml-empty">日付のメモはまだありません。<br>検索結果の「📝 メモを追加」から書けます。</div>';
@@ -1834,7 +1995,8 @@ function renderMemoList(){
             <button class="ml-act del" onclick="deleteMemoItem('date','${k}')">削除</button>
           </div>
         </div>
-        <div class="ml-text">${escapeHtml(dm[k])}</div>
+        ${dm[k]?`<div class="ml-text">${escapeHtml(dm[k])}</div>`:''}
+        ${(dimgs[k]||[]).length?`<div class="mimg-view">${(dimgs[k]||[]).map((src,i)=>`<img src="${src}" onclick="openImgViewerSrc('${k}','date',${i})">`).join('')}</div>`:''}
       </div>`;
     });
     if(dkeys.some(k=>k<todayIso)){
@@ -1845,7 +2007,8 @@ function renderMemoList(){
 
   // --- ダイヤ番号のメモ（番号順） ---
   const lm=loadMemos(MEMO_DIAL_KEY);
-  const lkeys=Object.keys(lm).sort((a,b)=>Number(a)-Number(b));
+  const limgs=loadImgs(MEMOIMG_DIAL_KEY);
+  const lkeys=[...new Set([...Object.keys(lm), ...Object.keys(limgs)])].sort((a,b)=>Number(a)-Number(b));
   let h2='';
   if(lkeys.length===0){
     h2='<div class="ml-empty">ダイヤ番号のメモはまだありません。<br>検索結果の「📝 メモを追加」から書けます。</div>';
@@ -1860,7 +2023,8 @@ function renderMemoList(){
             <button class="ml-act del" onclick="deleteMemoItem('dial','${k}')">削除</button>
           </div>
         </div>
-        <div class="ml-text">${escapeHtml(lm[k])}</div>
+        ${lm[k]?`<div class="ml-text">${escapeHtml(lm[k])}</div>`:''}
+        ${(limgs[k]||[]).length?`<div class="mimg-view">${(limgs[k]||[]).map((src,i)=>`<img src="${src}" onclick="openImgViewerSrc('${k}','dial',${i})">`).join('')}</div>`:''}
       </div>`;
     });
   }
@@ -1897,12 +2061,17 @@ function editMemoItem(type,key){
   const cur=(type==='date'?loadMemos(MEMO_DATE_KEY):loadMemos(MEMO_DIAL_KEY))[key]||'';
   const ed=document.createElement('div');
   ed.className='ml-edit';
+  const imgs=(type==='date'?getDateImgs(key):getDialImgs(key));
+  const imgHtml = imgs.length ? `<div class="mimg-list">${imgs.map((src,i)=>`<div class="mimg-item"><img src="${src}" onclick="openImgViewerSrc('${key}','${type}',${i})"><button class="mimg-del" onclick="deleteMemoListImage('${type}','${key}',${i})">✕</button></div>`).join('')}</div>` : '';
   ed.innerHTML=`<textarea rows="3" id="ml-in-${type}-${key}">${escapeHtml(cur)}</textarea>
+    ${imgHtml}
+    <label class="mimg-add">📷 画像を追加<input type="file" accept="image/*" multiple onchange="addMemoListImages('${type}','${key}',this)"></label>
     <div class="ml-edit-acts">
       <button class="memo-act memo-save" onclick="saveMemoItem('${type}','${key}')">💾 保存</button>
       <button class="memo-act memo-close" onclick="renderMemoList()">✕ 取消</button>
     </div>`;
-  box.querySelector('.ml-text').style.display='none';
+  const txt=box.querySelector('.ml-text');
+  if(txt) txt.style.display='none';
   box.appendChild(ed);
   document.getElementById(`ml-in-${type}-${key}`).focus();
 }
@@ -1923,6 +2092,8 @@ function deleteMemoItem(type,key){
   const obj=loadMemos(store);
   delete obj[key];
   saveMemos(store,obj);
+  const istore=type==='date'?MEMOIMG_DATE_KEY:MEMOIMG_DIAL_KEY;
+  const iobj=loadImgs(istore); delete iobj[key]; saveImgs(istore,iobj);
   showToast('🗑 メモを削除しました');
   renderMemoList();
   refreshMemoViews();
@@ -2390,8 +2561,10 @@ function renderResultCal(){
         else   body+=`<div class="rc-t">要確認</div>`;
       }
       // その日にメモ（日付メモ or その日のダイヤ番号のメモ）があれば印を付ける
-      if(getDateMemo(iso) || (r.dn && getDialMemo(r.dn))){
-        body+=`<div class="rc-memo-mark">●メモ</div>`;
+      const hasTxt = getDateMemo(iso) || (r.dn && getDialMemo(r.dn));
+      const hasImg = getDateImgs(iso).length || (r.dn && getDialImgs(r.dn).length);
+      if(hasTxt || hasImg){
+        body+=`<div class="rc-memo-mark">${hasTxt?'●メモ':''}${hasImg?'📷':''}</div>`;
       }
     }
     html+=`<div class="${cls}"${r?` onclick="openRcDetail('${iso}')"`:''}><div class="rc-date">${d}</div><div class="rc-body">${body}</div></div>`;
@@ -2430,7 +2603,9 @@ function openRcDetail(iso){
   // メモがあれば見せる
   const dm=getDateMemo(iso), dlm=getDialMemo(r.dn);
   if(dm) html+=`<div class="rcd-note">📝 ${escapeHtml(dm)}</div>`;
+  if(getDateImgs(iso).length) html+=`<div class="mimg-view rcd-imgs">${getDateImgs(iso).map((s,i)=>`<img src="${s}" onclick="openImgViewerSrc('${iso}','date',${i})">`).join('')}</div>`;
   if(dlm) html+=`<div class="rcd-note">🔖 ${r.dn}番: ${escapeHtml(dlm)}</div>`;
+  if(getDialImgs(r.dn).length) html+=`<div class="mimg-view rcd-imgs">${getDialImgs(r.dn).map((s,i)=>`<img src="${s}" onclick="openImgViewerSrc('${r.dn}','dial',${i})">`).join('')}</div>`;
 
   html+='<button class="rcd-close" onclick="closeRcDetail()">閉じる</button>';
   document.getElementById('rcDetailBox').innerHTML=html;
