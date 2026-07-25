@@ -686,6 +686,31 @@ input[type="date"] {
   display: block;
   border-radius: 8px;
 }
+/* ==== 勤務系統表ビューア ==== */
+.keitou-modal {
+  display: none; position: fixed; inset: 0; z-index: 10050;
+  background: #101018; padding: 10px; box-sizing: border-box;
+  flex-direction: column;
+}
+.keitou-modal.on { display: flex; }
+.keitou-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.kk-nav {
+  width: 44px; height: 38px; border: 0; border-radius: 8px;
+  background: #2a2a3a; color: #fff; font-size: 16px; font-weight: 800; cursor: pointer;
+}
+.kk-nav:disabled { opacity: 0.3; }
+.kk-num { color: #fff; font-size: 14px; font-weight: 800; min-width: 60px; text-align: center; }
+.kk-close {
+  margin-left: auto; padding: 9px 16px; border: 0; border-radius: 8px;
+  background: #ff8c00; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer;
+}
+.keitou-scroll {
+  flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch;
+  background: #fff; border-radius: 8px;
+}
+.keitou-scroll img { width: 100%; height: auto; display: block; }
+.keitou-foot { color: #ccc; font-size: 12px; text-align: center; margin-top: 8px; }
+.keitou-foot a { color: #ffb44d; margin-left: 10px; }
 .source-pdf-btn {
   display: block; margin: 0 auto 10px; padding: 11px 14px; max-width: 520px; width: 100%;
   background: linear-gradient(135deg, #ff8c00, #ff6a00); color: #fff;
@@ -1184,12 +1209,29 @@ input[type="date"] {
 </div>
 
 <!-- 元データ画像モーダル -->
+<!-- 勤務系統表ビューア（アプリ内で開く。1ページずつ読み込むので軽い） -->
+<div id="keitouModal" class="keitou-modal">
+  <div class="keitou-bar">
+    <button class="kk-nav" id="kkPrev" onclick="kkMove(-1)">◀</button>
+    <span class="kk-num" id="kkNum">1 / 16</span>
+    <button class="kk-nav" id="kkNext" onclick="kkMove(1)">▶</button>
+    <button class="kk-close" onclick="closeKeitou()">✕ とじる</button>
+  </div>
+  <div class="keitou-scroll" id="kkScroll">
+    <img id="kkImg" alt="勤務系統表">
+  </div>
+  <div class="keitou-foot">
+    🔍 指を広げて拡大／◀▶でページ送り
+    <a href="kinmu-keitou-a.pdf" target="_blank" rel="noopener">PDFで開く・保存する</a>
+  </div>
+</div>
+
 <div id="sourceModal" class="source-modal" onclick="closeSourceModal()">
   <div class="source-modal-content" onclick="event.stopPropagation()">
-    <a class="source-pdf-btn" href="kinmu-keitou-a.pdf" target="_blank" rel="noopener">
-      📄 勤務系統表（全16ページ）を開く
-      <span>系統・行先・中間解放まで載った詳しい表です。拡大しても文字がきれいです</span>
-    </a>
+    <button class="source-pdf-btn" onclick="openKeitou(1)">
+      📄 勤務系統表（全16ページ）を見る
+      <span>系統・行先・中間解放まで載った詳しい表です</span>
+    </button>
     <div class="source-img-scroll" id="srcScroll">
       <img id="srcImg"
            src="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/shift_table_hires.jpg"
@@ -2771,6 +2813,35 @@ function drawFw(){
 
 /* ==== 初期化 ==== */
 /* 元データ画像モーダルの開閉 */
+/* ==== 勤務系統表ビューア（1ページずつ読み込む） ==== */
+const KK_PAGES = 16;
+let kkPage = 1;
+function openKeitou(p){
+  kkPage = p || 1;
+  renderKeitou();
+  document.getElementById('keitouModal').classList.add('on');
+}
+function closeKeitou(){
+  document.getElementById('keitouModal').classList.remove('on');
+}
+function kkMove(d){
+  const n = kkPage + d;
+  if(n < 1 || n > KK_PAGES) return;
+  kkPage = n;
+  renderKeitou();
+}
+function renderKeitou(){
+  const img = document.getElementById('kkImg');
+  if(img) img.src = 'kkimg/kk-' + String(kkPage).padStart(2,'0') + '.webp';
+  const num = document.getElementById('kkNum');
+  if(num) num.textContent = kkPage + ' / ' + KK_PAGES;
+  const pv = document.getElementById('kkPrev'), nx = document.getElementById('kkNext');
+  if(pv) pv.disabled = (kkPage === 1);
+  if(nx) nx.disabled = (kkPage === KK_PAGES);
+  const sc = document.getElementById('kkScroll');
+  if(sc){ sc.scrollTop = 0; sc.scrollLeft = 0; }   // ページを変えたら先頭から
+}
+
 function openSourceModal(){
   document.getElementById('sourceModal').classList.add('active');
   const sc = document.getElementById('srcScroll');
