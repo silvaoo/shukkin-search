@@ -490,6 +490,9 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
 }
 .inst-done b { color: var(--orange); }
 
+
+/* ヘッダーのマスコットアイコン（旧🚌の位置）。タイトル文字サイズに追従・角丸で馴染ませる */
+.mascot-icon{height:1.4em;width:1.4em;object-fit:cover;border-radius:24%;vertical-align:-0.34em;margin-right:.16em;}
 </style>
 </head>
 <body>
@@ -502,7 +505,7 @@ header .subtitle { font-size: 11px; color: var(--dim); margin-top: 4px; }
 <header>
   <a href="#" id="shareButton" onclick="shareApp(); return false;" aria-label="アプリを共有">📤</a>
   <div>
-    <h1>🚌 出退勤検索くん</h1>
+    <h1><img class="mascot-icon" src="mascot.png" alt="出退勤検索くん">出退勤検索くん</h1>
     <h1 style="font-size: 13px; margin-top: 4px;">二人同時検索版</h1>
     <div class="subtitle"><span class="dia-name">北大和・学園前 Aダイヤ</span> ／ 1〜92番</div>
   </div>

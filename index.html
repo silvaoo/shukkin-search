@@ -803,6 +803,9 @@ input[type="date"] {
 }
 .inst-done b { color: var(--orange); }
 
+
+/* ヘッダーのマスコットアイコン（旧🚌の位置）。タイトル文字サイズに追従・角丸で馴染ませる */
+.mascot-icon{height:1.4em;width:1.4em;object-fit:cover;border-radius:24%;vertical-align:-0.34em;margin-right:.16em;}
 </style>
 </head>
 <body>
@@ -814,7 +817,7 @@ input[type="date"] {
 
 <div class="header">
   <a href="#" class="share-btn" onclick="shareApp(); return false;" aria-label="アプリを共有">📤</a>
-  <h1>🚌 出退勤検索くん</h1>
+  <h1><img class="mascot-icon" src="mascot.png" alt="出退勤検索くん">出退勤検索くん</h1>
   <p><span class="dia-name">北大和・学園前 Aダイヤ</span> ／ 2026年3月14日改正 ／ 1〜92番</p>
   <button class="mode-btn" onclick="toggleMode()">🌙/☀️</button>
 </div>
