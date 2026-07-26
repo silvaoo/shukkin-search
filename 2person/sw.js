@@ -10,11 +10,12 @@
 
 // キャッシュ名にバージョンを入れておき、更新のたびにこの値を変えることで
 // 新しいService Workerが「更新あり」と判定されるようにする
-const CACHE_VERSION = 'a2-shukkin-v12';
+const CACHE_VERSION = 'a2-shukkin-v13';
 const CACHE_FILES = [
     './',
     './index.html',
     './mascot.png',
+    './icons/icon-192.png',
     './manifest.json'
 ];
 

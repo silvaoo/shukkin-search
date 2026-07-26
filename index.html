@@ -806,9 +806,26 @@ input[type="date"] {
 
 /* ヘッダーのマスコットアイコン（旧🚌の位置）。タイトル文字サイズに追従・角丸で馴染ませる */
 .mascot-icon{height:1.4em;width:1.4em;object-fit:cover;border-radius:24%;vertical-align:-0.34em;margin-right:.16em;}
+
+/* ===== 起動スプラッシュ（アイコン＋鹿くん） ===== */
+#launch-splash{position:fixed;inset:0;z-index:99999;background:#0a0e27;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  transition:opacity .4s ease;}
+#launch-splash.hide{opacity:0;pointer-events:none;}
+#launch-splash .ls-icon{width:104px;height:104px;border-radius:22%;
+  box-shadow:0 6px 22px rgba(0,0,0,.45);}
+#launch-splash .ls-mascot{width:96px;height:96px;border-radius:24%;
+  box-shadow:0 4px 16px rgba(0,0,0,.35);animation:ls-pop .5s ease .12s both;}
+@keyframes ls-pop{from{transform:scale(.55);opacity:0}to{transform:scale(1);opacity:1}}
 </style>
 </head>
 <body>
+<!-- 起動スプラッシュ：OSの「学A」アイコン表示に続けて、アイコン＋鹿くんを一瞬見せる。タップで即スキップ -->
+<div id="launch-splash" onclick="hideLaunchSplash()">
+  <img class="ls-icon" src="icons/icon-192.png" alt="学A">
+  <img class="ls-mascot" src="mascot.png" alt="出退勤検索くん">
+</div>
+
 <button id="update-banner" onclick="handleUpdateClick()" style="display:none;">🔄 新しいバージョンがあります。タップで更新</button>
 
 
@@ -2834,6 +2851,12 @@ window.onload=function(){
   document.getElementById('dateTo').value=_selEnd;
   updateRangeLabel();
 };
+</script>
+
+<script>
+/* 起動スプラッシュ：短時間表示してフェードアウト（タップでも消える） */
+function hideLaunchSplash(){var s=document.getElementById('launch-splash');if(!s||s.classList.contains('hide'))return;s.classList.add('hide');setTimeout(function(){s.style.display='none';},450);}
+(function(){window.addEventListener('load',function(){setTimeout(hideLaunchSplash,1000);});setTimeout(hideLaunchSplash,3000);})();
 </script>
 </body>
 </html>
