@@ -817,9 +817,21 @@ input[type="date"] {
 #launch-splash .ls-mascot{width:96px;height:96px;border-radius:24%;
   box-shadow:0 4px 16px rgba(0,0,0,.35);animation:ls-pop .5s ease .12s both;}
 @keyframes ls-pop{from{transform:scale(.55);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* ===== 引っ張って更新（ホーム画面アプリでも動く独自リロード） ===== */
+#ptr-indicator{position:fixed;top:0;left:50%;transform:translate(-50%,-70px);
+  display:flex;align-items:center;gap:8px;z-index:9000;
+  background:rgba(20,20,30,.88);color:#fff;padding:8px 16px;border-radius:0 0 16px 16px;
+  font-size:13px;font-weight:600;box-shadow:0 3px 12px rgba(0,0,0,.3);pointer-events:none;}
+#ptr-indicator .ptr-spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.35);
+  border-top-color:#fff;border-radius:50%;}
+#ptr-indicator.spin .ptr-spinner{animation:ptr-rot .7s linear infinite;}
+@keyframes ptr-rot{to{transform:rotate(360deg);}}
 </style>
 </head>
 <body>
+<div id="ptr-indicator"><div class="ptr-spinner"></div><span class="ptr-text">引っ張って更新</span></div>
+
 <!-- 起動スプラッシュ：OSの「学A」アイコン表示に続けて、アイコン＋鹿くんを一瞬見せる。タップで即スキップ -->
 <div id="launch-splash" onclick="hideLaunchSplash()">
   <img class="ls-icon" src="icons/icon-192.png" alt="学A">
@@ -1145,6 +1157,10 @@ input[type="date"] {
 
     <!-- ===== 更新履歴 ===== -->
     <div class="guide-pane" id="paneLog">
+      <div class="log-item">
+        <div class="log-date">2026/07/26</div>
+        <div class="log-body"><span class="tag tag-new">新機能</span>画面をいちばん上で下に引っ張ると、最新の状態に更新できるようにしました。ホーム画面のアイコンから開いた時も使えます。</div>
+      </div>
       <div class="log-item">
         <div class="log-date">2026/07/26</div>
         <div class="log-body"><span class="tag tag-new">新機能</span>出退勤検索くんに、イメージキャラクターとして奈良鹿ケンサクくんが登場しました！ケンサクくんが皆さんの出退勤をいつも見守ってくれてます。</div>
@@ -2861,6 +2877,57 @@ window.onload=function(){
 /* 起動スプラッシュ：短時間表示してフェードアウト（タップでも消える） */
 function hideLaunchSplash(){var s=document.getElementById('launch-splash');if(!s||s.classList.contains('hide'))return;s.classList.add('hide');setTimeout(function(){s.style.display='none';},450);}
 (function(){window.addEventListener('load',function(){setTimeout(hideLaunchSplash,1000);});setTimeout(hideLaunchSplash,3000);})();
+</script>
+<script>
+/* 引っ張って更新：iPhoneのホーム画面アプリ(PWA)でも指を下に引くとリロード。
+   モーダル表示中・スプラッシュ中・最上部でない時は発火しない。 */
+(function(){
+  var TH=70, el, txt, startY=0, pulling=false, refreshing=false, armed=false;
+  function scTop(){ return window.pageYOffset || (document.scrollingElement||document.documentElement).scrollTop || 0; }
+  function atTop(){ return scTop()<=0; }
+  function modalOpen(){ return document.body.style.overflow==='hidden'; }
+  function splashOn(){ var s=document.getElementById('launch-splash'); return !!(s && s.style.display!=='none' && !s.classList.contains('hide')); }
+  function setY(y,anim){ el.style.transition = anim?'transform .25s ease':'none'; el.style.transform='translate(-50%,'+y+'px)'; }
+  function onStart(e){
+    if(refreshing||!atTop()||modalOpen()||splashOn()){ pulling=false; return; }
+    startY=e.touches[0].clientY; pulling=true; armed=false;
+  }
+  function onMove(e){
+    if(!pulling||refreshing) return;
+    var dy=e.touches[0].clientY-startY;
+    if(dy<=0||!atTop()){ if(dy<=0){ pulling=false; setY(-70,true);} return; }
+    e.preventDefault();                 // ネイティブのバウンドを抑え指に追従
+    var dist=Math.min(dy*0.5,90);
+    setY(dist-70,false);
+    armed = dy>=TH;
+    txt.textContent = armed ? '離して更新' : '引っ張って更新';
+  }
+  function onEnd(){
+    if(!pulling||refreshing){ pulling=false; return; }
+    pulling=false;
+    if(armed) doRefresh(); else setY(-70,true);
+  }
+  function doRefresh(){
+    refreshing=true; armed=false; txt.textContent='更新中…'; el.classList.add('spin'); setY(14,true);
+    var go=function(){ try{location.reload();}catch(e){} };
+    try{
+      if(navigator.serviceWorker && navigator.serviceWorker.getRegistration){
+        navigator.serviceWorker.getRegistration().then(function(reg){
+          if(reg&&reg.update){ try{reg.update();}catch(e){} }
+          setTimeout(go,500);
+        }).catch(function(){ setTimeout(go,500); });
+      } else setTimeout(go,400);
+    }catch(e){ go(); }
+  }
+  function init(){
+    el=document.getElementById('ptr-indicator'); if(!el) return; txt=el.querySelector('.ptr-text');
+    document.addEventListener('touchstart',onStart,{passive:true});
+    document.addEventListener('touchmove',onMove,{passive:false});
+    document.addEventListener('touchend',onEnd,{passive:true});
+    document.addEventListener('touchcancel',onEnd,{passive:true});
+  }
+  if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
+})();
 </script>
 </body>
 </html>
