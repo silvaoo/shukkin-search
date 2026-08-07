@@ -541,11 +541,6 @@ input[type="date"] {
 }
 .day-card.long { border-color: rgba(255,0,128,0.4); }
 
-/* ==== B案: 検索結果のパラパラ表示(1枚ずつフワッと出す) ==== */
-.day-card.anim { animation: cardIn 0.45s ease both; }
-@keyframes cardIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .day-card { animation: none; } }
-
 /* ==== C案: 期間の合計労働時間 ==== */
 .res-total {
   background: var(--bg-card2); border: 1px solid var(--border); border-radius: 12px;
@@ -1820,23 +1815,6 @@ function refreshMemoViews(){
 }
 
 
-/* ==== B案: カードが画面に入った時にフワッと出す ====
-   自動スクロールで下まで流れる間、通り過ぎるカードが順に現れて見える。
-   IntersectionObserverが使えない端末では何もしない(=普通に表示される)ので安全。 */
-function animateCards(root){
-  if(!root||!('IntersectionObserver' in window))return;
-  const cards=root.querySelectorAll('.day-card');
-  if(!cards.length)return;
-  const io=new IntersectionObserver((entries,obs)=>{
-    entries.forEach(en=>{
-      if(!en.isIntersecting)return;
-      en.target.classList.add('anim');
-      obs.unobserve(en.target);
-    });
-  },{threshold:0.15});
-  cards.forEach(c=>io.observe(c));
-}
-
 /* ==== A案: 出勤・退勤までのカウントダウン ==== */
 /* "8:30" のような時刻文字列を0時からの分数に変換する(24時以降もそのまま扱える) */
 function cdToMin(t){const m=t.match(/^(\d+):(\d+)$/);return m?parseInt(m[1])*60+parseInt(m[2]):null;}
@@ -2359,7 +2337,6 @@ function render(rows){
   </div>`;
 
   el.innerHTML=html;
-  animateCards(el); // B案: 画面に入ったカードから順にフワッと出す
   window._lastRows=rows;
 
   if(kyuCnt>0)launchMultipleFireworks(5);
