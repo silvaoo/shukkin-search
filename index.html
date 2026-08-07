@@ -540,6 +540,32 @@ input[type="date"] {
   padding: 14px; margin-bottom: 12px; position: relative; overflow: hidden;
 }
 .day-card.long { border-color: rgba(255,0,128,0.4); }
+
+/* ==== B案: 検索結果のパラパラ表示(1枚ずつフワッと出す) ==== */
+.day-card { animation: cardIn 0.35s ease both; }
+@keyframes cardIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .day-card { animation: none; } }
+
+/* ==== C案: 期間の合計労働時間 ==== */
+.res-total {
+  background: var(--bg-card2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 10px 12px; margin-bottom: 12px; text-align: center;
+  font-size: 15px; font-weight: 700; color: var(--cyan); letter-spacing: 0.5px;
+}
+.res-total small { display: block; font-size: 11px; font-weight: 400; color: var(--dim); margin-top: 2px; }
+
+/* ==== A案: 出勤・退勤カウントダウン ==== */
+.today-countdown {
+  margin-top: 8px; text-align: center; font-size: 14px; font-weight: 700;
+  color: var(--cyan); background: rgba(0,230,118,0.07);
+  border: 1px solid var(--border); border-radius: 10px; padding: 8px;
+}
+.today-countdown.soon {
+  color: var(--yellow); border-color: rgba(255,230,0,0.5); background: rgba(255,230,0,0.08);
+  animation: cdPulse 1.4s ease-in-out infinite;
+}
+@keyframes cdPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .today-countdown.soon { animation: none; } }
 .day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; }
 .day-date { font-size: 19px; font-weight: 700; color: var(--text); }
 .day-date.holiday { color: var(--pink); }
@@ -864,6 +890,7 @@ a.source-link:visited {
     <span>番ダイヤ</span>
   </div>
   <div class="today-preview empty" id="todayPreviewBox">↑ 1〜92の番号を入力してください</div>
+  <div class="today-countdown" id="todayCountdown" style="display:none;"></div>
   <div class="mydial-note" id="myDialNote" style="display:none;">
     ✅ この番号を保存し、明日から自動で1つずつ進みます。
     <span class="mydial-forget" onclick="forgetMyDial()">保存を消す</span>
@@ -1793,6 +1820,47 @@ function refreshMemoViews(){
 }
 
 
+/* ==== A案: 出勤・退勤までのカウントダウン ==== */
+/* "8:30" のような時刻文字列を0時からの分数に変換する(24時以降もそのまま扱える) */
+function cdToMin(t){const m=t.match(/^(\d+):(\d+)$/);return m?parseInt(m[1])*60+parseInt(m[2]):null;}
+/* 残り分数を「あと◯時間◯分」の読みやすい形にする */
+function cdFmt(min){const h=Math.floor(min/60),m=min%60;return h>0?`あと${h}時間${m}分`:`あと${m}分`;}
+/* 今日のダイヤの勤務ペア[出勤,退勤]を返す。公休・要確認・3分割以上はnull */
+function todayShiftPairs(v){
+  const rec=DB[v];const dt=dayType(new Date());
+  if(!rec||!rec[dt])return null;
+  const o=rec[dt].o;
+  if(!o||o==='—'||!o.includes('〜'))return null;
+  const parts=o.split('〜');
+  if(parts.length!==2)return null;
+  const st=parts[0].split('/').map(x=>x.trim()),en=parts[1].split('/').map(x=>x.trim());
+  if(st.length===2&&en.length===2)return[[st[0],st[1]],[en[0],en[1]]]; // 中間解放(前半・後半)
+  if(st.length===1&&en.length===1)return[[st[0],en[0]]];               // 通常の通し勤務
+  return null;
+}
+/* 今日カードの下にカウントダウンを表示する(updateClockから毎秒呼ばれる) */
+function updateCountdown(){
+  const el=document.getElementById('todayCountdown');
+  if(!el)return;
+  const v=parseInt(document.getElementById('todayInput').value);
+  const pairs=(v>=1&&v<=92)?todayShiftPairs(v):null;
+  if(!pairs){el.style.display='none';return;}
+  const n=new Date();
+  const nowMin=n.getHours()*60+n.getMinutes();
+  let msg='',soon=false;
+  for(let i=0;i<pairs.length;i++){
+    const s=cdToMin(pairs[i][0]),e=cdToMin(pairs[i][1]);
+    if(s===null||e===null){el.style.display='none';return;}
+    const label=pairs.length===2?(i===0?'前半':'後半'):'';
+    if(nowMin<s){msg=`🚌 ${label}出勤まで ${cdFmt(s-nowMin)}`;soon=(s-nowMin)<=60;break;}
+    if(nowMin<e){msg=`🏠 ${label}退勤まで ${cdFmt(e-nowMin)}`;break;}
+  }
+  if(!msg){el.style.display='none';return;} // 全勤務が終わった後は表示しない
+  el.style.display='block';
+  el.textContent=msg;
+  el.classList.toggle('soon',soon);
+}
+
 /* ==== 本日の日付＋時刻(24時間表示・秒あり) ====
    以前は日付をHTMLに直書きしていたため更新されないバグがあった。
    1秒ごとに書き換えることで日付も必ず最新になる。 */
@@ -1805,6 +1873,8 @@ function updateClock(){
   const mm=String(n.getMinutes()).padStart(2,'0');
   const ss=String(n.getSeconds()).padStart(2,'0');
   el.innerHTML=`本日は${n.getMonth()+1}/${n.getDate()}(${DWJ[n.getDay()]}) ${hh}:${mm} <span class="clock-ss">${ss}</span>`;
+
+  updateCountdown(); // A案: カウントダウンも毎秒更新
 
   // 日付が変わったら今日の勤務表示も作り直す(日をまたいでも正しく表示させるため)
   const key=toISO(n);
@@ -2215,9 +2285,18 @@ function render(rows){
   const wkCnt=rows.filter(r=>r.rec&&r.slot&&r.slot.o!=='—').length;
   const kyuCnt=rows.filter(r=>!r.rec||(r.rec&&r.slot===null)).length;
 
+  // C案: 期間内の労働時間を分単位で合計する(公休・要確認の日は除く)
+  const totalMin=rows.reduce((sum,r)=>{
+    if(!r.rec||r.slot===null||!r.slot||!r.slot.w||r.slot.w==='—')return sum;
+    return sum+Math.round(parseTotalHours(r.slot.w)*60);
+  },0);
   let html=`<div class="res-summary">${rows.length}日間 ／ 勤務${wkCnt}日 ／ 公休${kyuCnt}日</div>`;
+  // 2日以上の検索なら合計労働時間カードを先頭に出す
+  if(rows.length>1&&totalMin>0){
+    html+=`<div class="res-total">📊 合計労働時間 ${Math.floor(totalMin/60)}時間${String(totalMin%60).padStart(2,'0')}分<small>勤務${wkCnt}日ぶんの合計です</small></div>`;
+  }
 
-  rows.forEach(r=>{
+  rows.forEach((r,idx)=>{
     const allKyu=!r.rec;
     const dayKyu=r.rec&&r.slot===null;
     const isOff=allKyu||dayKyu;
@@ -2246,7 +2325,7 @@ function render(rows){
       </div>${noteHtml}`;
     }
 
-    html+=`<div class="day-card${longClass}">
+    html+=`<div class="day-card${longClass}" style="animation-delay:${Math.min(idx*0.05,0.6).toFixed(2)}s">
       <div class="day-header">
         <div class="${dateClass}">${r.m}/${r.d}（${r.dw}）${r.hol?'🎌':''}${longBadge}</div>
         <div class="${badgeClass}">${badgeText}</div>
