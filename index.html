@@ -667,6 +667,7 @@ a.source-link:visited {
   cursor: pointer;
 }
 .source-modal {
+  overscroll-behavior: contain;   /* モーダル内の引っ張りで画面が再読み込みされるのを防ぐ */
   display: none;
   position: fixed;
   top: 0; left: 0; width: 100%; height: 100%;
@@ -685,6 +686,7 @@ a.source-link:visited {
   margin: 0 auto;
 }
 .source-img-scroll {
+  overscroll-behavior: contain;   /* 画像スクロール中のプルリフレッシュ防止 */
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -1239,7 +1241,7 @@ a.source-link:visited {
 <!-- 元データ画像モーダル -->
 <div id="sourceModal" class="source-modal" onclick="closeSourceModal()">
   <div class="source-modal-content" onclick="event.stopPropagation()">
-    <a class="source-pdf-btn" href="shift-table-a.pdf" target="_blank" rel="noopener">
+    <a class="source-pdf-btn" href="shift-table-a.pdf?v=2" target="_blank" rel="noopener">
       📄 出退勤表（PDF版）を開く
       <span>拡大したい時はこちら。共有→Adobe Readerで開くと好きなだけ大きくできます</span>
     </a>
@@ -1252,7 +1254,7 @@ a.source-link:visited {
            src="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/shift_table_hires.jpg"
            alt="学園前Ａダイヤ 出退勤表">
     </div>
-    <div class="source-zoom-hint">🔍 指を広げて拡大／狭めて縮小。とじるには下の「とじる」ボタン（戻らない時はページを再読み込み）</div>
+    <div class="source-zoom-hint">🔍 指を広げて拡大／狭めて縮小。とじるには下の「とじる」ボタン</div>
     <button class="source-close" onclick="closeSourceModal()">×&nbsp;とじる</button>
   </div>
 </div>
