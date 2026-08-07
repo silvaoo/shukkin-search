@@ -542,7 +542,7 @@ input[type="date"] {
 .day-card.long { border-color: rgba(255,0,128,0.4); }
 
 /* ==== B案: 検索結果のパラパラ表示(1枚ずつフワッと出す) ==== */
-.day-card { animation: cardIn 0.35s ease both; }
+.day-card.anim { animation: cardIn 0.35s ease both; }
 @keyframes cardIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .day-card { animation: none; } }
 
@@ -1820,6 +1820,23 @@ function refreshMemoViews(){
 }
 
 
+/* ==== B案: カードが画面に入った時にフワッと出す ====
+   自動スクロールで下まで流れる間、通り過ぎるカードが順に現れて見える。
+   IntersectionObserverが使えない端末では何もしない(=普通に表示される)ので安全。 */
+function animateCards(root){
+  if(!root||!('IntersectionObserver' in window))return;
+  const cards=root.querySelectorAll('.day-card');
+  if(!cards.length)return;
+  const io=new IntersectionObserver((entries,obs)=>{
+    entries.forEach(en=>{
+      if(!en.isIntersecting)return;
+      en.target.classList.add('anim');
+      obs.unobserve(en.target);
+    });
+  },{threshold:0.15});
+  cards.forEach(c=>io.observe(c));
+}
+
 /* ==== A案: 出勤・退勤までのカウントダウン ==== */
 /* "8:30" のような時刻文字列を0時からの分数に変換する(24時以降もそのまま扱える) */
 function cdToMin(t){const m=t.match(/^(\d+):(\d+)$/);return m?parseInt(m[1])*60+parseInt(m[2]):null;}
@@ -2291,10 +2308,6 @@ function render(rows){
     return sum+Math.round(parseTotalHours(r.slot.w)*60);
   },0);
   let html=`<div class="res-summary">${rows.length}日間 ／ 勤務${wkCnt}日 ／ 公休${kyuCnt}日</div>`;
-  // 2日以上の検索なら合計労働時間カードを先頭に出す
-  if(rows.length>1&&totalMin>0){
-    html+=`<div class="res-total">📊 合計労働時間 ${Math.floor(totalMin/60)}時間${String(totalMin%60).padStart(2,'0')}分<small>勤務${wkCnt}日ぶんの合計です</small></div>`;
-  }
 
   rows.forEach((r,idx)=>{
     const allKyu=!r.rec;
@@ -2325,7 +2338,7 @@ function render(rows){
       </div>${noteHtml}`;
     }
 
-    html+=`<div class="day-card${longClass}" style="animation-delay:${Math.min(idx*0.05,0.6).toFixed(2)}s">
+    html+=`<div class="day-card${longClass}">
       <div class="day-header">
         <div class="${dateClass}">${r.m}/${r.d}（${r.dw}）${r.hol?'🎌':''}${longBadge}</div>
         <div class="${badgeClass}">${badgeText}</div>
@@ -2336,12 +2349,17 @@ function render(rows){
     </div>`;
   });
 
+  // C案: 合計労働時間は自動スクロールが止まる「結果の一番下」に出す
+  if(rows.length>1&&totalMin>0){
+    html+=`<div class="res-total">📊 合計労働時間 ${Math.floor(totalMin/60)}時間${String(totalMin%60).padStart(2,'0')}分<small>勤務${wkCnt}日ぶんの合計です</small></div>`;
+  }
   html+=`<div class="action-row">
     <button class="act-btn act-more" onclick="continueSearch()">➕ 続けて検索</button>
     <button class="act-btn act-cal" onclick="openResultCal()">📅 カレンダーを見る</button>
   </div>`;
 
   el.innerHTML=html;
+  animateCards(el); // B案: 画面に入ったカードから順にフワッと出す
   window._lastRows=rows;
 
   if(kyuCnt>0)launchMultipleFireworks(5);
