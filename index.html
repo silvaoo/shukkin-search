@@ -658,7 +658,9 @@ input[type="date"] {
   margin-top: 14px;
   line-height: 1.8;
 }
-.source-link {
+.source-link,
+a.source-link:link,
+a.source-link:visited {
   color: var(--cyan);
   font-weight: 700;
   text-decoration: underline;
@@ -951,7 +953,10 @@ input[type="date"] {
     <button class="clear-results-btn" onclick="clearRangeResults()">🗑 検索結果を消す</button>
 
 <div class="data-source-notice">
-  このアプリは<span class="source-link" onclick="openSourceModal()">コチラ</span>のデータを元に作成しております。
+  このアプリは<a class="source-link" href="shift-table-a.pdf" target="_blank" rel="noopener">コチラ</a>のデータを元に作成しております。
+  <div style="margin-top:6px;font-size:0.9em;">
+    <span class="source-link" onclick="openSourceModal()">📄 勤務系統表・画像版はこちら</span>
+  </div>
 </div>
 
 <div class="footer">
@@ -1237,6 +1242,10 @@ input[type="date"] {
 <!-- 元データ画像モーダル -->
 <div id="sourceModal" class="source-modal" onclick="closeSourceModal()">
   <div class="source-modal-content" onclick="event.stopPropagation()">
+    <a class="source-pdf-btn" href="shift-table-a.pdf" target="_blank" rel="noopener">
+      📄 出退勤表（PDF版）を開く
+      <span>拡大したい時はこちら。共有→Adobe Readerで開くと好きなだけ大きくできます</span>
+    </a>
     <a class="source-pdf-btn" href="kinmu-keitou-a.pdf" target="_blank" rel="noopener">
       📄 勤務系統表（全16ページ）を開く
       <span>系統・行先・中間解放まで載った詳しい表です。拡大しても文字がきれいです</span>
