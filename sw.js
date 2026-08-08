@@ -10,7 +10,7 @@
 
 // キャッシュ名にバージョンを入れておき、更新のたびにこの値を変えることで
 // 新しいService Workerが「更新あり」と判定されるようにする
-const CACHE_VERSION = 'a-shukkin-v49';
+const CACHE_VERSION = 'a-shukkin-v50';
 const CACHE_FILES = [
     './',
     './index.html',
@@ -42,6 +42,9 @@ self.addEventListener('activate', (event) => {
 // fetch時: キャッシュを優先しつつ、なければネットワークから取得(オフライン対応)
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
+    // 外部ドメイン(Googleドライブのお知らせ画像など)は一切キャッシュしない。
+    // ここを通すと古い画像が端末に残り続け、差し替えや削除が反映されなくなるため。
+    if (new URL(event.request.url).origin !== self.location.origin) return;
     event.respondWith(
         caches.match(event.request).then((cached) => {
             const networkFetch = fetch(event.request)

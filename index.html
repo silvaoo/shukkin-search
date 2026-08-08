@@ -150,6 +150,39 @@ body {
   #update-banner{ animation: none; }
   #update-banner.burst{ animation: ub-burst 0.3s ease-out forwards; }
 }
+
+/* ==== お知らせバナー(検索カードの上に置く帯) ==== */
+#news-banner {
+  position: relative; width: 100%; margin: 0 0 12px; padding: 13px 40px 13px 14px;
+  border: none; border-radius: 14px; cursor: pointer; text-align: center;
+  background: linear-gradient(135deg, #bf00ff, #ff0080);
+  color: #fff; font-size: 14px; font-weight: 800; letter-spacing: 0.5px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4); transform-origin: center;
+  /* 最初だけ元気に脈打ち、その後はゆっくり呼吸する(更新バナーと同じ考え方) */
+  animation: ub-pulse-strong 0.7s ease-in-out 4, ub-pulse-soft 2.4s ease-in-out 2.8s infinite;
+}
+/* 右上の小さな×(バナーを閉じる)。バナー本体のタップとは別扱いにする */
+#news-close {
+  position: absolute; top: 50%; right: 8px; transform: translateY(-50%);
+  width: 26px; height: 26px; line-height: 24px; padding: 0;
+  border: 1px solid rgba(255,255,255,0.55); border-radius: 50%;
+  background: rgba(0,0,0,0.18); color: #fff; font-size: 15px; font-weight: 700;
+  cursor: pointer; z-index: 2;
+}
+#news-close:active { background: rgba(0,0,0,0.35); }
+#news-banner.burst { animation: ub-burst 0.5s ease-out forwards; pointer-events: none; }
+@media (prefers-reduced-motion: reduce){
+  #news-banner{ animation: none; }
+  #news-banner.burst{ animation: ub-burst 0.3s ease-out forwards; }
+}
+
+/* ==== お知らせの中身(画像を縦に並べて見せる) ==== */
+#newsModal .news-img-wrap { width: 100%; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+#newsModal .news-img-wrap img {
+  display: block; width: 100%; height: auto; margin: 0 0 12px;
+  border-radius: 10px; background: rgba(255,255,255,0.05);
+}
+#newsModal .news-loading { text-align: center; padding: 18px; font-size: 13px; opacity: 0.7; }
 /* ヘッダーのダイヤ名だけテーマ色にして、アプリを見分けやすくする(サイズは据え置き) */
 .dia-name { color: var(--orange); font-weight: 800; }
 .mydial-note {
@@ -893,6 +926,13 @@ a.source-link:visited {
   <button class="speak-today-btn" id="speakTodayBtn" onclick="handleSpeakToday()">🔊 今日の勤務を読み上げ</button>
 </div>
 
+<!-- お知らせバナー(タップで破裂→中身を表示。×で閉じる)
+     初期は非表示。news.json にお知らせが1件以上ある時だけJSで表示する。 -->
+<button id="news-banner" onclick="handleNewsClick()" style="display:none;">
+  📢 お知らせがあります！ ▸ タップして見る
+  <span id="news-close" onclick="event.stopPropagation();closeNewsBanner()">×</span>
+</button>
+
 <!-- クイック検索 -->
 <div class="card">
   <div class="card-title">クイック検索</div>
@@ -1261,6 +1301,17 @@ a.source-link:visited {
 </div>
 
 <!-- 元データ画像モーダル -->
+<!-- お知らせモーダル(元データ表示と同じ作りを流用) -->
+<div id="newsModal" class="source-modal" onclick="closeNewsModal()">
+  <div class="source-modal-content" onclick="event.stopPropagation()">
+    <div class="news-img-wrap" id="newsImgWrap">
+      <div class="news-loading">読み込み中…</div>
+    </div>
+    <div class="source-zoom-hint">🔍 指を広げて拡大／狭めて縮小。とじるには下の「とじる」ボタン</div>
+    <button class="source-close" onclick="closeNewsModal()">×&nbsp;とじる</button>
+  </div>
+</div>
+
 <div id="sourceModal" class="source-modal" onclick="closeSourceModal()">
   <div class="source-modal-content" onclick="event.stopPropagation()">
     <a class="source-pdf-btn" href="shift-table-a.pdf?v=2" target="_blank" rel="noopener">
@@ -1950,6 +2001,73 @@ function hissSound(){
   src.connect(bp); bp.connect(g); g.connect(ctx.destination);
   src.start(); src.stop(ctx.currentTime+dur);
 }
+/* =====================================================
+   お知らせバナー
+   一覧は全アプリ共通の news.json(学園前Aのリポジトリに1つだけ置いてある)を読む。
+   急告を出す時は news.json に1行足すだけで、5アプリすべてに反映される。
+   画像そのものはGoogleドライブの共有フォルダに置いたものを表示する。
+   ===================================================== */
+const NEWS_LIST_URL = 'https://silvaoo.github.io/shukkin-search/news.json';
+let NEWS_ITEMS = [];
+
+/* ドライブの画像URLは2種類あり、時期によって使える方が変わる。
+   まず lh3 を試し、だめなら thumbnail に切り替える(onerrorで自動フォールバック)。 */
+function newsImgTags(){
+  const t=Date.now();   // 開くたびに違う値を付け、ブラウザに必ず取り直させる
+  return NEWS_ITEMS.map((it,i)=>{
+    const id=it.fileId;
+    const primary=`https://lh3.googleusercontent.com/d/${id}=w1200&_=${t}`;
+    const backup=`https://drive.google.com/thumbnail?id=${id}&sz=w1200&_=${t}`;
+    return `<img src="${primary}" alt="お知らせ${i+1}" loading="lazy"
+      onerror="if(!this._retried){this._retried=1;this.src='${backup}';}else{this.style.display='none';}">`;
+  }).join('');
+}
+
+/* 起動時に一覧を読み込み、1件以上あればバナーを出す。
+   ?_= を付けて必ず最新を取りに行く(古い一覧が残ると急告が届かないため)。 */
+async function loadNews(){
+  try{
+    const res=await fetch(NEWS_LIST_URL+'?_='+Date.now(),{cache:'no-store'});
+    if(!res.ok)return;
+    const data=await res.json();
+    NEWS_ITEMS=Array.isArray(data.items)?data.items.filter(x=>x&&x.fileId):[];
+    if(NEWS_ITEMS.length>0){
+      const b=document.getElementById('news-banner');
+      if(b)b.style.display='';
+    }
+  }catch(e){
+    /* 圏外や通信失敗の時は黙って何もしない(バナーを出さないだけ) */
+  }
+}
+
+/* バナーをタップ: 破裂演出→お知らせを開く */
+function handleNewsClick(){
+  const b=document.getElementById('news-banner');
+  if(!b||b._bursting)return;
+  b._bursting=true;
+  playUpdateBurst(b);                       // 更新バナーと同じ「パシュッ＋煙」
+  setTimeout(()=>{
+    b.style.display='none';                 // 帯は消して、中身を出す
+    b._bursting=false;
+    openNewsModal();
+  },900);
+}
+/* 右上の×: 中身は見ずにバナーだけ閉じる(次に開いた時はまた出る) */
+function closeNewsBanner(){
+  const b=document.getElementById('news-banner');
+  if(b)b.style.display='none';
+}
+function openNewsModal(){
+  const wrap=document.getElementById('newsImgWrap');
+  if(wrap)wrap.innerHTML=newsImgTags();
+  document.getElementById('newsModal').classList.add('active');
+  document.body.style.overflow='hidden';
+}
+function closeNewsModal(){
+  document.getElementById('newsModal').classList.remove('active');
+  document.body.style.overflow='';
+}
+
 function handleUpdateClick(){
   const b=document.getElementById('update-banner');
   if(!b || b._bursting) return;
@@ -2959,7 +3077,7 @@ window.onload=function(){
 <script>
 /* 起動スプラッシュ：短時間表示してフェードアウト（タップでも消える） */
 function hideLaunchSplash(){var s=document.getElementById('launch-splash');if(!s||s.classList.contains('hide'))return;s.classList.add('hide');setTimeout(function(){s.style.display='none';},450);}
-(function(){window.addEventListener('load',function(){setTimeout(hideLaunchSplash,1000);});setTimeout(hideLaunchSplash,3000);})();
+(function(){window.addEventListener('load',function(){setTimeout(hideLaunchSplash,1000);loadNews();});setTimeout(hideLaunchSplash,3000);})();
 </script>
 <script>
 /* 引っ張って更新：iPhoneのホーム画面アプリ(PWA)でも指を下に引くとリロード。
