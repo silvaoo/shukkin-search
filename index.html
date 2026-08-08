@@ -177,6 +177,7 @@ body {
 }
 
 /* ==== お知らせの中身(画像を縦に並べて見せる) ==== */
+#newsModal { background: #000; }   /* 後ろの画面が透けないよう完全な黒にする */
 #newsModal .news-img-wrap { flex: 1; min-height: 0; width: 100%; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 #newsModal .news-img-wrap img:last-child { margin-bottom: 0; }
 #newsModal .news-img-wrap img {
@@ -726,7 +727,7 @@ a.source-link:visited {
   display: none;
   position: fixed;
   top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.9);
+  background: #000;   /* 後ろの画面が透けないよう完全な黒にする */
   z-index: 10000;
   padding: 12px;
   box-sizing: border-box;
