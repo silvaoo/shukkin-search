@@ -2,5 +2,8 @@
   "_説明": "出退勤検索くん 全アプリ共通のお知らせ一覧です。",
   "_使い方": "急告を出すときは items に1行足す。取り下げるときはその行を消す。items が空ならバナーは出ません。",
   "_IDの調べ方": "ドライブで画像を長押し→リンクをコピー→ /d/ と /view の間がファイルIDです。",
-"items": [ { "fileId": "1mZtwBgU7QG8OOCG8J4NIKCao2N9czmL2", "memo": "テスト" } ]
+"items": [
+{ "fileId": "1mZtwBgU7QG8OOCG8J4NIKCao2N9czmL2", "memo": "テスト" },
+{ "fileId": "1FMcOhCSqAYeZYUVoc1L_wJFsvGWiBacj", "memo": "2枚目" }
+]
 }
