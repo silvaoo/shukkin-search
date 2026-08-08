@@ -177,7 +177,8 @@ body {
 }
 
 /* ==== お知らせの中身(画像を縦に並べて見せる) ==== */
-#newsModal .news-img-wrap { width: 100%; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+#newsModal .news-img-wrap { flex: 1; min-height: 0; width: 100%; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+#newsModal .news-img-wrap img:last-child { margin-bottom: 0; }
 #newsModal .news-img-wrap img {
   display: block; width: 100%; height: auto; margin: 0 0 12px;
   border-radius: 10px; background: rgba(255,255,255,0.05);
@@ -1323,7 +1324,7 @@ a.source-link:visited {
     <div class="news-img-wrap" id="newsImgWrap">
       <div class="news-loading">読み込み中…</div>
     </div>
-    <div class="source-zoom-hint">🔍 指を広げて拡大／狭めて縮小。とじるには下の「とじる」ボタン</div>
+    <div class="source-zoom-hint">🔍 指を広げると拡大できます</div>
     <button class="source-close" onclick="closeNewsModal()">×&nbsp;とじる</button>
   </div>
 </div>
