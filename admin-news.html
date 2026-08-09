@@ -47,7 +47,13 @@ button.main{
 }
 .check{background:linear-gradient(90deg,#0ea5e9,#8b5cf6)}
 .send{background:#dc2626}
-.sub{background:#334155;padding:12px;font-size:14px}
+/* カギを消す操作は、めったに使わないうえ押すと送れなくなる。
+   誤って触らないよう、小さな文字リンクにして下のほうへ置く。 */
+.danger-link{
+  display:block;width:100%;margin-top:22px;padding:8px;
+  background:none;border:none;color:#5b6b83;
+  font-size:11px;text-decoration:underline;cursor:pointer;
+}
 button:disabled{opacity:.45}
 #log{
   white-space:pre-wrap;font-size:13px;line-height:1.7;color:var(--dim);
@@ -125,12 +131,13 @@ button:disabled{opacity:.45}
 
 まず「① 確認する」を押して、送る人数と内容を確かめてください。</div>
 
-  <button class="main sub" onclick="forgetToken()">この端末からカギを消す</button>
 
   <div class="foot">
     カギの有効期限は 2027年8月9日<br>
     期限が切れたら新しく作り直してください
   </div>
+
+  <button class="danger-link" onclick="forgetToken()">この端末からカギを消す</button>
 </div>
 </div>
 
@@ -181,7 +188,9 @@ function saveToken(){
 }
 
 function forgetToken(){
-  if(!confirm('この端末からカギを消しますか？\n消すと送信できなくなります。')) return;
+  // 押し間違いで消えると送信できなくなるため、二段階で確かめる
+  if(!confirm('この端末からカギを消しますか？\n\n消すとお知らせを送れなくなります。\nもう一度登録するには、保存してあるカギの貼り付けが必要です。')) return;
+  if(!confirm('本当に消してよいですか？\n\nカギを控えていない場合は、消さないでください。')) return;
   try{ localStorage.removeItem(TOKEN_KEY); }catch(e){}
   showProperScreen();
 }
