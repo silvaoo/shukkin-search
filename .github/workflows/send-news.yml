@@ -1,0 +1,65 @@
+# =========================================================
+# お知らせの一斉送信
+#
+# 営業所からの通告など、すぐ全員に伝えたいときに使う。
+# 自動では動かない。Actions 画面から手動で実行する。
+#
+# 誤送信を防ぐため、「本当に送る」にチェックを入れない限り
+# 宛先の人数と本文を表示するだけで終わる（下書き確認）。
+# =========================================================
+name: お知らせを一斉送信
+
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: 'タイトル（例: 営業所からの連絡）'
+        required: true
+        default: '📢 お知らせ'
+      body:
+        description: '本文'
+        required: true
+      apps:
+        description: 'どのダイヤに送るか'
+        required: true
+        type: choice
+        default: 'all'
+        options:
+          - 'all'          # 全ダイヤ
+          - 'a'            # 学園前Ａ
+          - 'ikoma'        # 生駒
+          - 'ba'           # 北大和Ｂ
+          - 'c'            # 北大和Ｃ
+          - 'yobi'         # 予備
+          - 'a ikoma'      # 学園前Ａ＋生駒
+          - 'ba c'         # 北大和Ｂ＋Ｃ
+          - 'a ba c'       # 北大和ぜんぶ（学園前Ａ・Ｂ・Ｃ）
+      apps_custom:
+        description: '上の選択にない組み合わせのとき。空白区切り（例: a ikoma yobi）。入力すると上の選択より優先'
+        required: false
+        default: ''
+      confirm:
+        description: '本当に送る（チェックしないと下書き確認だけ）'
+        type: boolean
+        default: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      - name: Node を用意
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 送信
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+          MSG_TITLE: ${{ inputs.title }}
+          MSG_BODY: ${{ inputs.body }}
+          MSG_APPS: ${{ inputs.apps_custom != '' && inputs.apps_custom || inputs.apps }}
+          MSG_CONFIRM: ${{ inputs.confirm }}
+        run: node scripts/send-news.js
