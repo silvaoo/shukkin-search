@@ -2104,9 +2104,14 @@ async function toggleNotify(){
   // オンにするときは、通知の許可と登録をまとめて済ませる
   const ok = await setupPush();
   if(ok){
-    // 番号が未保存だと、いつ知らせればいいか決められない
+    // 番号が未保存だと、いつ知らせればいいか決められない。
+    // 入力欄に番号が入っているだけで保存し忘れている人が多いので、
+    // ここで自動的に保存してしまう。
     if(!getMyDialBase()){
-      showToast('先に「今日のダイヤ番号」を保存してください');
+      try{ saveMyDial(); }catch(e){}
+    }
+    if(!getMyDialBase()){
+      showToast('先に「今日のダイヤ番号」を入力してください');
       renderNotifySettings();
       return;
     }
