@@ -362,6 +362,60 @@ body {
 }
 
 /* ==== メモ一覧（保存したメモをまとめて見る・直す） ==== */
+/* ==== 通知の設定モーダル ====
+   スマホ操作に慣れていない人でも押しやすいよう、
+   文字も押す場所も大きめに作ってある。 */
+.notify-modal {
+  display: none; position: fixed; inset: 0; z-index: 10002;
+  background: rgba(0,0,0,0.9); padding: 16px; overflow-y: auto;
+}
+.notify-modal.active { display: block; }
+.nt-box {
+  max-width: 560px; margin: 0 auto 40px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px;
+}
+.nt-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.nt-head h2 { font-size: 16px; color: var(--cyan); font-weight: 800; margin: 0; }
+/* いまオンかオフかを、色と文字の両方ではっきり示す */
+.nt-state {
+  text-align: center; padding: 14px; border-radius: 12px;
+  font-size: 17px; font-weight: 800; margin-bottom: 14px;
+}
+.nt-state.on  { background: rgba(0,200,120,0.15); color: #4ade80; border: 2px solid #4ade80; }
+.nt-state.off { background: rgba(255,255,255,0.05); color: #94a3b8; border: 2px solid #475569; }
+/* 主ボタン。指で押しやすいよう高さを大きく取る */
+.nt-btn {
+  display: block; width: 100%; padding: 18px; margin-bottom: 12px;
+  font-size: 17px; font-weight: 800; border: none; border-radius: 12px;
+  cursor: pointer; color: #fff;
+}
+.nt-btn.go   { background: linear-gradient(90deg,#0ea5e9,#8b5cf6); }
+.nt-btn.stop { background: #475569; }
+.nt-sec { font-size: 14px; font-weight: 800; color: var(--cyan); margin: 20px 0 10px; }
+/* 何分前に知らせるかの選択。3つだけに絞ってある */
+.nt-opts { display: flex; flex-direction: column; gap: 10px; }
+.nt-opt {
+  display: flex; align-items: center; gap: 12px; padding: 16px;
+  background: var(--bg-card2); border: 2px solid var(--border);
+  border-radius: 12px; font-size: 16px; font-weight: 700;
+  color: #e2e8f0; cursor: pointer;
+}
+.nt-opt.on { border-color: var(--cyan); background: rgba(34,211,238,0.12); color: #fff; }
+.nt-opt .mark { font-size: 20px; width: 24px; text-align: center; }
+/* 設定した結果を具体的な日時で見せる欄 */
+.nt-plan {
+  margin-top: 18px; padding: 14px; border-radius: 12px;
+  background: rgba(34,211,238,0.08); border: 1px solid var(--border);
+  font-size: 15px; line-height: 1.7; color: #e2e8f0; text-align: center;
+}
+.nt-plan .big { font-size: 20px; font-weight: 800; color: #fde047; display: block; margin: 4px 0; }
+.nt-note { margin-top: 16px; font-size: 12px; line-height: 1.7; color: var(--dim); }
+.nt-warn {
+  margin-top: 14px; padding: 12px; border-radius: 10px;
+  background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.4);
+  font-size: 13px; line-height: 1.7; color: #fde047;
+}
 .memolist-modal {
   display: none; position: fixed; inset: 0; z-index: 10002;
   background: rgba(0,0,0,0.9); padding: 16px; overflow-y: auto;
@@ -1027,7 +1081,19 @@ a.source-link:visited {
   <div>出退勤時間に誤りがあっても当方は責任を負いかねます。</div>
   <div style="margin-top:8px;"><span class="source-link" onclick="openMemoList()">📝 保存したメモの一覧</span></div>
   <div style="margin-top:8px;"><span class="source-link" onclick="openGuide()">📖 使い方・アプリの入れ方・更新履歴</span></div>
+  <div style="margin-top:8px;"><span class="source-link" onclick="openNotifySettings()">🔔 出勤通知の設定</span></div>
   <div class="credit" style="margin-top:10px;">by AIタケタニ</div>
+</div>
+
+<!-- 出勤通知の設定 -->
+<div id="notifyModal" class="notify-modal" onclick="if(event.target===this)closeNotifySettings()">
+  <div class="nt-box">
+    <div class="nt-head">
+      <h2>🔔 出勤通知の設定</h2>
+      <button class="guide-close" onclick="closeNotifySettings()">✕ 閉じる</button>
+    </div>
+    <div id="ntBody"></div>
+  </div>
 </div>
 
 <!-- メモ一覧 -->
@@ -1963,6 +2029,150 @@ function updateClock(){
      ② アプリを閉じた状態でも通知が届くか
    ②はAndroidでは届き、iPhoneでは届かない見込み。その差を実際に見るためのテスト。 */
 
+/* ==== 出勤通知の設定画面 ====
+   利用者がやることは「受け取るかどうか」と「何分前か」の2つだけ。
+   トークンなどの専門的な話は一切表に出さない。 */
+
+const NOTIFY_ON_KEY   = 'a-notify-on';    // 通知を受け取るかどうか
+const NOTIFY_LEAD_KEY = 'a-notify-lead';  // 何分前に知らせるか
+
+function getNotifyOn(){
+  try{ return localStorage.getItem(NOTIFY_ON_KEY) === '1'; }catch(e){ return false; }
+}
+function getNotifyLead(){
+  try{
+    const v = parseInt(localStorage.getItem(NOTIFY_LEAD_KEY));
+    return (v === 30 || v === 60 || v === 120) ? v : 60;   // 初期値は1時間前
+  }catch(e){ return 60; }
+}
+
+/* 指定した日の、指定したダイヤ番号の「出勤時刻」を取り出す。
+   公休・要確認・時刻が読み取れないものは null を返す。 */
+function shiftStartFor(dial, date){
+  const rec = DB[dial];
+  if(!rec) return null;
+  const e = rec[dayType(date)];
+  if(!e || !e.o || e.o === '—' || !e.o.includes('〜')) return null;
+  // 「6:20/11:56〜16:18/22:01」のような中間解放は、最初の出勤時刻を使う
+  const st = e.o.split('〜')[0].split('/')[0].trim();
+  const m = st.match(/^(\d{1,2}):(\d{2})$/);
+  if(!m) return null;
+  return { h: parseInt(m[1]), m: parseInt(m[2]), text: st };
+}
+
+/* 次に通知される予定を割り出す。
+   今日から順に見ていき、まだ過ぎていない最初の勤務を返す。
+   公休が続く場合も飛ばして探すので、最大14日先まで見る。 */
+function nextNotifyPlan(){
+  const el = document.getElementById('todayInput');
+  const v = el ? parseInt(el.value) : NaN;
+  if(!v || v < 1 || v > 92) return null;
+  const lead = getNotifyLead();
+  const now = new Date();
+  for(let i = 0; i <= 14; i++){
+    const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + i);
+    const dial = calcDial(d, v);
+    const st = shiftStartFor(dial, d);
+    if(!st) continue;                       // 公休などは飛ばす
+    const start = new Date(d);
+    start.setHours(st.h, st.m, 0, 0);
+    const notify = new Date(start.getTime() - lead * 60000);
+    if(notify > now) return { date: d, dial: dial, start: start, notify: notify, startText: st.text };
+  }
+  return null;
+}
+
+function openNotifySettings(){
+  renderNotifySettings();
+  document.getElementById('notifyModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeNotifySettings(){
+  document.getElementById('notifyModal').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+/* 通知を受け取る / 止める を切り替える */
+async function toggleNotify(){
+  if(getNotifyOn()){
+    try{ localStorage.setItem(NOTIFY_ON_KEY, '0'); }catch(e){}
+    showToast('通知を止めました');
+    renderNotifySettings();
+    return;
+  }
+  // オンにするときは、通知の許可と登録をまとめて済ませる
+  const ok = await setupPush();
+  if(ok){
+    try{ localStorage.setItem(NOTIFY_ON_KEY, '1'); }catch(e){}
+    showToast('通知を受け取る設定にしました');
+  }
+  renderNotifySettings();
+}
+
+/* 何分前に知らせるかを選ぶ */
+function setNotifyLead(min){
+  try{ localStorage.setItem(NOTIFY_LEAD_KEY, String(min)); }catch(e){}
+  renderNotifySettings();
+  beep(880, 60, 0);
+}
+
+/* 設定画面の中身を描き直す */
+function renderNotifySettings(){
+  const box = document.getElementById('ntBody');
+  if(!box) return;
+  const on   = getNotifyOn();
+  const lead = getNotifyLead();
+  const DWJ  = ['日','月','火','水','木','金','土'];
+  const p2   = function(n){ return String(n).padStart(2,'0'); };
+  const leadText = (lead === 120) ? '2時間' : (lead === 60 ? '1時間' : '30分');
+
+  let h = '';
+
+  // いまオンかオフか。色と文字の両方で示す
+  h += '<div class="nt-state ' + (on ? 'on' : 'off') + '">'
+     + (on ? '✅ 通知を受け取る設定です' : '⚪ 通知は入っていません')
+     + '</div>';
+
+  // 切り替えボタン
+  h += '<button class="nt-btn ' + (on ? 'stop' : 'go') + '" onclick="toggleNotify()">'
+     + (on ? '通知を止める' : '通知を受け取る')
+     + '</button>';
+
+  // 何分前に知らせるか
+  h += '<div class="nt-sec">いつ知らせますか？</div><div class="nt-opts">';
+  [[30,'出勤の 30分前'],[60,'出勤の 1時間前'],[120,'出勤の 2時間前']].forEach(function(o){
+    h += '<div class="nt-opt ' + (lead === o[0] ? 'on' : '') + '" onclick="setNotifyLead(' + o[0] + ')">'
+       + '<span class="mark">' + (lead === o[0] ? '◉' : '○') + '</span>'
+       + '<span>' + o[1] + '</span></div>';
+  });
+  h += '</div>';
+
+  // 次はいつ通知されるか。設定が効いているか本人が確かめられるようにする
+  const plan = nextNotifyPlan();
+  if(plan){
+    const d = plan.date, n = plan.notify;
+    h += '<div class="nt-plan">次にお知らせするのは'
+       + '<span class="big">' + (d.getMonth()+1) + '月' + d.getDate() + '日（' + DWJ[d.getDay()] + '）'
+       + n.getHours() + ':' + p2(n.getMinutes()) + '</span>'
+       + plan.dial + '番ダイヤ　出勤 ' + plan.startText + ' の' + leadText + '前</div>';
+  }else{
+    h += '<div class="nt-warn">先に「今日は何番ダイヤ」を入力して保存してください。'
+       + '<br>番号が分からないと、いつ知らせればいいか計算できません。</div>';
+  }
+
+  // まだ準備中であることを正直に書いておく
+  h += '<div class="nt-warn">⚠ この機能はまだ準備中です。'
+     + '<br>設定は保存されますが、実際の自動通知はまだ届きません。</div>';
+
+  // 届かないときの案内。ここを書いておかないと問い合わせが集中する
+  h += '<div class="nt-note">■ 通知が届かないときは<br>'
+     + '・iPhoneはホーム画面に追加してから開いてください。ブラウザのままでは届きません<br>'
+     + '・マナーモード（サイレント）のときは音が鳴りません<br>'
+     + '・端末の設定で、このアプリの通知が切られていないか確かめてください</div>';
+
+  box.innerHTML = h;
+}
+
 /* ==== プッシュ通知の登録（試験中） ====
    アプリを閉じていても通知を受け取れるようにするための準備。
    Firebaseから発行される「トークン」がこの端末の宛先になる。
@@ -1985,23 +2195,23 @@ async function setupPush(){
   // 通知に対応していない端末・ブラウザをはじく
   if(!('Notification' in window) || !('serviceWorker' in navigator)){
     showToast('この端末は通知に対応していません');
-    return;
+    return false;
   }
   // iPhoneはホーム画面に追加していないと通知を受け取れない
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   if(isIOS && !isStandaloneApp()){
     showToast('iPhoneは「ホーム画面に追加」してから開いてください');
-    return;
+    return false;
   }
   // Firebaseの読み込みに失敗している場合(オフラインなど)
   if(typeof firebase === 'undefined' || !firebase.messaging){
     showToast('通信できないため準備できません');
-    return;
+    return false;
   }
   // 一度ブロックすると、アプリ側からは許可を出し直せない
   if(Notification.permission === 'denied'){
     showToast('通知がブロックされています。端末の設定から許可してください');
-    return;
+    return false;
   }
   // 許可を求める。ボタンを押した直後でないとブラウザに拒否されるため、この位置で呼ぶ
   let perm = Notification.permission;
@@ -2010,7 +2220,7 @@ async function setupPush(){
   }
   if(perm !== 'granted'){
     showToast('通知が許可されませんでした');
-    return;
+    return false;
   }
 
   try{
@@ -2025,7 +2235,7 @@ async function setupPush(){
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: swReg
     });
-    if(!token){ showToast('トークンを取得できませんでした'); return; }
+    if(!token){ showToast('トークンを取得できませんでした'); return false; }
 
     try{ localStorage.setItem(PUSHTOKEN_KEY, token); }catch(e){}
 
@@ -2035,11 +2245,15 @@ async function setupPush(){
       showToast(d.title || 'お知らせが届きました');
     });
 
-    showPushToken(token);
+    // トークンは画面に出さない。利用者には意味が分からず、混乱のもとになるため。
+    // 端末の中には保存してあるので、必要なときに取り出せる。
+
+    return true;
 
   }catch(e){
     showToast('準備に失敗しました');
     console.warn('プッシュ登録に失敗', e);
+    return false;
   }
 }
 
