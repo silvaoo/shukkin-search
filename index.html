@@ -2298,6 +2298,22 @@ const VAPID_KEY = "BNe_fplsGawcGvD4hXnlMrjhkTrP75zIP2n4X2-oLgv683whyD_dzqG023WzU
 // 取得したトークンをこの端末に覚えておくための保存先
 const PUSHTOKEN_KEY = 'a-push-token';
 
+/* 以前、置き場所を指定せずに登録してしまった通知用ワーカーを片付ける。
+   本体と同じ区画に居座っていると、更新の帯が出続ける原因になる。 */
+async function cleanupWrongPushWorker(){
+  try{
+    const appScope = new URL('./', location.href).href;
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for(const r of regs){
+      if(r.scope !== appScope) continue;
+      const w = r.active || r.waiting || r.installing;
+      if(w && w.scriptURL && w.scriptURL.indexOf('firebase-messaging-sw.js') >= 0){
+        await r.unregister();
+      }
+    }
+  }catch(e){ /* 片付けに失敗しても、登録自体は続行する */ }
+}
+
 async function setupPush(){
   // 通知に対応していない端末・ブラウザをはじく
   if(!('Notification' in window) || !('serviceWorker' in navigator)){
@@ -2333,7 +2349,16 @@ async function setupPush(){
   try{
     showToast('準備しています…');
     // 通知専用のService Workerを登録する(検索機能用の sw.js とは別物)
-    const swReg = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+    // 【置き場所を分けるのが重要】
+    // 場所を指定せずに登録すると、本体の sw.js と同じ区画に入ってしまい、
+    // 互いを上書きし合う。その結果「新しいバージョンがあります」の帯が
+    // 何度も出たり、通知が正しく表示されなくなる。
+    // 通知用は専用の区画に置いて、本体と衝突しないようにする。
+    await cleanupWrongPushWorker();
+    const swReg = await navigator.serviceWorker.register(
+      'firebase-messaging-sw.js',
+      { scope: './firebase-cloud-messaging-push-scope' }
+    );
     if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     const messaging = firebase.messaging();
 
