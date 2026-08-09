@@ -138,7 +138,7 @@ async function sendOne(at, token, title, body) {
 
   if (!confirm) {
     console.log('■ これは下書きの確認です。実際には送っていません。');
-    console.log('  送る場合は「本当に送る」にチェックを入れて、もう一度実行してください。');
+    console.log('  送る場合は「本当に送る」を選んで、もう一度実行してください。');
     return;
   }
 

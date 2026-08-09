@@ -59,6 +59,12 @@ button:disabled{opacity:.45}
   border-radius:10px;padding:12px;font-size:13px;color:#fde047;margin-bottom:14px;line-height:1.8;
 }
 .foot{font-size:11px;color:var(--dim);text-align:center;margin-top:18px;line-height:1.8}
+/* よく使うタイトルをすぐ入れられるボタン */
+.quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.quick button{
+  padding:8px 12px;font-size:13px;color:var(--dim);
+  background:var(--card2);border:1px solid var(--line);border-radius:20px;cursor:pointer;
+}
 .hide{display:none}
 </style>
 </head>
@@ -95,7 +101,8 @@ button:disabled{opacity:.45}
   <div class="card">
     <div class="row">
       <label>タイトル</label>
-      <input type="text" id="title" value="📢 お知らせ" maxlength="60">
+      <input type="text" id="title" placeholder="例: 営業所からの連絡" maxlength="60">
+      <div class="quick" id="quickTitles"></div>
     </div>
 
     <div class="row">
@@ -159,7 +166,7 @@ function showProperScreen(){
   const has = !!getToken();
   document.getElementById('setup').className = has ? 'hide' : '';
   document.getElementById('main').className  = has ? '' : 'hide';
-  if(has) renderApps();
+  if(has){ renderApps(); renderQuickTitles(); }
 }
 
 function saveToken(){
@@ -196,6 +203,17 @@ function toggleAll(){
   else picked = new Set(APPS.map(function(a){ return a.code; }));
   renderApps();
 }
+
+/* よく使うタイトルを並べる。押すと入力欄に入る */
+const QUICK_TITLES = ['📢 営業所からの連絡', '🚌 ダイヤ改正のお知らせ', '⚠ 重要なお知らせ', '🔄 アプリを更新しました'];
+function renderQuickTitles(){
+  const box = document.getElementById('quickTitles');
+  if(!box) return;
+  box.innerHTML = QUICK_TITLES.map(function(t, i){
+    return '<button onclick="setTitle(' + i + ')">' + t + '</button>';
+  }).join('');
+}
+function setTitle(i){ document.getElementById('title').value = QUICK_TITLES[i]; }
 
 function say(msg){ document.getElementById('log').textContent = msg; }
 function busy(on){
@@ -312,7 +330,15 @@ async function waitAndFetchLog(token, startedISO){
         if(s >= 0){
           const e = lines.findIndex(function(l){ return /^(送信 \d+ 件|■ これは下書き)/.test(l); });
           const end = e >= 0 ? e + 3 : Math.min(lines.length, s + 40);
-          return lines.slice(s, end).join('\n');
+          // GitHub が出す英語の注意書きなどは読む必要がないので取り除く
+          return lines.slice(s, end).filter(function(l){
+            if(/^Node \d+ is being deprecated/.test(l)) return false;
+            if(/^https:\/\/github\.blog\//.test(l)) return false;
+            if(/ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION/.test(l)) return false;
+            if(/^\[command\]|^##\[/.test(l)) return false;
+            if(/^\s*$/.test(l)) return false;
+            return true;
+          }).join('\n');
         }
       }
     }
