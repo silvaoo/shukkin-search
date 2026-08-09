@@ -362,6 +362,16 @@ body {
 }
 
 /* ==== メモ一覧（保存したメモをまとめて見る・直す） ==== */
+/* 出勤通知の設定ボタン。今日カードの中に置く。
+   読み上げボタンと並ぶので、高さを揃えつつ色で役割を分ける。 */
+.notify-setting-btn{
+  display:block; width:100%; margin:8px 0 0;
+  padding:12px; font-size:15px; font-weight:800; cursor:pointer;
+  color:#22d3ee; background:rgba(34,211,238,0.10);
+  border:1px solid rgba(34,211,238,0.55); border-radius:10px;
+}
+.notify-setting-btn:active{ background:rgba(34,211,238,0.22); }
+
 /* ==== 通知の設定モーダル ====
    スマホ操作に慣れていない人でも押しやすいよう、
    文字も押す場所も大きめに作ってある。 */
@@ -979,6 +989,8 @@ a.source-link:visited {
     ✅ この番号を保存し、明日から自動で1つずつ進みます。
     <span class="mydial-forget" onclick="forgetMyDial()">保存を消す</span>
   </div>
+  <!-- 出勤通知の設定。大事な機能なので、目につきやすい位置に置く -->
+  <button class="notify-setting-btn" onclick="openNotifySettings()">🔔 通知設定</button>
   <button class="speak-today-btn" id="speakTodayBtn" onclick="handleSpeakToday()">🔊 今日の勤務を読み上げ</button>
 </div>
 
@@ -1081,7 +1093,6 @@ a.source-link:visited {
   <div>出退勤時間に誤りがあっても当方は責任を負いかねます。</div>
   <div style="margin-top:8px;"><span class="source-link" onclick="openMemoList()">📝 保存したメモの一覧</span></div>
   <div style="margin-top:8px;"><span class="source-link" onclick="openGuide()">📖 使い方・アプリの入れ方・更新履歴</span></div>
-  <div style="margin-top:8px;"><span class="source-link" onclick="openNotifySettings()">🔔 出勤通知の設定</span></div>
   <div class="credit" style="margin-top:10px;">by AIタケタニ</div>
 </div>
 
