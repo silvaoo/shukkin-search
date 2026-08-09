@@ -10,7 +10,7 @@
 
 // キャッシュ名にバージョンを入れておき、更新のたびにこの値を変えることで
 // 新しいService Workerが「更新あり」と判定されるようにする
-const CACHE_VERSION = 'a-shukkin-v55';
+const CACHE_VERSION = 'a-shukkin-v56';
 const CACHE_FILES = [
     './',
     './index.html',
@@ -45,6 +45,9 @@ self.addEventListener('fetch', (event) => {
     // 外部ドメイン(Googleドライブのお知らせ画像など)は一切キャッシュしない。
     // ここを通すと古い画像が端末に残り続け、差し替えや削除が反映されなくなるため。
     if (new URL(event.request.url).origin !== self.location.origin) return;
+    // Service Worker本体(sw.js / firebase-messaging-sw.js)はキャッシュしない。
+    // 古い版が残ると、更新したのに反映されないという分かりにくい不具合になるため。
+    if (/-?sw\.js$/.test(new URL(event.request.url).pathname)) return;
     event.respondWith(
         caches.match(event.request).then((cached) => {
             const networkFetch = fetch(event.request)

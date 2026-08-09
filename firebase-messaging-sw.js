@@ -28,6 +28,12 @@ const messaging = firebase.messaging();
 /* アプリを閉じている時に通知が届いた場合の処理。
    通知の中身(タイトル・本文)は送信側から渡されたものをそのまま使う。 */
 messaging.onBackgroundMessage(function (payload) {
+  // 【二重表示を防ぐ】
+  // Firebaseの「通知メッセージ」(notification付き)は、ブラウザが自動で1件表示する。
+  // ここで重ねて表示すると同じ通知が2件並ぶため、その場合は何もしない。
+  // 自動で送る本番用は notification を使わず data だけで送るので、下の処理が動く。
+  if (payload && payload.notification) return;
+
   const d = (payload && payload.data) || {};
   const title = d.title || '🚌 出退勤検索くん';
   const options = {
