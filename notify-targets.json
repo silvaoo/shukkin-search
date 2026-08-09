@@ -1,0 +1,19 @@
+{
+  "_説明": "出勤通知の送り先。第1段階では本人の端末だけを登録して動作を確かめる。baseDate の日に baseDial 番だった、という意味。番号は1日1つ進むので、この2つが分かれば以後ずっと計算できる。lead は出勤の何分前に知らせるか。",
+  "targets": [
+    {
+      "label": "本人 Android",
+      "token": "cv6UwbkMim8VenOd5U8lMa:APA91bED_KO--GAdFIzIlo9bvRRb2zK1lgSxdp9SIasV40nqg4IwHT9sqyVd1EUPUkaW7Sn5vJwXok-rEu7gzxLQ9wUGbPWCSdvXGp5JE9-x4maBJhND_84",
+      "baseDate": "2026-08-09",
+      "baseDial": 42,
+      "lead": 60
+    },
+    {
+      "label": "本人 iPhone",
+      "token": "eHkZnpaNqcUMgqOTrHwoO2:APA91bH9uZLpRQ9cC16Ni3ze8lcURMqEw0Qn8VO7zxUzSDlG16JinSpyXVutPDjmAqC36Vdw18G2yeLl429TpAULQp4YRG3tv9-wwxYpUCJA4xZ1bOuM_G8",
+      "baseDate": "2026-08-09",
+      "baseDial": 42,
+      "lead": 60
+    }
+  ]
+}
