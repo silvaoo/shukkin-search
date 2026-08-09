@@ -2096,6 +2096,7 @@ function closeNotifySettings(){
 async function toggleNotify(){
   if(getNotifyOn()){
     try{ localStorage.setItem(NOTIFY_ON_KEY, '0'); }catch(e){}
+    await removeSettingsFromServer();          // サーバー側の登録も消す
     showToast('通知を止めました');
     renderNotifySettings();
     return;
@@ -2103,8 +2104,19 @@ async function toggleNotify(){
   // オンにするときは、通知の許可と登録をまとめて済ませる
   const ok = await setupPush();
   if(ok){
-    try{ localStorage.setItem(NOTIFY_ON_KEY, '1'); }catch(e){}
-    showToast('通知を受け取る設定にしました');
+    // 番号が未保存だと、いつ知らせればいいか決められない
+    if(!getMyDialBase()){
+      showToast('先に「今日のダイヤ番号」を保存してください');
+      renderNotifySettings();
+      return;
+    }
+    const done = await pushSettingsToServer();
+    if(done){
+      try{ localStorage.setItem(NOTIFY_ON_KEY, '1'); }catch(e){}
+      showToast('通知を受け取る設定にしました');
+    }else{
+      showToast('登録できませんでした。通信を確かめてください');
+    }
   }
   renderNotifySettings();
 }
@@ -2113,7 +2125,9 @@ async function toggleNotify(){
 function setNotifyLead(min){
   try{ localStorage.setItem(NOTIFY_LEAD_KEY, String(min)); }catch(e){}
   renderNotifySettings();
-  beep(880, 60, 0);
+  try{ beep(880, 60, 0); }catch(e){}
+  // すでに受け取る設定なら、変更をサーバーにも伝える
+  if(getNotifyOn()) pushSettingsToServer();
 }
 
 /* 設定画面の中身を描き直す */
@@ -2161,8 +2175,8 @@ function renderNotifySettings(){
   }
 
   // まだ準備中であることを正直に書いておく
-  h += '<div class="nt-warn">⚠ この機能はまだ準備中です。'
-     + '<br>設定は保存されますが、実際の自動通知はまだ届きません。</div>';
+  h += '<div class="nt-warn">⚠ この機能は試験運用中です。'
+     + '<br>うまく届かないことがあります。目覚まし代わりにはしないでください。</div>';
 
   // 届かないときの案内。ここを書いておかないと問い合わせが集中する
   h += '<div class="nt-note">■ 通知が届かないときは<br>'
@@ -2171,6 +2185,83 @@ function renderNotifySettings(){
      + '・端末の設定で、このアプリの通知が切られていないか確かめてください</div>';
 
   box.innerHTML = h;
+}
+
+/* ==== 通知設定をサーバーに預ける ====
+   端末に保存するだけでは、送信する側（GitHub Actions）が設定を知る手段がない。
+   そこで「宛先・基準番号・何分前か」の3点だけを預ける。
+   名前も社員番号も送らないので、誰のものかは分からない。
+
+   Firestore の読み込み部品は使わず、REST という仕組みを直接呼ぶ。
+   読み込むファイルが増えないので、アプリが重くならない。 */
+
+const FS_BASE = 'https://firestore.googleapis.com/v1/projects/shukkin-notify'
+              + '/databases/(default)/documents/notifyTargets';
+const CLIENTID_KEY = 'a-client-id';
+const APP_CODE = 'a';
+
+/* この端末を表す番号。初回に作って以後ずっと使い回す。
+   これがあるので、設定を変えても登録が増え続けない。 */
+function getClientId(){
+  try{
+    let id = localStorage.getItem(CLIENTID_KEY);
+    if(!id){
+      id = APP_CODE + '-' + Date.now().toString(36) + '-'
+         + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem(CLIENTID_KEY, id);
+    }
+    return id;
+  }catch(e){ return null; }
+}
+
+/* 保存してある「基準日と基準番号」を取り出す。
+   この2つが分かれば、何年先でもその日の番号を計算できる。 */
+function getMyDialBase(){
+  try{
+    const raw = localStorage.getItem('a-my-dial');
+    if(!raw) return null;
+    const o = JSON.parse(raw);
+    if(!o || !o.dial || !o.iso) return null;
+    return { dial: parseInt(o.dial), iso: o.iso };
+  }catch(e){ return null; }
+}
+
+/* 設定をサーバーに登録する（すでにあれば上書き） */
+async function pushSettingsToServer(){
+  const id = getClientId();
+  let token = null;
+  try{ token = localStorage.getItem(PUSHTOKEN_KEY); }catch(e){}
+  const base = getMyDialBase();
+  if(!id || !token || !base) return false;
+
+  const body = { fields: {
+    app:       { stringValue: APP_CODE },
+    token:     { stringValue: token },
+    baseDate:  { stringValue: base.iso },
+    baseDial:  { integerValue: String(base.dial) },
+    lead:      { integerValue: String(getNotifyLead()) },
+    updatedAt: { stringValue: new Date().toISOString() }
+  } };
+  try{
+    const res = await fetch(FS_BASE + '/' + id + '?key=' + FIREBASE_CONFIG.apiKey, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if(!res.ok) console.warn('登録に失敗', res.status, await res.text());
+    return res.ok;
+  }catch(e){ console.warn('登録に失敗', e); return false; }
+}
+
+/* 登録を取り消す（通知を止めたとき） */
+async function removeSettingsFromServer(){
+  const id = getClientId();
+  if(!id) return false;
+  try{
+    const res = await fetch(FS_BASE + '/' + id + '?key=' + FIREBASE_CONFIG.apiKey,
+                            { method: 'DELETE' });
+    return res.ok;
+  }catch(e){ return false; }
 }
 
 /* ==== プッシュ通知の登録（試験中） ====
