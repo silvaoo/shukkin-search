@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>お知らせ送信</title>
+<link rel="icon" href="./icons/icon-192.png">
+<style>
+:root{
+  --bg:#0b1220; --card:#131c2e; --card2:#1a2437; --line:#2a3a52;
+  --text:#e6eefc; --dim:#8fa3c0; --cyan:#22d3ee;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; padding:16px; background:var(--bg); color:var(--text);
+  font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;
+  font-size:16px; line-height:1.6;
+}
+.wrap{max-width:560px;margin:0 auto}
+h1{font-size:19px;margin:4px 0 18px;color:var(--cyan)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+label{display:block;font-size:14px;font-weight:700;margin-bottom:6px;color:var(--cyan)}
+input[type=text],input[type=password],textarea{
+  width:100%; padding:14px; font-size:16px; color:var(--text);
+  background:var(--card2); border:1px solid var(--line); border-radius:10px;
+  font-family:inherit;
+}
+textarea{min-height:120px;resize:vertical}
+.hint{font-size:12px;color:var(--dim);margin-top:6px;line-height:1.7}
+.row{margin-bottom:16px}
+.apps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.app{
+  display:flex;align-items:center;gap:10px;padding:14px;
+  background:var(--card2);border:2px solid var(--line);border-radius:10px;
+  font-weight:700;cursor:pointer;user-select:none;
+}
+.app.on{border-color:var(--cyan);background:rgba(34,211,238,.12)}
+.app .mk{font-size:18px;width:20px;text-align:center}
+.allbtn{
+  width:100%;padding:10px;margin-top:10px;background:var(--card2);
+  color:var(--dim);border:1px solid var(--line);border-radius:8px;font-size:14px;
+}
+button.main{
+  width:100%;padding:18px;font-size:17px;font-weight:800;color:#fff;
+  border:none;border-radius:12px;margin-bottom:10px;cursor:pointer;
+}
+.check{background:linear-gradient(90deg,#0ea5e9,#8b5cf6)}
+.send{background:#dc2626}
+.sub{background:#334155;padding:12px;font-size:14px}
+button:disabled{opacity:.45}
+#log{
+  white-space:pre-wrap;font-size:13px;line-height:1.7;color:var(--dim);
+  background:#0a0f1a;border:1px solid var(--line);border-radius:10px;
+  padding:14px;min-height:80px;
+}
+.warn{
+  background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.4);
+  border-radius:10px;padding:12px;font-size:13px;color:#fde047;margin-bottom:14px;line-height:1.8;
+}
+.foot{font-size:11px;color:var(--dim);text-align:center;margin-top:18px;line-height:1.8}
+.hide{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>📢 お知らせ送信</h1>
+
+<!-- ===== 初回のカギ登録 ===== -->
+<div id="setup" class="hide">
+  <div class="warn">
+    はじめに一度だけ、送信用のカギを登録します。<br>
+    カギはこの端末の中だけに保存され、どこにも送られません。
+  </div>
+  <div class="card">
+    <div class="row">
+      <label>送信用のカギ</label>
+      <input type="password" id="tokenInput" placeholder="github_pat_ ではじまる文字列" autocomplete="off">
+      <div class="hint">
+        GitHub で作った「shukkin-news-sender」のカギを貼り付けてください。<br>
+        なくした場合は新しく作り直せます。
+      </div>
+    </div>
+    <button class="main check" onclick="saveToken()">カギを保存する</button>
+  </div>
+</div>
+
+<!-- ===== 送信画面 ===== -->
+<div id="main" class="hide">
+  <div class="warn">
+    ここから送るとアプリを入れている人全員に通知が届きます。<br>
+    このページは他の人に見せないでください。
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <label>タイトル</label>
+      <input type="text" id="title" value="📢 お知らせ" maxlength="60">
+    </div>
+
+    <div class="row">
+      <label>本文</label>
+      <textarea id="body" placeholder="伝えたい内容を書いてください"></textarea>
+      <div class="hint">改行できます。長すぎると端末側で省略されます</div>
+    </div>
+
+    <div class="row">
+      <label>どのダイヤに送るか</label>
+      <div class="apps" id="apps"></div>
+      <button class="allbtn" onclick="toggleAll()">すべて選ぶ / すべて外す</button>
+    </div>
+  </div>
+
+  <button class="main check" id="btnCheck" onclick="run(false)">① まず確認する（送らない）</button>
+  <button class="main send"  id="btnSend"  onclick="run(true)">② 本当に送る</button>
+
+  <div id="log">ここに結果が出ます。
+
+まず「① 確認する」を押して、送る人数と内容を確かめてください。</div>
+
+  <button class="main sub" onclick="forgetToken()">この端末からカギを消す</button>
+
+  <div class="foot">
+    カギの有効期限は 2027年8月9日<br>
+    期限が切れたら新しく作り直してください
+  </div>
+</div>
+</div>
+
+<script>
+/* ==== お知らせ送信の管理ページ ====
+   このページは GitHub の「お知らせを一斉送信」を呼び出すだけ。
+   実際の送信処理はサーバー側にあり、Firebase の秘密の鍵はそちらにある。
+
+   GitHub のカギはこのファイルには書かない。
+   公開されている置き場所にカギを置くと、見た人が誰でも通知を送れてしまうため。
+   代わりに、初回だけ手で貼り付けてもらい、その端末の中だけに保存する。 */
+
+const GH_OWNER = 'silvaoo';
+const GH_REPO  = 'shukkin-search';
+const GH_FILE  = 'send-news.yml';
+const TOKEN_KEY = 'admin-news-token';
+
+const APPS = [
+  { code:'a',     name:'学園前Ａ' },
+  { code:'ikoma', name:'生駒' },
+  { code:'ba',    name:'北大和Ｂ' },
+  { code:'c',     name:'北大和Ｃ' },
+  { code:'yobi',  name:'予備' }
+];
+let picked = new Set(APPS.map(function(a){ return a.code; }));
+
+function getToken(){
+  try{ return localStorage.getItem(TOKEN_KEY) || ''; }catch(e){ return ''; }
+}
+
+/* カギがあれば送信画面、なければ登録画面を出す */
+function showProperScreen(){
+  const has = !!getToken();
+  document.getElementById('setup').className = has ? 'hide' : '';
+  document.getElementById('main').className  = has ? '' : 'hide';
+  if(has) renderApps();
+}
+
+function saveToken(){
+  const v = document.getElementById('tokenInput').value.trim();
+  if(!v){ alert('カギを貼り付けてください'); return; }
+  if(v.indexOf('github_pat_') !== 0 && v.indexOf('ghp_') !== 0){
+    if(!confirm('見慣れない形式ですが、このまま保存しますか？')) return;
+  }
+  try{ localStorage.setItem(TOKEN_KEY, v); }catch(e){ alert('保存できませんでした'); return; }
+  document.getElementById('tokenInput').value = '';
+  showProperScreen();
+}
+
+function forgetToken(){
+  if(!confirm('この端末からカギを消しますか？\n消すと送信できなくなります。')) return;
+  try{ localStorage.removeItem(TOKEN_KEY); }catch(e){}
+  showProperScreen();
+}
+
+/* 送信先の選択ボタンを描く */
+function renderApps(){
+  document.getElementById('apps').innerHTML = APPS.map(function(a){
+    const on = picked.has(a.code);
+    return '<div class="app' + (on ? ' on' : '') + '" onclick="pick(\'' + a.code + '\')">'
+         + '<span class="mk">' + (on ? '☑' : '☐') + '</span><span>' + a.name + '</span></div>';
+  }).join('');
+}
+function pick(code){
+  if(picked.has(code)) picked.delete(code); else picked.add(code);
+  renderApps();
+}
+function toggleAll(){
+  if(picked.size === APPS.length) picked.clear();
+  else picked = new Set(APPS.map(function(a){ return a.code; }));
+  renderApps();
+}
+
+function say(msg){ document.getElementById('log').textContent = msg; }
+function busy(on){
+  document.getElementById('btnCheck').disabled = on;
+  document.getElementById('btnSend').disabled  = on;
+}
+
+/* GitHub に実行を指示し、結果のログを取ってきて表示する */
+async function run(reallySend){
+  const token = getToken();
+  if(!token){ showProperScreen(); return; }
+
+  const title = document.getElementById('title').value.trim();
+  const body  = document.getElementById('body').value.trim();
+
+  if(!title){ say('タイトルを入れてください'); return; }
+  if(!body){  say('本文を入れてください');     return; }
+  if(picked.size === 0){ say('送るダイヤを選んでください'); return; }
+
+  if(reallySend){
+    const names = APPS.filter(function(a){ return picked.has(a.code); })
+                      .map(function(a){ return a.name; }).join('、');
+    if(!confirm('本当に送りますか？\n\n送り先: ' + names + '\n\n' + title + '\n' + body)) return;
+  }
+
+  busy(true);
+  say(reallySend ? '送信しています…' : '確認しています…');
+
+  try{
+    const started = new Date().toISOString();
+    const res = await fetch(
+      'https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO
+        + '/actions/workflows/' + GH_FILE + '/dispatches',
+      {
+        method:'POST',
+        headers:{
+          'Authorization':'Bearer ' + token,
+          'Accept':'application/vnd.github+json',
+          'Content-Type':'application/json'
+        },
+        body: JSON.stringify({
+          ref:'main',
+          inputs:{
+            title: title,
+            body: body,
+            apps: 'all',                                  // 下の欄が優先される
+            apps_custom: Array.from(picked).join(' '),
+            confirm: reallySend ? 'true' : 'false'
+          }
+        })
+      }
+    );
+    if(!res.ok){
+      const t = await res.text();
+      let extra = '';
+      if(res.status === 401 || res.status === 403){
+        extra = '\n\n※ カギが違うか、期限が切れている可能性があります。'
+              + '\n　 下の「カギを消す」を押して、登録し直してください。';
+      }
+      say('指示を出せませんでした（' + res.status + '）\n\n' + t.slice(0,300) + extra);
+      busy(false); return;
+    }
+
+    say((reallySend ? '送信' : '確認') + 'を指示しました。結果を待っています…\n（1分ほどかかります）');
+    say(await waitAndFetchLog(token, started));
+
+  }catch(e){
+    say('うまくいきませんでした\n\n' + e.message);
+  }
+  busy(false);
+}
+
+/* 実行が終わるまで待ち、ログの中身を取り出す */
+async function waitAndFetchLog(token, startedISO){
+  const H = { 'Authorization':'Bearer ' + token, 'Accept':'application/vnd.github+json' };
+  let runId = null;
+
+  for(let i = 0; i < 20; i++){
+    await sleep(3000);
+    const r = await fetch('https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO
+      + '/actions/workflows/' + GH_FILE + '/runs?per_page=5', { headers: H });
+    if(!r.ok) continue;
+    const j = await r.json();
+    const hit = (j.workflow_runs || []).find(function(w){ return w.created_at >= startedISO; });
+    if(hit){ runId = hit.id; break; }
+  }
+  if(!runId) return '実行は指示できましたが、結果を読み取れませんでした。\nGitHub の Actions 画面で確認してください。';
+
+  let concl = null;
+  for(let i = 0; i < 40; i++){
+    const r = await fetch('https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO
+      + '/actions/runs/' + runId, { headers: H });
+    if(r.ok){
+      const j = await r.json();
+      if(j.status === 'completed'){ concl = j.conclusion; break; }
+    }
+    await sleep(3000);
+  }
+
+  try{
+    const r = await fetch('https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO
+      + '/actions/runs/' + runId + '/jobs', { headers: H });
+    const j = await r.json();
+    const job = (j.jobs || [])[0];
+    if(job){
+      const lr = await fetch('https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO
+        + '/actions/jobs/' + job.id + '/logs', { headers: H });
+      if(lr.ok){
+        const raw = await lr.text();
+        const lines = raw.split('\n')
+          .map(function(l){ return l.replace(/^\S+\s/, ''); })   // 先頭の時刻を落とす
+          .filter(function(l){ return l.trim(); });
+        const s = lines.findIndex(function(l){ return l.indexOf('お知らせの一斉送信') >= 0; });
+        if(s >= 0){
+          const e = lines.findIndex(function(l){ return /^(送信 \d+ 件|■ これは下書き)/.test(l); });
+          const end = e >= 0 ? e + 3 : Math.min(lines.length, s + 40);
+          return lines.slice(s, end).join('\n');
+        }
+      }
+    }
+  }catch(e){ /* ログが読めなくても結果は返す */ }
+
+  return concl === 'success'
+    ? '完了しました。（詳しい内容は読み取れませんでした）'
+    : 'うまくいかなかったようです（' + concl + '）\nGitHub の Actions 画面を確認してください。';
+}
+
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+showProperScreen();
+</script>
+</body>
+</html>
