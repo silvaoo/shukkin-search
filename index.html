@@ -1027,6 +1027,7 @@ a.source-link:visited {
   <div>出退勤時間に誤りがあっても当方は責任を負いかねます。</div>
   <div style="margin-top:8px;"><span class="source-link" onclick="openMemoList()">📝 保存したメモの一覧</span></div>
   <div style="margin-top:8px;"><span class="source-link" onclick="openGuide()">📖 使い方・アプリの入れ方・更新履歴</span></div>
+  <div style="margin-top:8px;"><span class="source-link" onclick="testNotification()">🔔 通知のテスト（試験中）</span></div>
   <div class="credit" style="margin-top:10px;">by AIタケタニ</div>
 </div>
 
@@ -1956,6 +1957,79 @@ function updateClock(){
 /* ==== オフライン対応 (Service Worker) ====
    一度オンラインで開けば、以降は圏外・機内モードでも起動できる。
    新しい版を公開した時は「更新があります」バナーで知らせる。 */
+/* ==== 通知のテスト（試験中） ====
+   出勤時刻の自動通知を作る前に、この端末で通知そのものが出せるかを確かめる。
+   ここで確認したいのは2点。
+     ① 通知の許可が取れるか
+     ② アプリを閉じた状態でも通知が届くか
+   ②はAndroidでは届き、iPhoneでは届かない見込み。その差を実際に見るためのテスト。 */
+
+/* ホーム画面から起動しているかどうか（iPhoneの通知はこれが条件） */
+function isStandaloneApp(){
+  return window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+}
+
+async function testNotification(){
+  // 通知に対応していない端末・ブラウザをはじく
+  if(!('Notification' in window) || !('serviceWorker' in navigator)){
+    showToast('この端末は通知に対応していません');
+    return;
+  }
+  // iPhoneはホーム画面に追加していないと通知を受け取れない
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if(isIOS && !isStandaloneApp()){
+    showToast('iPhoneは「ホーム画面に追加」してから開いてください');
+    return;
+  }
+  // 一度ブロックすると、アプリ側からは許可を出し直せない
+  if(Notification.permission === 'denied'){
+    showToast('通知がブロックされています。端末の設定から許可してください');
+    return;
+  }
+  // 許可を求める。ボタンを押した直後でないとブラウザに拒否されるため、この位置で呼ぶ
+  let perm = Notification.permission;
+  if(perm !== 'granted'){
+    try{ perm = await Notification.requestPermission(); }catch(e){ perm = 'denied'; }
+  }
+  if(perm !== 'granted'){
+    showToast('通知が許可されませんでした');
+    return;
+  }
+
+  try{
+    const reg = await navigator.serviceWorker.ready;
+
+    // テスト①：すぐに出す。通知そのものが表示できるかの確認
+    reg.showNotification('🔔 通知テスト①', {
+      body: 'いま出した通知です。これが見えていれば第一段階はOK。',
+      icon: './icons/icon-192.png',
+      badge: './icons/icon-192.png',
+      tag: 'test-now',
+      vibrate: [200,100,200]
+    });
+
+    showToast('15秒後にもう1件出します。アプリを閉じて待ってみてください');
+
+    // テスト②：15秒後に出す。アプリを閉じた状態で届くかの確認
+    // 注意：この待ち時間は画面側で数えているため、iPhoneでは
+    //       アプリを閉じると止まってしまう可能性が高い。
+    //       止まるなら「外から送る仕組み（プッシュ通知）が要る」という結論になる。
+    setTimeout(function(){
+      reg.showNotification('🔔 通知テスト②', {
+        body: '15秒後の通知です。閉じていても届いたなら合格。',
+        icon: './icons/icon-192.png',
+        badge: './icons/icon-192.png',
+        tag: 'test-later',
+        vibrate: [200,100,200]
+      });
+    }, 15000);
+
+  }catch(e){
+    showToast('通知の準備に失敗しました');
+  }
+}
+
 function initSW(){
   if(!('serviceWorker' in navigator))return;
   navigator.serviceWorker.register('sw.js').then((reg)=>{
