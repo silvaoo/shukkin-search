@@ -58,9 +58,10 @@ self.addEventListener('notificationclick', function (event) {
   );
 });
 
-/* 更新をすぐ反映させる */
-self.addEventListener('install', function () { self.skipWaiting(); });
-self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim()); });
+/* ここでは skipWaiting() や clients.claim() を呼ばない。
+   呼ぶと、この通知用ワーカーがページの制御を奪ってしまい、
+   本体側が「新しい版が来た」と誤って判断して更新バナーが出続ける。
+   通知を受け取るだけなら、ページの制御を持つ必要はない。 */
 
 /* ここから下は Firebase の部品。宛先（トークン）の発行に必要。
    読み込みに失敗しても、上の受信処理は動くようにしてある。 */
