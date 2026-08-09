@@ -215,14 +215,14 @@ async function deleteTarget(at, id) {
 /* ---------- 通知を1件送る ----------
    data だけを送り、表示は端末側の firebase-messaging-sw.js に任せる。
    （notification を付けると通知が二重に出るため） */
-async function sendOne(at, token, title, body) {
+async function sendOne(at, token, title, body, tag) {
   const res = await fetch(`https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${at}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       message: {
         token,
-        data: { title, body, tag: 'shukkin-notify' },
+        data: { title, body, tag: tag || 'shukkin-notify' },
         webpush: { headers: { Urgency: 'high', TTL: '1800' } }
       }
     })
@@ -271,22 +271,34 @@ async function sendOne(at, token, title, body) {
       + `(${DWJ[plan.date.getUTCDay()]}) ${plan.dial}番 出勤${plan.startText}`
       + ` → 通知 ${hhmm(plan.notify)}`;
 
-    // 予定時刻を過ぎてから15分以内なら送る
+    // 【送るかどうかの判定】
+    // GitHub の定期実行は「5分おき」と書いても実際は25〜55分に1回しか動かない。
+    // そのため予定時刻ぴったりを狙うと取りこぼす。
+    // 次に動くまでに予定時刻が来てしまう人は、少し早めでも今のうちに送る。
+    // 遅れて届くより、早めに届くほうが実害がないため。
     const diffMin = (now.getTime() - plan.notify.getTime()) / 60000;
-    if (!isTest && !(diffMin >= 0 && diffMin < 15)) {
+    const shouldSend = diffMin >= -55 && diffMin < 20;
+    if (!isTest && !shouldSend) {
       console.log(`- ${who}: ${planStr}（まだ / 差${diffMin.toFixed(0)}分）`);
       skipped++;
       continue;
     }
 
-    const leadText = t.lead === 120 ? '2時間' : (t.lead === 60 ? '1時間' : `${t.lead}分`);
+    // 出勤まで実際にあと何分かを、送る時点で計算し直す。
+    // 早めに送った場合でも、書いてある残り時間が正しくなる。
+    const restMin = Math.max(0, Math.round((plan.start.getTime() - now.getTime()) / 60000));
+    const restText = restMin >= 60
+      ? `あと${Math.floor(restMin / 60)}時間${restMin % 60 ? (restMin % 60) + '分' : ''}`
+      : `あと${restMin}分`;
     let body = `${plan.date.getUTCMonth() + 1}/${plan.date.getUTCDate()}`
       + `(${DWJ[plan.date.getUTCDay()]}) ${plan.dial}番ダイヤ\n`
-      + `出勤 ${plan.startText}（あと${leadText}）`;
+      + `出勤 ${plan.startText}（${restText}）`;
     const alts = altStarts(plan.startText, plan.note);
     if (alts.length) body += `\n※条件により ${alts.join('／')} の場合あり`;
 
-    const r = await sendOne(at, t.token, '🚌 まもなく出勤です', body);
+    // 同じ勤務の通知が2回送られても、端末側で1件にまとまるようにする
+    const tag = 'shukkin-' + ymd(plan.date) + '-' + plan.dial;
+    const r = await sendOne(at, t.token, '🚌 まもなく出勤です', body, tag);
     if (r.ok) {
       console.log(`✅ ${who}: 送信  ${planStr}`);
       sent++;
