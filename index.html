@@ -1027,7 +1027,7 @@ a.source-link:visited {
   <div>出退勤時間に誤りがあっても当方は責任を負いかねます。</div>
   <div style="margin-top:8px;"><span class="source-link" onclick="openMemoList()">📝 保存したメモの一覧</span></div>
   <div style="margin-top:8px;"><span class="source-link" onclick="openGuide()">📖 使い方・アプリの入れ方・更新履歴</span></div>
-  <div style="margin-top:8px;"><span class="source-link" onclick="testNotification()">🔔 通知のテスト（試験中）</span></div>
+  <div style="margin-top:8px;"><span class="source-link" onclick="setupPush()">🔔 通知を受け取る（試験中）</span></div>
   <div class="credit" style="margin-top:10px;">by AIタケタニ</div>
 </div>
 
@@ -1963,6 +1963,120 @@ function updateClock(){
      ① 通知の許可が取れるか
      ② アプリを閉じた状態でも通知が届くか
    ②はAndroidでは届き、iPhoneでは届かない見込み。その差を実際に見るためのテスト。 */
+
+/* ==== プッシュ通知の登録（試験中） ====
+   アプリを閉じていても通知を受け取れるようにするための準備。
+   Firebaseから発行される「トークン」がこの端末の宛先になる。
+   トークンは端末ごとに違い、これが分からないと誰にも通知は届かない。 */
+
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAtawIGwf6hfZU3o79JN5R83CLmTivQVIg",
+  authDomain: "shukkin-notify.firebaseapp.com",
+  projectId: "shukkin-notify",
+  storageBucket: "shukkin-notify.firebasestorage.app",
+  messagingSenderId: "587667482421",
+  appId: "1:587667482421:web:080064fd0444ff49f90e7c"
+};
+// ウェブプッシュ証明書の公開鍵。Firebaseの画面で生成したもの
+const VAPID_KEY = "BNe_fplsGawcGvD4hXnlMrjhkTrP75zIP2n4X2-oLgv683whyD_dzqG023WzURV4B1mtnmmfI_Dlg6jGihjukR0";
+// 取得したトークンをこの端末に覚えておくための保存先
+const PUSHTOKEN_KEY = 'a-push-token';
+
+async function setupPush(){
+  // 通知に対応していない端末・ブラウザをはじく
+  if(!('Notification' in window) || !('serviceWorker' in navigator)){
+    showToast('この端末は通知に対応していません');
+    return;
+  }
+  // iPhoneはホーム画面に追加していないと通知を受け取れない
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if(isIOS && !isStandaloneApp()){
+    showToast('iPhoneは「ホーム画面に追加」してから開いてください');
+    return;
+  }
+  // Firebaseの読み込みに失敗している場合(オフラインなど)
+  if(typeof firebase === 'undefined' || !firebase.messaging){
+    showToast('通信できないため準備できません');
+    return;
+  }
+  // 一度ブロックすると、アプリ側からは許可を出し直せない
+  if(Notification.permission === 'denied'){
+    showToast('通知がブロックされています。端末の設定から許可してください');
+    return;
+  }
+  // 許可を求める。ボタンを押した直後でないとブラウザに拒否されるため、この位置で呼ぶ
+  let perm = Notification.permission;
+  if(perm !== 'granted'){
+    try{ perm = await Notification.requestPermission(); }catch(e){ perm = 'denied'; }
+  }
+  if(perm !== 'granted'){
+    showToast('通知が許可されませんでした');
+    return;
+  }
+
+  try{
+    showToast('準備しています…');
+    // 通知専用のService Workerを登録する(検索機能用の sw.js とは別物)
+    const swReg = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    const messaging = firebase.messaging();
+
+    // この端末あての「宛名」にあたるトークンを発行してもらう
+    const token = await messaging.getToken({
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: swReg
+    });
+    if(!token){ showToast('トークンを取得できませんでした'); return; }
+
+    try{ localStorage.setItem(PUSHTOKEN_KEY, token); }catch(e){}
+
+    // アプリを開いたまま通知が届いた場合の処理
+    messaging.onMessage(function(payload){
+      const d = (payload && payload.data) || {};
+      showToast(d.title || 'お知らせが届きました');
+    });
+
+    showPushToken(token);
+
+  }catch(e){
+    showToast('準備に失敗しました');
+    console.warn('プッシュ登録に失敗', e);
+  }
+}
+
+/* 発行されたトークンを画面に出す。試験中のみの表示。
+   長い文字列なので、コピー用のボタンを付けておく。 */
+function showPushToken(token){
+  let box = document.getElementById('pushTokenBox');
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'pushTokenBox';
+    box.style.cssText = 'margin:12px auto;padding:12px;max-width:92%;'
+      + 'background:#102030;border:1px solid #2a4a6a;border-radius:10px;'
+      + 'color:#cfe6ff;font-size:11px;line-height:1.5;word-break:break-all;text-align:left;';
+    const footer = document.querySelector('.footer');
+    if(footer) footer.appendChild(box);
+    else document.body.appendChild(box);
+  }
+  box.innerHTML = '<div style="margin-bottom:6px;font-size:12px;">✅ 登録できました。この端末の宛先：</div>'
+    + '<div id="pushTokenText">' + escapeHtml(token) + '</div>'
+    + '<button onclick="copyPushToken()" style="margin-top:8px;padding:6px 14px;'
+    + 'background:#2a5a8a;color:#fff;border:none;border-radius:6px;font-size:13px;">'
+    + '宛先をコピー</button>';
+}
+
+/* トークンをクリップボードにコピーする */
+function copyPushToken(){
+  const el = document.getElementById('pushTokenText');
+  if(!el) return;
+  const t = el.textContent;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){ showToast('コピーしました'); })
+      .catch(function(){ showToast('コピーできませんでした'); });
+  }else{
+    showToast('コピーに対応していません');
+  }
+}
 
 /* ホーム画面から起動しているかどうか（iPhoneの通知はこれが条件） */
 function isStandaloneApp(){
@@ -3222,5 +3336,8 @@ function hideLaunchSplash(){var s=document.getElementById('launch-splash');if(!s
   if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
 })();
 </script>
+<!-- プッシュ通知用のFirebase読み込み(CDN。npmは不要) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 </body>
 </html>
