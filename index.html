@@ -1706,8 +1706,13 @@ function speakNextChunk(){
   if(jaVoice)utter.voice=jaVoice;
   utter.onend=speakNextChunk;
   utter.onerror=function(e){
-    // 何のエラーで止まっているのかを画面に表示する（原因調査用）
-    showToast('読み上げエラー: '+(e.error||'不明'));
+    // 「停止ボタンを押した」「画面を離れた」ときも、仕組みの上では
+    // エラー扱いになる。それを画面に出すと不具合のように見えるので、
+    // 本当に読み上げられなかったときだけ知らせる。
+    const kind=e&&e.error;
+    if(kind&&kind!=='interrupted'&&kind!=='canceled'){
+      showToast('読み上げできませんでした（'+kind+'）');
+    }
     speakNextChunk();
   };
   window.speechSynthesis.speak(utter);
