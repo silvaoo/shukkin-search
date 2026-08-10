@@ -91,18 +91,31 @@ function dialFor(dateUTC, baseDateStr, baseDial, cycle) {
   return ((baseDial - 1 + diff) % cycle + cycle) % cycle + 1;
 }
 
-/* その日の出勤時刻を取り出す。公休や時刻不明は null */
-function shiftStart(dial, dateUTC, data) {
+/* その日の勤務を取り出す。中間解放（前半・後半に分かれる勤務）にも対応する。
+   返すのは出勤の一覧。公休や時刻不明のときは空。
+
+   【データの並び】
+     出退勤「6:13/9:25 〜 14:11/21:58」は
+       前半 6:13 出勤 → 9:25 退勤
+       後半 14:11 出勤 → 21:58 退勤
+     という意味。スラッシュの前後が「出勤/退勤」の組で、
+     〜の左が前半、右が後半にあたる。
+
+   条件で時刻が変わる勤務（近大休暇中・学校休みなど）については、
+   基本の欄に載っている時刻がいちばん早いので、それをそのまま使う。
+   別条件の時刻は通知の本文に添えて、本人に判断してもらう。 */
+function shiftEntries(dial, dateUTC, data) {
   const types = dayType(dateUTC, data);
-  let raw = null, note = '';
+  let rawIn = null, rawOut = null, note = '';
 
   if (data.kind === 'obj') {
     const rec = data.DB[dial];
-    if (!rec) return null;
+    if (!rec) return [];
     let e = null;
     for (const t of types) { if (rec[t]) { e = rec[t]; break; } }
-    if (!e || !e.o || e.o === '—' || !e.o.includes('〜')) return null;
-    raw = e.o.split('〜')[0];
+    if (!e || !e.o || e.o === '—' || !e.o.includes('〜')) return [];
+    const parts = e.o.split('〜');
+    rawIn = parts[0]; rawOut = parts[1] || '';
     note = e.n || '';
   } else {
     let row = null;
@@ -111,16 +124,39 @@ function shiftStart(dial, dateUTC, data) {
       if (row) break;
     }
     if (!row) row = data.ROWS.find((r) => r.id === dial && r.dayType === '全');
-    if (!row || !row.start) return null;
-    raw = String(row.start);
+    if (!row || !row.start) return [];
+    rawIn = String(row.start); rawOut = String(row.end || '');
     note = row.memo || '';
   }
 
-  // 中間解放（例 6:20/11:56）は最初の出勤時刻を使う
-  const st = raw.split('/')[0].trim();
-  const m = st.match(/^(\d{1,2}):(\d{2})$/);
-  if (!m) return null;                      // 「公休」などはここで除かれる
-  return { h: +m[1], m: +m[2], text: st, note };
+  const toMin = (t) => {
+    const m = String(t).trim().match(/^(\d{1,2}):(\d{2})$/);
+    return m ? (+m[1]) * 60 + (+m[2]) : null;
+  };
+  const ins  = rawIn.split('/').map((x) => x.trim());
+  const outs = rawOut.split('/').map((x) => x.trim());
+
+  const list = [];
+  if (ins.length >= 2 && outs.length >= 2) {
+    // 中間解放。前半＝出勤欄の2つ、後半＝退勤欄の2つ
+    const a1 = toMin(ins[0]),  a2 = toMin(ins[1]);
+    const b1 = toMin(outs[0]), b2 = toMin(outs[1]);
+    if (a1 !== null) list.push({ startMin: a1, text: ins[0],  endMin: a2, note, part: 0 });
+    if (b1 !== null) list.push({ startMin: b1, text: outs[0], endMin: b2, note, part: 1 });
+  } else {
+    const a1 = toMin(ins[0]);
+    if (a1 !== null) list.push({ startMin: a1, text: ins[0], endMin: toMin(outs[0]), note, part: 0 });
+  }
+  if (!list.length) return [];
+
+  // 【中間解放かどうかの判定】
+  // 前半の退勤から後半の出勤まで4時間以上空いていれば、いったん帰る人がいる。
+  // その場合だけ後半にも通知する。4時間未満なら続きの勤務なので通知は前半だけ。
+  if (list.length >= 2 && list[0].endMin !== null) {
+    const restMin = list[1].startMin - list[0].endMin;
+    if (restMin < 240) return [list[0]];
+  }
+  return list;
 }
 
 /* 備考に、出勤時刻が違う条件が書かれていないか調べる。
@@ -132,18 +168,24 @@ function altStarts(baseText, note) {
   return [...new Set(found.filter((t) => t !== baseText))];
 }
 
-/* 次に通知すべき予定を求める。今日から14日先まで探す */
+/* 次に通知すべき予定を求める。今日から14日先まで探す。
+   中間解放の場合は、前半と後半それぞれが対象になる。 */
 function nextPlan(t, data, now) {
   for (let i = 0; i <= 14; i++) {
     const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     d.setUTCDate(d.getUTCDate() + i);
     const dial = dialFor(d, t.baseDate, t.baseDial, data.cycle);
-    const st = shiftStart(dial, d, data);
-    if (!st) continue;
-    const start = new Date(d.getTime() + (st.h * 60 + st.m) * 60000);
-    const notify = new Date(start.getTime() - t.lead * 60000);
-    if (notify.getTime() + 30 * 60000 < now.getTime()) continue;
-    return { date: d, dial, start, notify, startText: st.text, note: st.note };
+    const list = shiftEntries(dial, d, data);
+    for (const e of list) {
+      const start  = new Date(d.getTime() + e.startMin * 60000);
+      const notify = new Date(start.getTime() - t.lead * 60000);
+      if (notify.getTime() + 30 * 60000 < now.getTime()) continue;   // 済んだものは飛ばす
+      return {
+        date: d, dial, start, notify,
+        startText: e.text, note: e.note,
+        part: e.part, total: list.length
+      };
+    }
   }
   return null;
 }
@@ -290,14 +332,16 @@ async function sendOne(at, token, title, body, tag) {
     const restText = restMin >= 60
       ? `あと${Math.floor(restMin / 60)}時間${restMin % 60 ? (restMin % 60) + '分' : ''}`
       : `あと${restMin}分`;
+    // 中間解放の勤務は、前半・後半のどちらかが分かるようにする
+    const partText = plan.total >= 2 ? (plan.part === 0 ? '【前半】' : '【後半】') : '';
     let body = `${plan.date.getUTCMonth() + 1}/${plan.date.getUTCDate()}`
-      + `(${DWJ[plan.date.getUTCDay()]}) ${plan.dial}番ダイヤ\n`
+      + `(${DWJ[plan.date.getUTCDay()]}) ${plan.dial}番ダイヤ${partText}\n`
       + `出勤 ${plan.startText}（${restText}）`;
     const alts = altStarts(plan.startText, plan.note);
     if (alts.length) body += `\n※条件により ${alts.join('／')} の場合あり`;
 
     // 同じ勤務の通知が2回送られても、端末側で1件にまとまるようにする
-    const tag = 'shukkin-' + ymd(plan.date) + '-' + plan.dial;
+    const tag = 'shukkin-' + ymd(plan.date) + '-' + plan.dial + '-' + plan.part;
     const r = await sendOne(at, t.token, '🚌 まもなく出勤です', body, tag);
     if (r.ok) {
       console.log(`✅ ${who}: 送信  ${planStr}`);

@@ -2203,6 +2203,20 @@ function renderNotifySettings(){
   box.innerHTML = h;
 }
 
+/* ダイヤ番号が変わったとき、サーバー側の登録も合わせ直す。
+   これをしないと、番号を変えても前の勤務で通知が来てしまう。 */
+async function syncNotifyRegistration(){
+  if(!getNotifyOn()) return;               // 通知を受け取らない設定なら何もしない
+  if(!getMyDialBase()){
+    // 番号が消えたのに登録が残っていると、いつまでも通知が来てしまう
+    await removeSettingsFromServer();
+    try{ localStorage.setItem(NOTIFY_ON_KEY, '0'); }catch(e){}
+    showToast('番号を消したので通知も止めました');
+    return;
+  }
+  await pushSettingsToServer();
+}
+
 /* ==== 通知設定をサーバーに預ける ====
    端末に保存するだけでは、送信する側（GitHub Actions）が設定を知る手段がない。
    そこで「宛先・基準番号・何分前か」の3点だけを預ける。
@@ -3254,6 +3268,7 @@ function saveMyDial(){
     localStorage.setItem(MYDIAL_KEY, JSON.stringify({dial:v, iso:toISO(new Date())}));
   }catch(e){}
   showMyDialNote(true);
+  syncNotifyRegistration();   // 番号を変えたら通知の登録も更新する
 }
 /* 保存した番号を、今日の日付に合わせて進めた状態で入れ直す */
 function restoreMyDial(){
@@ -3276,6 +3291,7 @@ function forgetMyDial(){
   updateTodayPreview();
   showMyDialNote(false);
   showToast('保存した番号を消しました');
+  syncNotifyRegistration();   // 番号を消したら通知も止める
 }
 function showMyDialNote(on){
   const el=document.getElementById('myDialNote');
