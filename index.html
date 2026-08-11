@@ -2255,6 +2255,27 @@ async function syncNotifyRegistration(){
   await pushSettingsToServer();
 }
 
+/* アプリを開いたとき、1日1回だけ登録をサーバーに送り直す。
+
+   登録がサーバーから消えていても、アプリ側は「受け取る設定」のままなので、
+   本人は気づかないまま通知が来なくなる。実際にそれが起きた。
+   毎日入れ直しておけば、消えていても設定がずれていても自動で戻る。 */
+const NOTIFY_SYNC_KEY = 'a-notify-synced';
+
+async function refreshNotifyRegistration(){
+  if(!getNotifyOn()) return;                 // 受け取らない設定なら何もしない
+  if(!getMyDialBase()) return;               // 番号が無いときは何もしない
+  const today = new Date();
+  const iso = today.getFullYear() + '-'
+            + String(today.getMonth() + 1).padStart(2, '0') + '-'
+            + String(today.getDate()).padStart(2, '0');
+  try{
+    if(localStorage.getItem(NOTIFY_SYNC_KEY) === iso) return;   // 今日はもう送った
+  }catch(e){}
+  const ok = await pushSettingsToServer();
+  if(ok){ try{ localStorage.setItem(NOTIFY_SYNC_KEY, iso); }catch(e){} }
+}
+
 /* ==== 通知設定をサーバーに預ける ====
    端末に保存するだけでは、送信する側（GitHub Actions）が設定を知る手段がない。
    そこで「宛先・基準番号・何分前か」の3点だけを預ける。
@@ -3668,6 +3689,7 @@ window.onload=function(){
   const autoDialNum=((BASE_DIAL-1+Math.floor((new Date()-BASE_DATE)/86400000))%92+92)%92+1;
   document.getElementById('todayInput').placeholder=autoDialNum;
   restoreMyDial();   // 前に入れた番号があれば、今日の番号に進めて自動で入れる
+  refreshNotifyRegistration();   // 通知の登録が消えていないか確かめ、必要なら入れ直す
   document.getElementById('todayInput').addEventListener('input',()=>{ updateTodayPreview(); saveMyDial(); });
   updateTodayPreview(); // 未入力状態のヒント表示（グレー）
   const t=new Date();t.setHours(0,0,0,0);
