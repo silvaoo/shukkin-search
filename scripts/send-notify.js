@@ -235,7 +235,9 @@ async function loadTargets(at) {
         token: f.token && f.token.stringValue,
         baseDate: f.baseDate && f.baseDate.stringValue,
         baseDial: f.baseDial && parseInt(f.baseDial.integerValue),
-        lead: f.lead && parseInt(f.lead.integerValue)
+        lead: f.lead && parseInt(f.lead.integerValue),
+        // 最後に送った勤務の目印。同じ勤務に何度も送らないために使う
+        lastSent: (f.lastSent && f.lastSent.stringValue) || ''
       };
       if (v.app && v.token && v.baseDate && v.baseDial && v.lead) out.push(v);
     }
@@ -246,6 +248,19 @@ async function loadTargets(at) {
 }
 
 /* 使えなくなった宛先を消す */
+/* 「この勤務にはもう送った」という印を残す。
+   5分おきに動くので、印がないと同じ勤務に何度も送ってしまう。
+   実際、1回のはずが13回届いてしまった。 */
+async function markSent(at, id, key) {
+  try {
+    await fetch(`${FS_ROOT}/notifyTargets/${id}?updateMask.fieldPaths=lastSent`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${at}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: { lastSent: { stringValue: key } } })
+    });
+  } catch (e) { /* 記録に失敗しても送信自体は済んでいる */ }
+}
+
 async function deleteTarget(at, id) {
   try {
     await fetch(`${FS_ROOT}/notifyTargets/${id}`, {
@@ -318,6 +333,16 @@ async function sendOne(at, token, title, body, tag) {
     // そのため予定時刻ぴったりを狙うと取りこぼす。
     // 次に動くまでに予定時刻が来てしまう人は、少し早めでも今のうちに送る。
     // 遅れて届くより、早めに届くほうが実害がないため。
+    // この勤務を表す目印。日付・番号・前半後半で1つに決まる
+    const sentKey = ymd(plan.date) + '-' + plan.dial + '-' + plan.part;
+
+    // すでに送ってあれば、もう送らない
+    if (!isTest && t.lastSent === sentKey) {
+      console.log(`- ${who}: ${planStr}（送信済み）`);
+      skipped++;
+      continue;
+    }
+
     // 予定より少し早めでも送る（次に動くまでに時刻が来てしまう人を拾うため）。
     // 遅れて届いたぶんは「あと◯分」の表示で本人が判断できる。
     const diffMin = (now.getTime() - plan.notify.getTime()) / 60000;
@@ -343,10 +368,11 @@ async function sendOne(at, token, title, body, tag) {
     if (alts.length) body += `\n※条件により ${alts.join('／')} の場合あり`;
 
     // 同じ勤務の通知が2回送られても、端末側で1件にまとまるようにする
-    const tag = 'shukkin-' + ymd(plan.date) + '-' + plan.dial + '-' + plan.part;
+    const tag = 'shukkin-' + sentKey;
     const r = await sendOne(at, t.token, '🚌 まもなく出勤です', body, tag);
     if (r.ok) {
       console.log(`✅ ${who}: 送信  ${planStr}`);
+      if (!isTest) await markSent(at, t.id, sentKey);   // もう送ったと記録する
       sent++;
     } else {
       console.log(`❌ ${who}: 失敗 (${r.status}) ${r.body.slice(0, 160)}`);

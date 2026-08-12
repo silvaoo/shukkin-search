@@ -2332,7 +2332,11 @@ async function pushSettingsToServer(){
     updatedAt: { stringValue: new Date().toISOString() }
   } };
   try{
-    const res = await fetch(FS_BASE + '/' + id + '?key=' + FIREBASE_CONFIG.apiKey, {
+    // 触る項目だけを指定する。こうしないと、送信側が付けている
+    // 「もう送った」の記録まで消えてしまい、通知が何度も届く。
+    const mask = ['app','token','baseDate','baseDial','lead','updatedAt']
+      .map(function(k){ return 'updateMask.fieldPaths=' + k; }).join('&');
+    const res = await fetch(FS_BASE + '/' + id + '?key=' + FIREBASE_CONFIG.apiKey + '&' + mask, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
