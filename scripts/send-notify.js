@@ -343,10 +343,11 @@ async function sendOne(at, token, title, body, tag) {
       continue;
     }
 
-    // 予定より少し早めでも送る（次に動くまでに時刻が来てしまう人を拾うため）。
-    // 遅れて届いたぶんは「あと◯分」の表示で本人が判断できる。
+    // 5分おきに動くので、予定時刻の直前から見はじめれば十分間に合う。
+    // 早く送りすぎると「まだ先なのに知らせが来る」ので幅は狭くする。
+    // 遅れたぶんは、次に動いたときに拾えるよう後ろに余裕を持たせる。
     const diffMin = (now.getTime() - plan.notify.getTime()) / 60000;
-    const shouldSend = diffMin >= -20 && diffMin < 45;
+    const shouldSend = diffMin >= -4 && diffMin < 30;
     if (!isTest && !shouldSend) {
       console.log(`- ${who}: ${planStr}（まだ / 差${diffMin.toFixed(0)}分）`);
       skipped++;
