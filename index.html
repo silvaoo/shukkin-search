@@ -362,70 +362,7 @@ body {
 }
 
 /* ==== メモ一覧（保存したメモをまとめて見る・直す） ==== */
-/* 出勤通知の設定ボタン。今日カードの中に置く。
-   読み上げボタンと並ぶので、高さを揃えつつ色で役割を分ける。 */
-.notify-setting-btn{
-  display:block; width:100%; margin:8px 0 0;
-  padding:12px; font-size:15px; font-weight:800; cursor:pointer;
-  color:#22d3ee; background:rgba(34,211,238,0.10);
-  border:1px solid rgba(34,211,238,0.55); border-radius:10px;
-}
-.notify-setting-btn:active{ background:rgba(34,211,238,0.22); }
 
-/* ==== 通知の設定モーダル ====
-   スマホ操作に慣れていない人でも押しやすいよう、
-   文字も押す場所も大きめに作ってある。 */
-.notify-modal {
-  display: none; position: fixed; inset: 0; z-index: 10002;
-  background: rgba(0,0,0,0.9); padding: 16px; overflow-y: auto;
-}
-.notify-modal.active { display: block; }
-.nt-box {
-  max-width: 560px; margin: 0 auto 40px;
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 14px; padding: 18px;
-}
-.nt-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.nt-head h2 { font-size: 16px; color: var(--cyan); font-weight: 800; margin: 0; }
-/* いまオンかオフかを、色と文字の両方ではっきり示す */
-.nt-state {
-  text-align: center; padding: 14px; border-radius: 12px;
-  font-size: 17px; font-weight: 800; margin-bottom: 14px;
-}
-.nt-state.on  { background: rgba(0,200,120,0.15); color: #4ade80; border: 2px solid #4ade80; }
-.nt-state.off { background: rgba(255,255,255,0.05); color: #94a3b8; border: 2px solid #475569; }
-/* 主ボタン。指で押しやすいよう高さを大きく取る */
-.nt-btn {
-  display: block; width: 100%; padding: 18px; margin-bottom: 12px;
-  font-size: 17px; font-weight: 800; border: none; border-radius: 12px;
-  cursor: pointer; color: #fff;
-}
-.nt-btn.go   { background: linear-gradient(90deg,#0ea5e9,#8b5cf6); }
-.nt-btn.stop { background: #475569; }
-.nt-sec { font-size: 14px; font-weight: 800; color: var(--cyan); margin: 20px 0 10px; }
-/* 何分前に知らせるかの選択。3つだけに絞ってある */
-.nt-opts { display: flex; flex-direction: column; gap: 10px; }
-.nt-opt {
-  display: flex; align-items: center; gap: 12px; padding: 16px;
-  background: var(--bg-card2); border: 2px solid var(--border);
-  border-radius: 12px; font-size: 16px; font-weight: 700;
-  color: #e2e8f0; cursor: pointer;
-}
-.nt-opt.on { border-color: var(--cyan); background: rgba(34,211,238,0.12); color: #fff; }
-.nt-opt .mark { font-size: 20px; width: 24px; text-align: center; }
-/* 設定した結果を具体的な日時で見せる欄 */
-.nt-plan {
-  margin-top: 18px; padding: 14px; border-radius: 12px;
-  background: rgba(34,211,238,0.08); border: 1px solid var(--border);
-  font-size: 15px; line-height: 1.7; color: #e2e8f0; text-align: center;
-}
-.nt-plan .big { font-size: 20px; font-weight: 800; color: #fde047; display: block; margin: 4px 0; }
-.nt-note { margin-top: 16px; font-size: 12px; line-height: 1.7; color: var(--dim); }
-.nt-warn {
-  margin-top: 14px; padding: 12px; border-radius: 10px;
-  background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.4);
-  font-size: 13px; line-height: 1.7; color: #fde047;
-}
 .memolist-modal {
   display: none; position: fixed; inset: 0; z-index: 10002;
   background: rgba(0,0,0,0.9); padding: 16px; overflow-y: auto;
@@ -989,8 +926,6 @@ a.source-link:visited {
     ✅ この番号を保存し、明日から自動で1つずつ進みます。
     <span class="mydial-forget" onclick="forgetMyDial()">保存を消す</span>
   </div>
-  <!-- 出勤通知の設定。大事な機能なので、目につきやすい位置に置く -->
-  <button class="notify-setting-btn" onclick="openNotifySettings()">🔔 通知設定</button>
   <button class="speak-today-btn" id="speakTodayBtn" onclick="handleSpeakToday()">🔊 今日の勤務を読み上げ</button>
 </div>
 
@@ -1096,15 +1031,6 @@ a.source-link:visited {
   <div class="credit" style="margin-top:10px;">by AIタケタニ</div>
 </div>
 
-<!-- 出勤通知の設定 -->
-<div id="notifyModal" class="notify-modal" onclick="if(event.target===this)closeNotifySettings()">
-  <div class="nt-box">
-    <div class="nt-head">
-      <h2>🔔 出勤通知の設定</h2>
-      <button class="guide-close" onclick="closeNotifySettings()">✕ 閉じる</button>
-    </div>
-    <div id="ntBody"></div>
-  </div>
 </div>
 
 <!-- メモ一覧 -->
@@ -1230,33 +1156,8 @@ a.source-link:visited {
         </div>
       </div>
 
-            <div class="guide-step">
-        <h3>⑧ 🔔 出勤前にお知らせが届きます</h3>
-        <p>設定しておくと、<b>出勤の前にスマホへお知らせ</b>が届きます。毎日入力する必要はありません。一度設定すれば、あとは自動で自分の勤務に合わせて届きます。</p>
-        <div class="guide-note">
-          <b>設定のしかた</b><br>
-          ① 今日のダイヤ番号を入れて保存する<br>
-          ② 今日の勤務の下にある「🔔 通知設定」を押す<br>
-          ③ 「通知を受け取る」を押して、通知を許可する<br>
-          ④ 30分前・1時間前・2時間前から選ぶ<br><br>
-
-          <b>中休（中間解放）の日は2回届きます。</b>前半と後半、それぞれの出勤前にお知らせします。ただし前半の退勤から後半の出勤まで4時間以上空いている日だけです。<br><br>
-
-          <b>やめたいときは</b>「通知を止める」を押してください。番号を「保存を消す」で消したときも自動で止まります。<br><br>
-
-          ⚠ <b>目覚まし代わりにはしないでください。</b>数分〜十数分ずれることがあります。電波が届かない場所（地下・トンネルなど）にいる間は届かず、電波が戻ってから届きます。<br><br>
-
-          <b>届かないときは</b><br>
-          ・<b>iPhoneの方は「ホーム画面に追加」が必要です。</b>ブラウザで開いたままでは届きません<br>
-          ・マナーモードのときは音が鳴りません（通知一覧には入ります）<br>
-          ・スマホの設定で、このアプリの通知が切られていないか確かめてください<br><br>
-
-          ※ 通知に使うのは「どのダイヤ番号か」だけです。名前や社員番号は送っていません。
-        </div>
-      </div>
-
 <div class="guide-step">
-        <h3>⑨ 圏外でも使えます</h3>
+        <h3>⑧ 圏外でも使えます</h3>
         <p>一度オンラインで開いておけば、その後は圏外や機内モードでも起動できます。</p>
         <div class="guide-note">「🔄 新しいバージョンがあります」と出たらタップしてください。最新バージョンのアプリに更新されます。</div>
       </div>
@@ -1328,10 +1229,6 @@ a.source-link:visited {
 
     <!-- ===== 更新履歴 ===== -->
     <div class="guide-pane" id="paneLog">
-      <div class="log-item">
-        <div class="log-date">2026/08/11</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span><b>出勤前のお知らせが届くようになりました。</b>今日の勤務の下にある「🔔 通知設定」から設定できます。30分前・1時間前・2時間前が選べます。中休の日は前半・後半それぞれにお知らせします。詳しくは「使い方」をご覧ください。</div>
-      </div>
       <div class="log-item">
         <div class="log-date">2026/08/11</div>
         <div class="log-body"><span class="tag tag-fix">修正</span>読み上げを止めたときに、エラーの文字が出ることがあったのを直しました。読み上げ中はボタンが「読み上げを停止」に変わります。</div>
@@ -2085,196 +1982,22 @@ function updateClock(){
 const NOTIFY_ON_KEY   = 'a-notify-on';    // 通知を受け取るかどうか
 const NOTIFY_LEAD_KEY = 'a-notify-lead';  // 何分前に知らせるか
 
-function getNotifyOn(){
-  try{ return localStorage.getItem(NOTIFY_ON_KEY) === '1'; }catch(e){ return false; }
-}
-function getNotifyLead(){
-  try{
-    const v = parseInt(localStorage.getItem(NOTIFY_LEAD_KEY));
-    return (v === 30 || v === 60 || v === 120) ? v : 60;   // 初期値は1時間前
-  }catch(e){ return 60; }
-}
-
 /* 指定した日の、指定したダイヤ番号の「出勤時刻」を取り出す。
    公休・要確認・時刻が読み取れないものは null を返す。 */
-function shiftStartFor(dial, date){
-  const rec = DB[dial];
-  if(!rec) return null;
-  const e = rec[dayType(date)];
-  if(!e || !e.o || e.o === '—' || !e.o.includes('〜')) return null;
-  // 「6:20/11:56〜16:18/22:01」のような中間解放は、最初の出勤時刻を使う
-  const st = e.o.split('〜')[0].split('/')[0].trim();
-  const m = st.match(/^(\d{1,2}):(\d{2})$/);
-  if(!m) return null;
-  return { h: parseInt(m[1]), m: parseInt(m[2]), text: st };
-}
-
 /* 次に通知される予定を割り出す。
    今日から順に見ていき、まだ過ぎていない最初の勤務を返す。
    公休が続く場合も飛ばして探すので、最大14日先まで見る。 */
-function nextNotifyPlan(){
-  const el = document.getElementById('todayInput');
-  const v = el ? parseInt(el.value) : NaN;
-  if(!v || v < 1 || v > 92) return null;
-  const lead = getNotifyLead();
-  const now = new Date();
-  for(let i = 0; i <= 14; i++){
-    const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + i);
-    const dial = calcDial(d, v);
-    const st = shiftStartFor(dial, d);
-    if(!st) continue;                       // 公休などは飛ばす
-    const start = new Date(d);
-    start.setHours(st.h, st.m, 0, 0);
-    const notify = new Date(start.getTime() - lead * 60000);
-    if(notify > now) return { date: d, dial: dial, start: start, notify: notify, startText: st.text };
-  }
-  return null;
-}
-
-function openNotifySettings(){
-  renderNotifySettings();
-  document.getElementById('notifyModal').classList.add('active');
-  document.body.style.overflow = 'hidden';
-}
-function closeNotifySettings(){
-  document.getElementById('notifyModal').classList.remove('active');
-  document.body.style.overflow = '';
-}
-
 /* 通知を受け取る / 止める を切り替える */
-async function toggleNotify(){
-  if(getNotifyOn()){
-    try{ localStorage.setItem(NOTIFY_ON_KEY, '0'); }catch(e){}
-    await removeSettingsFromServer();          // サーバー側の登録も消す
-    showToast('通知を止めました');
-    renderNotifySettings();
-    return;
-  }
-  // オンにするときは、通知の許可と登録をまとめて済ませる
-  const ok = await setupPush();
-  if(ok){
-    // 番号が未保存だと、いつ知らせればいいか決められない。
-    // 入力欄に番号が入っているだけで保存し忘れている人が多いので、
-    // ここで自動的に保存してしまう。
-    if(!getMyDialBase()){
-      try{ saveMyDial(); }catch(e){}
-    }
-    if(!getMyDialBase()){
-      showToast('先に「今日のダイヤ番号」を入力してください');
-      renderNotifySettings();
-      return;
-    }
-    const done = await pushSettingsToServer();
-    if(done){
-      try{ localStorage.setItem(NOTIFY_ON_KEY, '1'); }catch(e){}
-      showToast('通知を受け取る設定にしました');
-    }else{
-      showToast('登録できませんでした。通信を確かめてください');
-    }
-  }
-  renderNotifySettings();
-}
-
 /* 何分前に知らせるかを選ぶ */
-function setNotifyLead(min){
-  try{ localStorage.setItem(NOTIFY_LEAD_KEY, String(min)); }catch(e){}
-  renderNotifySettings();
-  try{ beep(880, 60, 0); }catch(e){}
-  // すでに受け取る設定なら、変更をサーバーにも伝える
-  if(getNotifyOn()) pushSettingsToServer();
-}
-
 /* 設定画面の中身を描き直す */
-function renderNotifySettings(){
-  const box = document.getElementById('ntBody');
-  if(!box) return;
-  const on   = getNotifyOn();
-  const lead = getNotifyLead();
-  const DWJ  = ['日','月','火','水','木','金','土'];
-  const p2   = function(n){ return String(n).padStart(2,'0'); };
-  const leadText = (lead === 120) ? '2時間' : (lead === 60 ? '1時間' : '30分');
-
-  let h = '';
-
-  // いまオンかオフか。色と文字の両方で示す
-  h += '<div class="nt-state ' + (on ? 'on' : 'off') + '">'
-     + (on ? '✅ 通知を受け取る設定です' : '⚪ 通知は入っていません')
-     + '</div>';
-
-  // 切り替えボタン
-  h += '<button class="nt-btn ' + (on ? 'stop' : 'go') + '" onclick="toggleNotify()">'
-     + (on ? '通知を止める' : '通知を受け取る')
-     + '</button>';
-
-  // 何分前に知らせるか
-  h += '<div class="nt-sec">いつ知らせますか？</div><div class="nt-opts">';
-  [[30,'出勤の 30分前'],[60,'出勤の 1時間前'],[120,'出勤の 2時間前']].forEach(function(o){
-    h += '<div class="nt-opt ' + (lead === o[0] ? 'on' : '') + '" onclick="setNotifyLead(' + o[0] + ')">'
-       + '<span class="mark">' + (lead === o[0] ? '◉' : '○') + '</span>'
-       + '<span>' + o[1] + '</span></div>';
-  });
-  h += '</div>';
-
-  // 次はいつ通知されるか。設定が効いているか本人が確かめられるようにする
-  const plan = nextNotifyPlan();
-  if(plan){
-    const d = plan.date, n = plan.notify;
-    h += '<div class="nt-plan">次にお知らせするのは'
-       + '<span class="big">' + (d.getMonth()+1) + '月' + d.getDate() + '日（' + DWJ[d.getDay()] + '）'
-       + n.getHours() + ':' + p2(n.getMinutes()) + '</span>'
-       + plan.dial + '番ダイヤ　出勤 ' + plan.startText + ' の' + leadText + '前</div>';
-  }else{
-    h += '<div class="nt-warn">先に「今日は何番ダイヤ」を入力して保存してください。'
-       + '<br>番号が分からないと、いつ知らせればいいか計算できません。</div>';
-  }
-
-  // まだ準備中であることを正直に書いておく
-  h += '<div class="nt-warn">⚠ この機能は試験運用中です。'
-     + '<br>うまく届かないことがあります。目覚まし代わりにはしないでください。</div>';
-
-  // 届かないときの案内。ここを書いておかないと問い合わせが集中する
-  h += '<div class="nt-note">■ 通知が届かないときは<br>'
-     + '・iPhoneはホーム画面に追加してから開いてください。ブラウザのままでは届きません<br>'
-     + '・マナーモード（サイレント）のときは音が鳴りません<br>'
-     + '・端末の設定で、このアプリの通知が切られていないか確かめてください</div>';
-
-  box.innerHTML = h;
-}
-
 /* ダイヤ番号が変わったとき、サーバー側の登録も合わせ直す。
    これをしないと、番号を変えても前の勤務で通知が来てしまう。 */
-async function syncNotifyRegistration(){
-  if(!getNotifyOn()) return;               // 通知を受け取らない設定なら何もしない
-  if(!getMyDialBase()){
-    // 番号が消えたのに登録が残っていると、いつまでも通知が来てしまう
-    await removeSettingsFromServer();
-    try{ localStorage.setItem(NOTIFY_ON_KEY, '0'); }catch(e){}
-    showToast('番号を消したので通知も止めました');
-    return;
-  }
-  await pushSettingsToServer();
-}
-
 /* アプリを開いたとき、1日1回だけ登録をサーバーに送り直す。
 
    登録がサーバーから消えていても、アプリ側は「受け取る設定」のままなので、
    本人は気づかないまま通知が来なくなる。実際にそれが起きた。
    毎日入れ直しておけば、消えていても設定がずれていても自動で戻る。 */
 const NOTIFY_SYNC_KEY = 'a-notify-synced';
-
-async function refreshNotifyRegistration(){
-  if(!getNotifyOn()) return;                 // 受け取らない設定なら何もしない
-  if(!getMyDialBase()) return;               // 番号が無いときは何もしない
-  const today = new Date();
-  const iso = today.getFullYear() + '-'
-            + String(today.getMonth() + 1).padStart(2, '0') + '-'
-            + String(today.getDate()).padStart(2, '0');
-  try{
-    if(localStorage.getItem(NOTIFY_SYNC_KEY) === iso) return;   // 今日はもう送った
-  }catch(e){}
-  const ok = await pushSettingsToServer();
-  if(ok){ try{ localStorage.setItem(NOTIFY_SYNC_KEY, iso); }catch(e){} }
-}
 
 /* ==== 通知設定をサーバーに預ける ====
    端末に保存するだけでは、送信する側（GitHub Actions）が設定を知る手段がない。
@@ -2305,58 +2028,8 @@ function getClientId(){
 
 /* 保存してある「基準日と基準番号」を取り出す。
    この2つが分かれば、何年先でもその日の番号を計算できる。 */
-function getMyDialBase(){
-  try{
-    const raw = localStorage.getItem('a-my-dial');
-    if(!raw) return null;
-    const o = JSON.parse(raw);
-    if(!o || !o.dial || !o.iso) return null;
-    return { dial: parseInt(o.dial), iso: o.iso };
-  }catch(e){ return null; }
-}
-
 /* 設定をサーバーに登録する（すでにあれば上書き） */
-async function pushSettingsToServer(){
-  const id = getClientId();
-  let token = null;
-  try{ token = localStorage.getItem(PUSHTOKEN_KEY); }catch(e){}
-  const base = getMyDialBase();
-  if(!id || !token || !base) return false;
-
-  const body = { fields: {
-    app:       { stringValue: APP_CODE },
-    token:     { stringValue: token },
-    baseDate:  { stringValue: base.iso },
-    baseDial:  { integerValue: String(base.dial) },
-    lead:      { integerValue: String(getNotifyLead()) },
-    updatedAt: { stringValue: new Date().toISOString() }
-  } };
-  try{
-    // 触る項目だけを指定する。こうしないと、送信側が付けている
-    // 「もう送った」の記録まで消えてしまい、通知が何度も届く。
-    const mask = ['app','token','baseDate','baseDial','lead','updatedAt']
-      .map(function(k){ return 'updateMask.fieldPaths=' + k; }).join('&');
-    const res = await fetch(FS_BASE + '/' + id + '?key=' + FIREBASE_CONFIG.apiKey + '&' + mask, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    if(!res.ok) console.warn('登録に失敗', res.status, await res.text());
-    return res.ok;
-  }catch(e){ console.warn('登録に失敗', e); return false; }
-}
-
 /* 登録を取り消す（通知を止めたとき） */
-async function removeSettingsFromServer(){
-  const id = getClientId();
-  if(!id) return false;
-  try{
-    const res = await fetch(FS_BASE + '/' + id + '?key=' + FIREBASE_CONFIG.apiKey,
-                            { method: 'DELETE' });
-    return res.ok;
-  }catch(e){ return false; }
-}
-
 /* ==== プッシュ通知の登録（試験中） ====
    アプリを閉じていても通知を受け取れるようにするための準備。
    Firebaseから発行される「トークン」がこの端末の宛先になる。
@@ -3331,7 +3004,6 @@ function saveMyDial(){
     localStorage.setItem(MYDIAL_KEY, JSON.stringify({dial:v, iso:toISO(new Date())}));
   }catch(e){}
   showMyDialNote(true);
-  syncNotifyRegistration();   // 番号を変えたら通知の登録も更新する
 }
 /* 保存した番号を、今日の日付に合わせて進めた状態で入れ直す */
 function restoreMyDial(){
@@ -3354,7 +3026,6 @@ function forgetMyDial(){
   updateTodayPreview();
   showMyDialNote(false);
   showToast('保存した番号を消しました');
-  syncNotifyRegistration();   // 番号を消したら通知も止める
 }
 function showMyDialNote(on){
   const el=document.getElementById('myDialNote');
@@ -3693,7 +3364,6 @@ window.onload=function(){
   const autoDialNum=((BASE_DIAL-1+Math.floor((new Date()-BASE_DATE)/86400000))%92+92)%92+1;
   document.getElementById('todayInput').placeholder=autoDialNum;
   restoreMyDial();   // 前に入れた番号があれば、今日の番号に進めて自動で入れる
-  refreshNotifyRegistration();   // 通知の登録が消えていないか確かめ、必要なら入れ直す
   document.getElementById('todayInput').addEventListener('input',()=>{ updateTodayPreview(); saveMyDial(); });
   updateTodayPreview(); // 未入力状態のヒント表示（グレー）
   const t=new Date();t.setHours(0,0,0,0);
