@@ -950,7 +950,7 @@ a.source-link:visited {
 <div class="push-ask-back" id="pushAsk">
   <div class="push-ask">
     <h3>🔔 お知らせの通知</h3>
-    <p>ダイヤ改正やアプリの更新など、<br>このアプリからのお知らせを<br>通知で受け取りますか？</p>
+    <p>このアプリからの通知を<br>受け取りますか？</p>
     <div class="row">
       <button class="later" onclick="pushAskLater()">あとで</button>
       <button class="yes" onclick="pushAskYes()">受け取る</button>
@@ -2170,7 +2170,7 @@ const PUSH_ON_KEY   = 'a-push-on';      // 受け取る設定にしているか
 const PUSH_ASK_KEY  = 'a-push-asked';   // どの版のときに案内を出したか
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v76';
+const APP_VERSION   = 'v77';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
