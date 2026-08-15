@@ -47,7 +47,7 @@ async function loadTargets(at) {
   const out = [];
   let pageToken = '';
   for (let guard = 0; guard < 20; guard++) {
-    const url = `${FS_ROOT}/notifyTargets?pageSize=300`
+    const url = `${FS_ROOT}/pushTokens?pageSize=300`
               + (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '');
     const res = await fetch(url, { headers: { Authorization: `Bearer ${at}` } });
     if (!res.ok) throw new Error('登録一覧を読めません: ' + res.status);
@@ -67,7 +67,7 @@ async function loadTargets(at) {
 
 async function deleteTarget(at, id) {
   try {
-    await fetch(`${FS_ROOT}/notifyTargets/${id}`, {
+    await fetch(`${FS_ROOT}/pushTokens/${id}`, {
       method: 'DELETE', headers: { Authorization: `Bearer ${at}` }
     });
   } catch (e) { /* 消せなくても致命的ではない */ }
