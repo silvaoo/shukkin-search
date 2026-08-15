@@ -10,10 +10,11 @@
 
 // キャッシュ名にバージョンを入れておき、更新のたびにこの値を変えることで
 // 新しいService Workerが「更新あり」と判定されるようにする
-const CACHE_VERSION = 'a-shukkin-v71';
+const CACHE_VERSION = 'a-shukkin-v72';
 const CACHE_FILES = [
     './',
     './index.html',
+    './dia-a.json',        // ダイヤのデータ。圏外でも使えるよう控えておく
     './mascot.png',
     './icons/icon-192.png',
     './manifest.json'
