@@ -122,7 +122,23 @@ body {
   border: 1px solid var(--border);
 }
 
-/* ==== お知らせ通知の受け取りボタン ==== */
+/* ==== 通知の受け取りをすすめる帯 ====
+   まだ許可していない人にだけ、画面の上に細く出す。
+   許可が済んだら消えるので、普段は見えない。 */
+#push-bar{
+  display: none;
+  width: 100%; padding: 11px 14px;
+  background: linear-gradient(90deg, rgba(0,245,255,0.14), rgba(191,0,255,0.14));
+  border: none; border-bottom: 1px solid var(--border);
+  color: var(--cyan); font-size: 13px; font-weight: 700;
+  font-family: inherit; cursor: pointer; text-align: center;
+}
+#push-bar .x{
+  float: right; color: var(--dim); font-weight: 400;
+  padding: 0 2px 0 10px; font-size: 15px; line-height: 1;
+}
+
+/* ==== 通知の受け取りボタン(フッター) ==== */
 .push-btn{
   background: var(--bg-card2); color: var(--text);
   border: 1px solid var(--border); border-radius: 8px;
@@ -942,6 +958,9 @@ a.source-link:visited {
 
 <button id="update-banner" onclick="handleUpdateClick()" style="display:none;">🔄 新しいバージョンがあります。タップで更新</button>
 
+<!-- 通知を受け取っていない人にだけ出す帯。許可すると消える -->
+<div id="push-bar" onclick="pushBarTap(event)">🔔 通知を受け取る<span class="x" onclick="pushBarClose(event)">✕</span></div>
+
 
 <canvas id="fw"></canvas>
 <div class="toast" id="toast"></div>
@@ -949,7 +968,7 @@ a.source-link:visited {
 <!-- 通知の受け取りを尋ねる案内。ホーム画面に追加した人にだけ、更新のたびに一度出す -->
 <div class="push-ask-back" id="pushAsk">
   <div class="push-ask">
-    <h3>🔔 お知らせの通知</h3>
+    <h3>🔔 通知</h3>
     <p>このアプリからの通知を<br>受け取りますか？</p>
     <div class="row">
       <button class="later" onclick="pushAskLater()">あとで</button>
@@ -2168,9 +2187,10 @@ const PUSH_FS_URL = 'https://firestore.googleapis.com/v1/projects/shukkin-notify
                   + '/databases/(default)/documents/pushTokens';
 const PUSH_ON_KEY   = 'a-push-on';      // 受け取る設定にしているか
 const PUSH_ASK_KEY  = 'a-push-asked';   // どの版のときに案内を出したか
+const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じたか
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v77';
+const APP_VERSION   = 'v78';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -2273,11 +2293,12 @@ async function setupPush(){
     // アプリを開いたまま通知が届いた場合の処理
     messaging.onMessage(function(payload){
       const d = (payload && payload.data) || (payload && payload.notification) || {};
-      showToast(d.title || 'お知らせが届きました');
+      showToast(d.title || '通知が届きました');
     });
 
-    showToast('✅ お知らせを受け取れるようになりました');
+    showToast('✅ 通知を受け取れるようになりました');
     renderPushBox();
+    renderPushBar();   // 受け取る設定になったので帯を消す
     return true;
 
   }catch(e){
@@ -2295,6 +2316,9 @@ async function setupPush(){
    いきなり端末の許可を求めない理由:
    一度「ブロック」を押されると、アプリ側からは二度と尋ねられなくなる。
    先にこの案内をはさむことで、誤ってブロックされるのを防いでいる。 */
+/* ※ 以下のポップアップは今は使っていない。
+      上部の帯だけにしたため呼び出していないが、
+      戻したくなったときのために残してある。 */
 function shouldAskPush(){
   if(!('Notification' in window) || !('serviceWorker' in navigator)) return false;
   if(!isStandaloneApp()) return false;              // ホーム画面から開いた人だけ
@@ -2328,9 +2352,43 @@ async function pushAskYes(){
   await setupPush();
 }
 
+/* ==== 上部の帯 ====
+   まだ通知を受け取っていない人にだけ出す。
+   押すと受け取りの確認へ。✕ を押すとその版では出さない。 */
+function renderPushBar(){
+  const bar = document.getElementById('push-bar');
+  if(!bar) return;
+  bar.style.display = shouldShowPushBar() ? 'block' : 'none';
+}
+
+function shouldShowPushBar(){
+  if(!('Notification' in window) || !('serviceWorker' in navigator)) return false;
+  if(!isStandaloneApp()) return false;                     // ホーム画面から開いた人だけ
+  if(Notification.permission === 'denied') return false;   // すでに断られている
+  try{
+    if(localStorage.getItem(PUSH_ON_KEY) === '1') return false;          // もう受け取っている
+    if(localStorage.getItem(PUSH_BAR_KEY) === APP_VERSION) return false; // この版では閉じた
+  }catch(e){ return false; }
+  return true;
+}
+
+/* 帯そのものを押したとき */
+function pushBarTap(ev){
+  if(ev && ev.target && ev.target.classList.contains('x')) return; // ✕は別処理
+  setupPush();
+}
+
+/* ✕ を押したとき。この版ではもう出さない */
+function pushBarClose(ev){
+  if(ev){ ev.stopPropagation(); }
+  try{ localStorage.setItem(PUSH_BAR_KEY, APP_VERSION); }catch(e){}
+  const bar = document.getElementById('push-bar');
+  if(bar) bar.style.display = 'none';
+}
+
 /* 受け取りをやめる */
 async function stopPush(){
-  if(!confirm('お知らせの通知を受け取らないようにしますか？')) return;
+  if(!confirm('通知を受け取らないようにしますか？')) return;
   await deletePushToken();
   try{
     localStorage.removeItem(PUSH_ON_KEY);
@@ -2338,6 +2396,7 @@ async function stopPush(){
   }catch(e){}
   showToast('通知を止めました');
   renderPushBox();
+  renderPushBar();   // 受け取らない設定に戻ったので帯を出す
 }
 
 /* フッターの表示を作る。
@@ -2352,7 +2411,7 @@ function renderPushBox(){
   }
   if(!isStandaloneApp()){
     box.innerHTML = '<div class="push-note">🔔 ホーム画面に追加すると、'
-                  + '営業所からのお知らせを通知で受け取れます</div>';
+                  + 'このアプリからの通知を受け取れます</div>';
     return;
   }
 
@@ -2360,11 +2419,11 @@ function renderPushBox(){
   try{ on = localStorage.getItem(PUSH_ON_KEY) === '1'; }catch(e){}
 
   if(on){
-    box.innerHTML = '<button class="push-btn on" onclick="stopPush()">🔔 お知らせを受け取る中</button>'
-                  + '<div class="push-note">押すと受け取りを止められます</div>';
+    box.innerHTML = '<button class="push-btn on" onclick="stopPush()">🔔 通知を受け取る設定です</button>'
+                  + '<div class="push-note">押すと通知を止められます</div>';
   }else{
-    box.innerHTML = '<button class="push-btn" onclick="setupPush()">🔕 お知らせを受け取る</button>'
-                  + '<div class="push-note">このアプリからのお知らせが届きます</div>';
+    box.innerHTML = '<button class="push-btn" onclick="setupPush()">🔕 通知を受け取る</button>'
+                  + '<div class="push-note">このアプリからの通知が届きます</div>';
   }
 }
 
@@ -3624,8 +3683,7 @@ window.onload=async function(){
   initSW(); // オフライン対応を開始
   renderPushBox();   // お知らせ通知のボタンを表示
   resyncPushToken(); // 受け取る設定なら、宛先を1日1回預け直す
-  // 更新のたびに一度だけ、通知を受け取るか尋ねる（ホーム画面に追加した人のみ）
-  setTimeout(()=>{ if(shouldAskPush()) openPushAsk(); }, 1200);
+  renderPushBar();   // 通知を受け取っていない人にだけ、上に帯を出す
   updateClock(); setInterval(updateClock,1000); // 時計を開始
   // 注意: このツールは同僚とも共有するため、特定の個人のダイヤ番号を
   // 「値」として自動入力してはいけない。あくまで「プレースホルダー(薄いヒント)」
