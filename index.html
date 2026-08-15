@@ -91,6 +91,16 @@ body {
   cursor: pointer; font-size: 15px; text-decoration: none; display: inline-block;
 }
 
+/* ==== お知らせ通知の受け取りボタン ==== */
+.push-btn{
+  background: var(--bg-card2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 9px 16px; font-size: 12px; font-weight: 700; cursor: pointer;
+  font-family: inherit;
+}
+.push-btn.on{ color: var(--green); border-color: var(--green); }
+.push-note{ font-size: 11px; color: var(--dim); margin-top: 6px; line-height: 1.7; }
+
 /* ==== 今日のダイヤ入力カード ==== */
 .today-card {
   background: var(--bg-card);
@@ -1028,6 +1038,7 @@ a.source-link:visited {
   <div>出退勤時間に誤りがあっても当方は責任を負いかねます。</div>
   <div style="margin-top:8px;"><span class="source-link" onclick="openMemoList()">📝 保存したメモの一覧</span></div>
   <div style="margin-top:8px;"><span class="source-link" onclick="openGuide()">📖 使い方・アプリの入れ方・更新履歴</span></div>
+  <div id="pushBox" style="margin-top:12px;"></div>
   <div class="credit" style="margin-top:10px;">by AIタケタニ</div>
 </div>
 
@@ -2108,16 +2119,69 @@ async function cleanupWrongPushWorker(){
   }catch(e){ /* 片付けに失敗しても、登録自体は続行する */ }
 }
 
+/* ==== お知らせ通知の受け取り ====
+   仕組みは3段階。
+     1. 端末の宛先(トークン)をFirebaseに発行してもらう
+     2. その宛先を、どのダイヤのアプリかを添えてサーバーに預ける
+     3. 送信側(管理ページ)が、ダイヤを指定して一斉に送る
+
+   預けるのは「宛先・ダイヤ記号・端末を表す番号」の3つだけ。
+   名前も社員番号もダイヤ番号も送らないので、誰のものかは分からない。
+
+   ホーム画面に追加していない場合は登録しない。
+   ブラウザのタブで開いているだけの状態では、通知が届かない端末が多く、
+   届かない宛先を残しておくと送信時に無駄な失敗が積み上がるため。 */
+
+/* 宛先の預け先。Firestore の REST という仕組みを直接呼ぶ。
+   読み込む部品が増えないので、アプリが重くならない。 */
+const PUSH_FS_URL = 'https://firestore.googleapis.com/v1/projects/shukkin-notify'
+                  + '/databases/(default)/documents/pushTokens';
+const PUSH_ON_KEY   = 'a-push-on';      // 受け取る設定にしているか
+const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
+
+/* 宛先をサーバーに預ける（すでにあれば上書き） */
+async function savePushToken(token){
+  const cid = getClientId();
+  if(!cid || !token) return false;
+  const url = PUSH_FS_URL + '/' + encodeURIComponent(cid)
+            + '?key=' + FIREBASE_CONFIG.apiKey;
+  try{
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          token:     { stringValue: token },
+          app:       { stringValue: APP_CODE },
+          updatedAt: { stringValue: new Date().toISOString() }
+        }
+      })
+    });
+    return res.ok;
+  }catch(e){ return false; }
+}
+
+/* 預けた宛先を取り消す（受け取らない設定にしたとき） */
+async function deletePushToken(){
+  const cid = getClientId();
+  if(!cid) return false;
+  const url = PUSH_FS_URL + '/' + encodeURIComponent(cid)
+            + '?key=' + FIREBASE_CONFIG.apiKey;
+  try{
+    const res = await fetch(url, { method: 'DELETE' });
+    return res.ok;
+  }catch(e){ return false; }
+}
+
 async function setupPush(){
   // 通知に対応していない端末・ブラウザをはじく
   if(!('Notification' in window) || !('serviceWorker' in navigator)){
     showToast('この端末は通知に対応していません');
     return false;
   }
-  // iPhoneはホーム画面に追加していないと通知を受け取れない
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  if(isIOS && !isStandaloneApp()){
-    showToast('iPhoneは「ホーム画面に追加」してから開いてください');
+  // ホーム画面に追加していない場合は登録しない
+  if(!isStandaloneApp()){
+    showToast('「ホーム画面に追加」してから開いてください');
     return false;
   }
   // Firebaseの読み込みに失敗している場合(オフラインなど)
@@ -2147,7 +2211,6 @@ async function setupPush(){
     // 場所を指定せずに登録すると、本体の sw.js と同じ区画に入ってしまい、
     // 互いを上書きし合う。その結果「新しいバージョンがあります」の帯が
     // 何度も出たり、通知が正しく表示されなくなる。
-    // 通知用は専用の区画に置いて、本体と衝突しないようにする。
     await cleanupWrongPushWorker();
     const swReg = await navigator.serviceWorker.register(
       'firebase-messaging-sw.js',
@@ -2161,19 +2224,28 @@ async function setupPush(){
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: swReg
     });
-    if(!token){ showToast('トークンを取得できませんでした'); return false; }
+    if(!token){ showToast('宛先を取得できませんでした'); return false; }
 
     try{ localStorage.setItem(PUSHTOKEN_KEY, token); }catch(e){}
 
+    // 宛先をサーバーに預ける。ここまで済んで初めて通知が届くようになる
+    if(!await savePushToken(token)){
+      showToast('登録できませんでした。時間をおいて試してください');
+      return false;
+    }
+    try{
+      localStorage.setItem(PUSH_ON_KEY, '1');
+      localStorage.setItem(PUSH_SYNC_KEY, toISO(new Date()));
+    }catch(e){}
+
     // アプリを開いたまま通知が届いた場合の処理
     messaging.onMessage(function(payload){
-      const d = (payload && payload.data) || {};
+      const d = (payload && payload.data) || (payload && payload.notification) || {};
       showToast(d.title || 'お知らせが届きました');
     });
 
-    // トークンは画面に出さない。利用者には意味が分からず、混乱のもとになるため。
-    // 端末の中には保存してあるので、必要なときに取り出せる。
-
+    showToast('✅ お知らせを受け取れるようになりました');
+    renderPushBox();
     return true;
 
   }catch(e){
@@ -2181,6 +2253,81 @@ async function setupPush(){
     console.warn('プッシュ登録に失敗', e);
     return false;
   }
+}
+
+/* 受け取りをやめる */
+async function stopPush(){
+  if(!confirm('お知らせの通知を受け取らないようにしますか？')) return;
+  await deletePushToken();
+  try{
+    localStorage.removeItem(PUSH_ON_KEY);
+    localStorage.removeItem(PUSH_SYNC_KEY);
+  }catch(e){}
+  showToast('通知を止めました');
+  renderPushBox();
+}
+
+/* フッターの表示を作る。
+   ホーム画面に追加していない場合は、ボタンではなく案内を出す。 */
+function renderPushBox(){
+  const box = document.getElementById('pushBox');
+  if(!box) return;
+
+  if(!('Notification' in window) || !('serviceWorker' in navigator)){
+    box.innerHTML = '';
+    return;
+  }
+  if(!isStandaloneApp()){
+    box.innerHTML = '<div class="push-note">🔔 ホーム画面に追加すると、'
+                  + '営業所からのお知らせを通知で受け取れます</div>';
+    return;
+  }
+
+  let on = false;
+  try{ on = localStorage.getItem(PUSH_ON_KEY) === '1'; }catch(e){}
+
+  if(on){
+    box.innerHTML = '<button class="push-btn on" onclick="stopPush()">🔔 お知らせを受け取る中</button>'
+                  + '<div class="push-note">押すと受け取りを止められます</div>';
+  }else{
+    box.innerHTML = '<button class="push-btn" onclick="setupPush()">🔕 お知らせを受け取る</button>'
+                  + '<div class="push-note">営業所からの連絡やダイヤ改正のお知らせが届きます</div>';
+  }
+}
+
+/* アプリを開いたとき、1日1回だけ宛先を預け直す。
+   宛先はFirebase側の都合で作り直されることがあり、
+   古いままだと本人が気づかないうちに通知が届かなくなるため。 */
+async function resyncPushToken(){
+  let on = false, last = '';
+  try{
+    on   = localStorage.getItem(PUSH_ON_KEY) === '1';
+    last = localStorage.getItem(PUSH_SYNC_KEY) || '';
+  }catch(e){}
+  if(!on) return;
+  if(!isStandaloneApp()) return;
+  const today = toISO(new Date());
+  if(last === today) return;                    // 今日はもう済んでいる
+  if(Notification.permission !== 'granted') return;
+  if(typeof firebase === 'undefined' || !firebase.messaging) return;
+
+  try{
+    const swReg = await navigator.serviceWorker.register(
+      'firebase-messaging-sw.js',
+      { scope: './firebase-cloud-messaging-push-scope' }
+    );
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    const token = await firebase.messaging().getToken({
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: swReg
+    });
+    if(token && await savePushToken(token)){
+      try{
+        localStorage.setItem(PUSHTOKEN_KEY, token);
+        localStorage.setItem(PUSH_SYNC_KEY, today);
+      }catch(e){}
+    }
+  }catch(e){ /* 失敗しても次に開いたときに試す */ }
 }
 
 /* 発行されたトークンを画面に出す。試験中のみの表示。
@@ -3402,6 +3549,8 @@ function closeSourceModal(){
 window.onload=async function(){
   await loadDiaData();   // 先にダイヤのデータを読み込む
   initSW(); // オフライン対応を開始
+  renderPushBox();   // お知らせ通知のボタンを表示
+  resyncPushToken(); // 受け取る設定なら、宛先を1日1回預け直す
   updateClock(); setInterval(updateClock,1000); // 時計を開始
   // 注意: このツールは同僚とも共有するため、特定の個人のダイヤ番号を
   // 「値」として自動入力してはいけない。あくまで「プレースホルダー(薄いヒント)」
