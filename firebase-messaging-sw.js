@@ -47,13 +47,25 @@ self.addEventListener('push', function (event) {
   );
 });
 
-/* 通知をタップしたらアプリを開く（すでに開いていれば前に出す） */
+/* 通知をタップしたらアプリを開く（すでに開いていれば前に出す）
+
+   【開く場所を絶対の住所で持つ理由】
+   このワーカーは通知専用の区画に置いてある。
+   そのため './' と書くと、アプリのトップではなく
+   区画の中（存在しない場所）を指してしまい、何も開かなかった。
+   ワーカー自身の住所から、アプリのトップを組み立てる。 */
+const APP_HOME = new URL('./', self.location.href).href;
+
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
-      for (const c of list) { if ('focus' in c) return c.focus(); }
-      if (clients.openWindow) return clients.openWindow('./');
+      // すでに開いていれば、それを前に出す。
+      // 他のダイヤのアプリを前に出してしまわないよう、住所で見分ける。
+      for (const c of list) {
+        if (c.url && c.url.indexOf(APP_HOME) === 0 && 'focus' in c) return c.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(APP_HOME);
     })
   );
 });
