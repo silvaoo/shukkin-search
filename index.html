@@ -91,6 +91,37 @@ body {
   cursor: pointer; font-size: 15px; text-decoration: none; display: inline-block;
 }
 
+/* ==== 通知の受け取りを尋ねる案内 ==== */
+.push-ask-back {
+  display: none; position: fixed; inset: 0; z-index: 10050;
+  background: rgba(0,0,0,0.75); padding: 20px;
+  align-items: center; justify-content: center;
+}
+.push-ask-back.active { display: flex; }
+.push-ask {
+  background: var(--bg-card); border: 1px solid var(--cyan);
+  border-radius: 16px; padding: 22px 18px; max-width: 340px; width: 100%;
+  text-align: center;
+}
+.push-ask h3 {
+  font-size: 16px; color: var(--cyan); margin-bottom: 10px; font-weight: 800;
+}
+.push-ask p {
+  font-size: 13px; color: var(--text); line-height: 1.8; margin-bottom: 18px;
+}
+.push-ask .row { display: flex; gap: 10px; }
+.push-ask button {
+  flex: 1; padding: 13px; border-radius: 10px; font-size: 14px;
+  font-weight: 800; cursor: pointer; font-family: inherit;
+}
+.push-ask .yes {
+  background: var(--cyan); color: #04222a; border: none;
+}
+.push-ask .later {
+  background: var(--bg-card2); color: var(--dim);
+  border: 1px solid var(--border);
+}
+
 /* ==== お知らせ通知の受け取りボタン ==== */
 .push-btn{
   background: var(--bg-card2); color: var(--text);
@@ -914,6 +945,18 @@ a.source-link:visited {
 
 <canvas id="fw"></canvas>
 <div class="toast" id="toast"></div>
+
+<!-- 通知の受け取りを尋ねる案内。ホーム画面に追加した人にだけ、更新のたびに一度出す -->
+<div class="push-ask-back" id="pushAsk">
+  <div class="push-ask">
+    <h3>🔔 お知らせの通知</h3>
+    <p>営業所からの連絡やダイヤ改正のお知らせを、<br>通知で受け取りますか？</p>
+    <div class="row">
+      <button class="later" onclick="pushAskLater()">あとで</button>
+      <button class="yes" onclick="pushAskYes()">受け取る</button>
+    </div>
+  </div>
+</div>
 
 <div class="header">
   <a href="#" class="share-btn" onclick="shareApp(); return false;" aria-label="アプリを共有">📤</a>
@@ -2124,6 +2167,10 @@ async function cleanupWrongPushWorker(){
 const PUSH_FS_URL = 'https://firestore.googleapis.com/v1/projects/shukkin-notify'
                   + '/databases/(default)/documents/pushTokens';
 const PUSH_ON_KEY   = 'a-push-on';      // 受け取る設定にしているか
+const PUSH_ASK_KEY  = 'a-push-asked';   // どの版のときに案内を出したか
+/* 案内を出し分けるための版。sw.js の版と合わせて上げる。
+   これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
+const APP_VERSION   = 'v75';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -2238,6 +2285,47 @@ async function setupPush(){
     console.warn('プッシュ登録に失敗', e);
     return false;
   }
+}
+
+/* ==== 通知の受け取りを尋ねる案内 ====
+   ホーム画面に追加した人にだけ、更新のたびに一度出す。
+   「あとで」を押したらその版ではもう出さない。次の更新でまた出る。
+   すでに受け取る設定にしている人には出さない。
+
+   いきなり端末の許可を求めない理由:
+   一度「ブロック」を押されると、アプリ側からは二度と尋ねられなくなる。
+   先にこの案内をはさむことで、誤ってブロックされるのを防いでいる。 */
+function shouldAskPush(){
+  if(!('Notification' in window) || !('serviceWorker' in navigator)) return false;
+  if(!isStandaloneApp()) return false;              // ホーム画面から開いた人だけ
+  if(Notification.permission === 'denied') return false;  // すでに断られている
+  try{
+    if(localStorage.getItem(PUSH_ON_KEY) === '1') return false;   // もう受け取っている
+    if(localStorage.getItem(PUSH_ASK_KEY) === APP_VERSION) return false; // この版では尋ねた
+  }catch(e){ return false; }
+  return true;
+}
+
+function openPushAsk(){
+  const el = document.getElementById('pushAsk');
+  if(el) el.classList.add('active');
+}
+function closePushAsk(){
+  const el = document.getElementById('pushAsk');
+  if(el) el.classList.remove('active');
+}
+
+/* 「あとで」を押したとき。この版ではもう出さない */
+function pushAskLater(){
+  try{ localStorage.setItem(PUSH_ASK_KEY, APP_VERSION); }catch(e){}
+  closePushAsk();
+}
+
+/* 「受け取る」を押したとき。ここで初めて端末に許可を求める */
+async function pushAskYes(){
+  try{ localStorage.setItem(PUSH_ASK_KEY, APP_VERSION); }catch(e){}
+  closePushAsk();
+  await setupPush();
 }
 
 /* 受け取りをやめる */
@@ -3536,6 +3624,8 @@ window.onload=async function(){
   initSW(); // オフライン対応を開始
   renderPushBox();   // お知らせ通知のボタンを表示
   resyncPushToken(); // 受け取る設定なら、宛先を1日1回預け直す
+  // 更新のたびに一度だけ、通知を受け取るか尋ねる（ホーム画面に追加した人のみ）
+  setTimeout(()=>{ if(shouldAskPush()) openPushAsk(); }, 1200);
   updateClock(); setInterval(updateClock,1000); // 時計を開始
   // 注意: このツールは同僚とも共有するため、特定の個人のダイヤ番号を
   // 「値」として自動入力してはいけない。あくまで「プレースホルダー(薄いヒント)」
