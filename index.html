@@ -2194,9 +2194,10 @@ const PUSH_FS_URL = 'https://firestore.googleapis.com/v1/projects/shukkin-notify
 const PUSH_ON_KEY   = 'a-push-on';      // 受け取る設定にしているか
 const PUSH_ASK_KEY  = 'a-push-asked';   // どの版のときに案内を出したか
 const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じたか
+const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v79';
+const APP_VERSION   = 'v80';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -2294,6 +2295,7 @@ async function setupPush(){
     try{
       localStorage.setItem(PUSH_ON_KEY, '1');
       localStorage.setItem(PUSH_SYNC_KEY, toISO(new Date()));
+      localStorage.removeItem(PUSH_FAIL_KEY);
     }catch(e){}
 
     // アプリを開いたまま通知が届いた場合の処理
@@ -2501,17 +2503,25 @@ function renderPushBox(){
 /* アプリを開いたとき、1日1回だけ宛先を預け直す。
    宛先はFirebase側の都合で作り直されることがあり、
    古いままだと本人が気づかないうちに通知が届かなくなるため。 */
+/* アプリを開くたびに、宛先が変わっていないか確かめて預け直す。
+
+   【1日1回では足りなかった】
+   Firebaseは端末やブラウザの都合で宛先を作り直すことがある。
+   作り直された時点で古い宛先は使えなくなるが、
+   保存してあるのは古いままなので、送っても届かなくなる。
+   本人は「受け取る設定」のままなので、気づけない。
+
+   そこで開くたびに、いま発行される宛先と控えを見比べ、
+   違っていればすぐ預け直す。同じなら何もしない。 */
 async function resyncPushToken(){
-  let on = false, last = '';
+  let on = false, saved = '';
   try{
-    on   = localStorage.getItem(PUSH_ON_KEY) === '1';
-    last = localStorage.getItem(PUSH_SYNC_KEY) || '';
+    on    = localStorage.getItem(PUSH_ON_KEY) === '1';
+    saved = localStorage.getItem(PUSHTOKEN_KEY) || '';
   }catch(e){}
   if(!on) return;
   if(!isStandaloneApp()) return;
-  const today = toISO(new Date());
-  if(last === today) return;                    // 今日はもう済んでいる
-  if(Notification.permission !== 'granted') return;
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
   if(typeof firebase === 'undefined' || !firebase.messaging) return;
 
   try{
@@ -2524,13 +2534,61 @@ async function resyncPushToken(){
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: swReg
     });
-    if(token && await savePushToken(token)){
+    if(!token) return;
+
+    // 変わっていなければ、預け直す必要はない
+    if(token === saved){
+      try{ localStorage.setItem(PUSH_SYNC_KEY, toISO(new Date())); }catch(e){}
+      return;
+    }
+
+    // 変わっていた場合は預け直す。
+    // 控えを書き換えるのは、預け終わってから。
+    // 先に書き換えると、預けに失敗したときズレたままになる。
+    if(await savePushToken(token)){
       try{
         localStorage.setItem(PUSHTOKEN_KEY, token);
-        localStorage.setItem(PUSH_SYNC_KEY, today);
+        localStorage.setItem(PUSH_SYNC_KEY, toISO(new Date()));
+        localStorage.removeItem(PUSH_FAIL_KEY);
       }catch(e){}
+      console.log('宛先が変わっていたので預け直しました');
+    }else{
+      // 預けられなかった。何度も続くようなら、届かない状態が続いている。
+      // 「受け取る設定です」と出たまま届かないのが一番たちが悪いので、
+      // 3回続いたら設定を戻して、もう一度登録してもらう。
+      let n = 0;
+      try{ n = parseInt(localStorage.getItem(PUSH_FAIL_KEY) || '0', 10) + 1; }catch(e){}
+      try{ localStorage.setItem(PUSH_FAIL_KEY, String(n)); }catch(e){}
+      if(n >= 3){
+        try{
+          localStorage.removeItem(PUSH_ON_KEY);
+          localStorage.removeItem(PUSH_FAIL_KEY);
+        }catch(e){}
+        renderPushBox();
+        renderPushBar();
+        showToast('通知の登録が切れました。もう一度設定してください');
+      }
     }
   }catch(e){ /* 失敗しても次に開いたときに試す */ }
+}
+
+/* 使われなくなったService Workerを片付ける。
+   古い試作や、消したアプリの登録が端末に残り続けることがある。
+   残っていても実害は小さいが、調べるときに紛らわしい。 */
+async function cleanupStaleWorkers(){
+  try{
+    const keep = new URL('./', location.href).pathname;   // このアプリの区画
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for(const r of regs){
+      const path = new URL(r.scope).pathname;
+      // このアプリの区画（と、その中の通知用の区画）だけ残す
+      if(path === keep || path.indexOf(keep + 'firebase-cloud-messaging') === 0) continue;
+      // 他のダイヤのアプリは触らない
+      if(/^\/shukkin-search(-ikoma|-ba|-c|-yobi)?\/$/.test(path)) continue;
+      if(/^\/shukkin-search(-ikoma|-ba|-c|-yobi)?\/firebase-cloud-messaging/.test(path)) continue;
+      await r.unregister();
+    }
+  }catch(e){ /* 片付けに失敗しても動作には影響しない */ }
 }
 
 /* 発行されたトークンを画面に出す。試験中のみの表示。
@@ -3752,9 +3810,10 @@ function closeSourceModal(){
 window.onload=async function(){
   await loadDiaData();   // 先にダイヤのデータを読み込む
   initSW(); // オフライン対応を開始
-  renderPushBox();   // お知らせ通知のボタンを表示
-  resyncPushToken(); // 受け取る設定なら、宛先を1日1回預け直す
-  renderPushBar();   // 通知を受け取っていない人にだけ、上に帯を出す
+  renderPushBox();      // フッターの通知ボタンを表示
+  renderPushBar();      // 通知を受け取っていない人にだけ、上に帯を出す
+  cleanupStaleWorkers();// 使われなくなった古い登録を片付ける
+  resyncPushToken();    // 宛先が変わっていたら預け直す
   updateClock(); setInterval(updateClock,1000); // 時計を開始
   // 注意: このツールは同僚とも共有するため、特定の個人のダイヤ番号を
   // 「値」として自動入力してはいけない。あくまで「プレースホルダー(薄いヒント)」
