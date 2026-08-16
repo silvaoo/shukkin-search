@@ -55,30 +55,20 @@ self.addEventListener('push', function (event) {
    区画の中（存在しない場所）を指してしまう。
    ワーカー自身の住所から、アプリのトップを組み立てる。
 
-   【住所が読めない画面も前に出す理由】
-   端末によっては、開いている画面の住所を教えてくれないことがある。
-   住所が一致したものだけ前に出す作りにすると、
-   そういう端末では何も起きなくなってしまう。
-   読めたときだけ他のダイヤのアプリを避け、
-   読めなければとりあえず前に出す。 */
+   【必ず新しく開く理由】
+   すでに開いている画面を前に出す作りにしていたが、
+   端末によっては画面の住所が読めないことがあり、
+   よその画面（他のダイヤのアプリや管理ページ）を
+   前に出してしまう事故が起きた。
+   迷いようのない形にして、いつでもこのアプリを開く。
+   すでに開いていれば、その画面が前に出る。 */
 const APP_HOME = new URL('./', self.location.href).href;
 
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
-      // まず、住所が読めて、このアプリのものだと分かる画面を探す
-      for (const c of list) {
-        if (c.url && c.url.indexOf(APP_HOME) === 0 && 'focus' in c) return c.focus();
-      }
-      // 見つからなければ、住所が読めない画面でも前に出してみる
-      for (const c of list) {
-        if (!c.url && 'focus' in c) return c.focus();
-      }
-      // それでも駄目なら新しく開く
-      if (clients.openWindow) return clients.openWindow(APP_HOME);
-    })
-  );
+  if (clients.openWindow) {
+    event.waitUntil(clients.openWindow(APP_HOME));
+  }
 });
 
 /* 新しい版を入れたら、すぐ入れ替わるようにする。
