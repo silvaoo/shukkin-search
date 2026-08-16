@@ -94,22 +94,14 @@ self.addEventListener('install', function () {
   self.skipWaiting();
 });
 
-/* ここから下は Firebase の部品。宛先（トークン）の発行に必要。
-   読み込みに失敗しても、上の受信処理は動くようにしてある。 */
-try {
-  importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
-  importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+/* 【Firebase の部品はあえて読み込まない】
 
-  firebase.initializeApp({
-    apiKey: "AIzaSyAtawIGwf6hfZU3o79JN5R83CLmTivQVIg",
-    authDomain: "shukkin-notify.firebaseapp.com",
-    projectId: "shukkin-notify",
-    storageBucket: "shukkin-notify.firebasestorage.app",
-    messagingSenderId: "587667482421",
-    appId: "1:587667482421:web:080064fd0444ff49f90e7c"
-  });
-  firebase.messaging();
-  // 表示は上の push 処理が行うので、ここでは何もしない
-} catch (e) {
-  // 読み込めなくても通知の表示には影響しない
-}
+   以前はここで firebase-messaging-compat.js を読み込んでいたが、
+   あの部品は自前でタップ処理を持っており、
+   「住所のいちばん上（silvaoo.github.io）」を開こうとする。
+   そのため、同じ住所にある別のアプリ（管理ページなど）が
+   立ち上がってしまうことがあった。
+
+   通知の受け取りは上の push 処理で自前に行っており、
+   宛先（トークン）の発行はアプリ本体側が担っているので、
+   このワーカーの中で Firebase を動かす必要はない。 */
