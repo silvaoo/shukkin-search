@@ -2191,13 +2191,42 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v87';
+const APP_VERSION   = 'v88';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
-async function savePushToken(token){
-  const cid = getClientId();
-  if(!cid || !token) return false;
+/* ==== 5つのアプリで宛先を分け合う ====
+
+   【なぜ必要か】
+   5つのアプリは silvaoo.github.io という同じ住所の中にある。
+   端末は通知の宛先を住所ごとに管理しているため、
+   どれか一つで宛先を取り直すと、他の四つの宛先が使えなくなる。
+   （生駒を開くと学園前Aに届かなくなる、という形で現れていた）
+
+   宛先そのものを分けることはできないので、
+   一つが新しい宛先を受け取ったら、
+   受け取る設定にしている他のアプリの分もまとめて書き換える。
+   これなら、どのアプリ宛に送っても同じ生きた宛先に届く。
+
+   同じ住所にあるおかげで、他のアプリの設定も読み書きできる。 */
+const ALL_APP_CODES = ['a', 'ikoma', 'ba', 'c', 'yobi'];
+
+/* 受け取る設定にしているアプリの一覧を、端末の控えから調べる */
+function getSubscribedApps(){
+  const out = [];
+  for(const code of ALL_APP_CODES){
+    try{
+      if(localStorage.getItem(code + '-push-on') === '1'){
+        const cid = localStorage.getItem(code + '-client-id');
+        if(cid) out.push({ code: code, cid: cid });
+      }
+    }catch(e){}
+  }
+  return out;
+}
+
+/* 宛先を一件ぶん預ける */
+async function putPushToken(cid, appCode, token){
   const url = PUSH_FS_URL + '/' + encodeURIComponent(cid)
             + '?key=' + FIREBASE_CONFIG.apiKey;
   try{
@@ -2207,13 +2236,43 @@ async function savePushToken(token){
       body: JSON.stringify({
         fields: {
           token:     { stringValue: token },
-          app:       { stringValue: APP_CODE },
+          app:       { stringValue: appCode },
           updatedAt: { stringValue: new Date().toISOString() }
         }
       })
     });
     return res.ok;
   }catch(e){ return false; }
+}
+
+/* 新しい宛先を、受け取る設定にしている全アプリぶん書き換える */
+async function saveTokenForAllApps(token){
+  const mine = getClientId();
+  let ok = false;
+
+  // まず自分の分
+  if(mine && await putPushToken(mine, APP_CODE, token)){
+    ok = true;
+    try{ localStorage.setItem(PUSHTOKEN_KEY, token); }catch(e){}
+  }
+
+  // 次に、受け取る設定にしている他のアプリの分
+  for(const app of getSubscribedApps()){
+    if(app.code === APP_CODE) continue;
+    if(await putPushToken(app.cid, app.code, token)){
+      // そのアプリの控えも新しい宛先にしておく。
+      // こうしないと、次にそのアプリを開いたとき
+      // 「変わっている」と判断して取り直してしまう。
+      try{ localStorage.setItem(app.code + '-push-token', token); }catch(e){}
+    }
+  }
+  return ok;
+}
+
+async function savePushToken(token){
+  if(!token) return false;
+  // 自分の分だけでなく、受け取る設定にしている全アプリの分を書き換える
+  return await saveTokenForAllApps(token);
 }
 
 /* 預けた宛先を取り消す（受け取らない設定にしたとき） */
