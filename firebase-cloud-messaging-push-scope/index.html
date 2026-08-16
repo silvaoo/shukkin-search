@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ひらいています…</title>
+<style>
+  html,body{height:100%;margin:0;background:#08080f;color:#00f5ff;
+            font-family:sans-serif;display:flex;align-items:center;justify-content:center}
+  p{font-size:14px}
+</style>
+</head>
+<body>
+<p>ひらいています…</p>
+<script>
+/* 通知をタップしたときの中継ページ。
+
+   【なぜ必要か】
+   通知用のワーカーは、この「firebase-cloud-messaging-push-scope」という
+   区画に置いてある。Androidでは、その区画の外を開こうとすると
+   受け付けてもらえないことがあり、通知をタップしてもアプリが立ち上がらなかった。
+
+   そこで区画の中にこのページを置き、いったんここを開いてから
+   アプリのトップへ移す。利用者にはほぼ見えない。
+
+   履歴には残さない（replace）ので、戻るボタンでここに戻ってくることはない。 */
+location.replace('../');
+</script>
+</body>
+</html>
