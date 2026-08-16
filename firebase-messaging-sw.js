@@ -55,30 +55,28 @@ self.addEventListener('push', function (event) {
    区画の中（存在しない場所）を指してしまう。
    ワーカー自身の住所から、アプリのトップを組み立てる。
 
-   【先に開いてしまう理由】
-   Androidでは、いったん「開いている画面を探す」処理をはさむと、
-   その間に利用者の操作から離れたとみなされ、
-   アプリを開く指示が受け付けられなくなる。
-   そこで、探すより先に開く指示を出しておく。 */
+   【住所が読めない画面も前に出す理由】
+   端末によっては、開いている画面の住所を教えてくれないことがある。
+   住所が一致したものだけ前に出す作りにすると、
+   そういう端末では何も起きなくなってしまう。
+   読めたときだけ他のダイヤのアプリを避け、
+   読めなければとりあえず前に出す。 */
 const APP_HOME = new URL('./', self.location.href).href;
 
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
-
-  // 探す前に、まず開く指示を出す
-  const opening = (clients && clients.openWindow)
-    ? clients.openWindow(APP_HOME)
-    : Promise.resolve(null);
-
   event.waitUntil(
-    opening.catch(function () {
-      // 開けなかったときだけ、すでに開いている画面を前に出す
-      return clients.matchAll({ type: 'window', includeUncontrolled: true })
-        .then(function (list) {
-          for (const c of list) {
-            if (c.url && c.url.indexOf(APP_HOME) === 0 && 'focus' in c) return c.focus();
-          }
-        });
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      // まず、住所が読めて、このアプリのものだと分かる画面を探す
+      for (const c of list) {
+        if (c.url && c.url.indexOf(APP_HOME) === 0 && 'focus' in c) return c.focus();
+      }
+      // 見つからなければ、住所が読めない画面でも前に出してみる
+      for (const c of list) {
+        if (!c.url && 'focus' in c) return c.focus();
+      }
+      // それでも駄目なら新しく開く
+      if (clients.openWindow) return clients.openWindow(APP_HOME);
     })
   );
 });
