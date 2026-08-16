@@ -60,31 +60,19 @@ self.addEventListener('push', function (event) {
    その間に利用者の操作から離れたとみなされ、
    アプリを開く指示が受け付けられなくなる。
    そこで、探すより先に開く指示を出しておく。 */
-const APP_HOME  = new URL('./', self.location.href).href;
-/* 通知用ワーカーと同じ区画にある中継ページ。ここを開いてからトップへ移す */
-const RELAY_PAGE = APP_HOME + 'firebase-cloud-messaging-push-scope/';
+const APP_HOME = new URL('./', self.location.href).href;
 
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
 
-  // 探す前に、まず開く指示を出す。
-  // Androidでは、いったん探す処理をはさむと
-  // 利用者の操作から離れたとみなされ、開けなくなるため。
-  //
-  // 開く先は、このワーカーと同じ区画にある中継ページ。
-  // 区画の外（アプリのトップ）を直に開こうとすると、
-  // Androidでは受け付けてもらえないことがある。
-  // 中継ページがすぐにトップへ移してくれる。
+  // 探す前に、まず開く指示を出す
   const opening = (clients && clients.openWindow)
-    ? clients.openWindow(RELAY_PAGE).catch(function () {
-        // 中継ページが開けなければ、トップを直に試す
-        return clients.openWindow(APP_HOME);
-      })
+    ? clients.openWindow(APP_HOME)
     : Promise.resolve(null);
 
   event.waitUntil(
     opening.catch(function () {
-      // それでも開けなければ、すでに開いている画面を前に出す
+      // 開けなかったときだけ、すでに開いている画面を前に出す
       return clients.matchAll({ type: 'window', includeUncontrolled: true })
         .then(function (list) {
           for (const c of list) {
