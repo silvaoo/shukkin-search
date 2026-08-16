@@ -66,6 +66,14 @@ const APP_HOME = new URL('./', self.location.href).href;
 
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
+
+  // この下で読み込んでいる Firebase の部品も、独自にタップ処理を持っている。
+  // そちらは「住所のいちばん上（silvaoo.github.io）」を開こうとするため、
+  // Androidでは同じ住所にある別のアプリ（管理ページなど）が
+  // 立ち上がってしまうことがあった。
+  // ここで後続の処理を止めて、必ずこのアプリを開くようにする。
+  if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+
   if (clients.openWindow) {
     event.waitUntil(clients.openWindow(APP_HOME));
   }
