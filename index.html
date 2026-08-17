@@ -675,8 +675,11 @@ input[type="date"] {
 /* 今日の表示だけBA風の枠付きカードにする(検索結果の.day-boxesには影響させない) */
 .today-boxes { grid-template-columns: 1.7fr 1fr; margin-top: 2px; }
 .today-boxes .day-box-val { font-weight: 700; }
-.today-boxes .day-box-val.is-day { font-size: 24px; white-space: nowrap; }
-.today-boxes .day-box-val.is-split { font-size: 16px; line-height: 1.5; }
+/* 出退勤の時間と労働時間は、今日のカードでも検索結果でも同じ大きさにする。
+   以前は「今日のカードの中だけ」に効く書き方だったため、
+   検索結果では小さいままだった（生駒・北大和Bと見た目が揃っていなかった）。 */
+.day-box-val.is-day   { font-size: 24px; white-space: nowrap; font-weight: 700; }
+.day-box-val.is-split { font-size: 17px; line-height: 1.5; font-weight: 700; }
 .today-head { margin-bottom: 8px; color: var(--text); font-size: 13px; }
 .today-head b { color: var(--orange); font-size: 20px; }
 .today-note { margin-top: 8px; font-size: 12px; color: var(--note); line-height: 1.5; }
@@ -2191,7 +2194,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v93';
+const APP_VERSION   = 'v94';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -3114,11 +3117,13 @@ function render(rows){
       </div>`;
     }else{
       const slot=r.slot;
+      // 分割勤務かどうかで大きさを変える（今日のカードと同じ扱いにする）
+      const rcls=slot.o.includes('/')?'is-split':'is-day';
       const teiireLabel=TEIIRE[r.dn]?`<div class="teiire-label">🔧 ${TEIIRE[r.dn]}</div>`:'';
       const noteHtml=slot.n?`<div class="day-note">📌 ${slot.n}</div>`:'';
       bodyHtml=`${teiireLabel}<div class="day-boxes">
-        <div class="day-box"><div class="day-box-label">勤務時間</div><div class="day-box-val">${formatDisplayTime(slot.o)}</div></div>
-        <div class="day-box"><div class="day-box-label">労働時間</div><div class="day-box-val">${formatDisplayLabor(slot.w)}</div></div>
+        <div class="day-box"><div class="day-box-label">勤務時間</div><div class="day-box-val ${rcls}">${formatDisplayTime(slot.o)}</div></div>
+        <div class="day-box"><div class="day-box-label">労働時間</div><div class="day-box-val ${rcls}">${formatDisplayLabor(slot.w)}</div></div>
       </div>${noteHtml}`;
     }
 
