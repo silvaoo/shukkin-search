@@ -590,7 +590,7 @@ body.light #todayInput { background: #fff; }
   border-radius: 14px; padding: 14px; margin-bottom: 14px;
 }
 .card-title {
-  font-size: 11px; color: var(--cyan); letter-spacing: 2px; margin-bottom: 12px;
+  font-size: 14px; color: var(--cyan); letter-spacing: 2px; margin-bottom: 12px;
   font-weight: 700; display: flex; align-items: center; gap: 6px;
 }
 .card-title::before {
@@ -655,7 +655,7 @@ input[type="date"] {
 @keyframes cdPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
 @media (prefers-reduced-motion: reduce) { .today-countdown.soon { animation: none; } }
 .day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; }
-.day-date { font-size: 19px; font-weight: 700; color: var(--text); }
+.day-date { font-size: 18px; font-weight: 700; color: var(--text); }
 .day-date.holiday { color: var(--pink); }
 .day-date.saturday { color: var(--cyan); }
 .day-badge { font-size: 12px; padding: 3px 10px; border-radius: 12px; font-weight: 700; white-space: nowrap; }
@@ -663,10 +663,10 @@ input[type="date"] {
 .badge-sat  { background: rgba(0,245,255,0.1); color: var(--cyan); border: 1px solid var(--cyan); }
 .badge-hday { background: rgba(255,0,128,0.1); color: var(--pink); border: 1px solid var(--pink); }
 .day-dial {
-  font-family: 'Share Tech Mono', monospace; font-size: 38px; font-weight: 900; color: var(--orange);
+  font-family: 'Share Tech Mono', monospace; font-size: 32px; font-weight: 900; color: var(--orange);
   text-shadow: 0 0 10px rgba(255,140,0,0.4); line-height: 1; margin-bottom: 10px;
 }
-.day-dial span { font-size: 15px; color: var(--dim); font-family: 'Noto Sans JP', sans-serif; font-weight: 400; }
+.day-dial span { font-size: 14px; color: var(--dim); font-family: 'Noto Sans JP', sans-serif; font-weight: 400; }
 .day-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .day-box { background: var(--bg-card2); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px 12px; }
 .day-box-label { font-size: 10px; color: var(--dim); margin-bottom: 4px; letter-spacing: 1px; }
@@ -680,7 +680,7 @@ input[type="date"] {
 .today-head { margin-bottom: 8px; color: var(--text); font-size: 13px; }
 .today-head b { color: var(--orange); font-size: 20px; }
 .today-note { margin-top: 8px; font-size: 12px; color: var(--note); line-height: 1.5; }
-.day-note { font-size: 11.5px; color: var(--note); margin-top: 8px; font-style: italic; line-height: 1.6; }
+.day-note { font-size: 12px; color: var(--note); margin-top: 8px; font-style: italic; line-height: 1.6; }
 .teiire-label {
   display: inline-block; margin-bottom: 8px; padding: 4px 10px;
   background: rgba(255,230,0,0.1); border: 1px solid rgba(255,230,0,0.3);
@@ -767,7 +767,7 @@ input[type="date"] {
 
 .data-source-notice {
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--dim);
   margin-top: 14px;
   line-height: 1.8;
@@ -2191,7 +2191,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v92';
+const APP_VERSION   = 'v93';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
