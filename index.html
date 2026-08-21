@@ -19,7 +19,7 @@
 <link rel="manifest" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/manifest.json">
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@300;400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700&display=swap');
 
 /* ==== カラーパレット（ダークモード） ==== */
 :root {
@@ -71,7 +71,7 @@ body {
 /* ==== ヘッダー ==== */
 .header { text-align: center; margin-bottom: 16px; position: relative; padding-top: 4px; }
 .header h1 {
-  font-family: 'Share Tech Mono', monospace;
+  /* 数字の形を生駒・北大和Bに合わせるため、本文と同じ書体を使う */
   font-size: clamp(20px, 6.5vw, 30px);
   color: var(--cyan);
   text-shadow: 0 0 10px var(--cyan), 0 0 30px var(--cyan);
@@ -558,7 +558,7 @@ body {
 #todayInput {
   width: 78px; height: 56px; font-size: 32px; font-weight: 900; text-align: center;
   background: #000; border: 2px solid var(--orange); border-radius: 10px;
-  color: var(--orange); font-family: 'Share Tech Mono', monospace; outline: none;
+  color: var(--orange); outline: none;   /* 書体は本文と同じ（生駒・北大和Bに合わせる） */
   box-shadow: 0 0 14px rgba(255,140,0,0.25);
 }
 /* 未入力時のヒント文字は、実際の入力値(オレンジ)と区別できるよう薄いグレーにする */
@@ -663,7 +663,7 @@ input[type="date"] {
 .badge-sat  { background: rgba(0,245,255,0.1); color: var(--cyan); border: 1px solid var(--cyan); }
 .badge-hday { background: rgba(255,0,128,0.1); color: var(--pink); border: 1px solid var(--pink); }
 .day-dial {
-  font-family: 'Share Tech Mono', monospace; font-size: 32px; font-weight: 900; color: var(--orange);
+  font-size: 32px; font-weight: 900; color: var(--orange);   /* 書体は本文と同じ */
   text-shadow: 0 0 10px rgba(255,140,0,0.4); line-height: 1; margin-bottom: 10px;
 }
 .day-dial span { font-size: 14px; color: var(--dim); font-family: 'Noto Sans JP', sans-serif; font-weight: 400; }
@@ -2196,7 +2196,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v95';
+const APP_VERSION   = 'v96';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
