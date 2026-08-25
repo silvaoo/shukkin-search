@@ -12,23 +12,33 @@
 
 | ファイル | 役割 |
 |---|---|
-| `master.html` | **本体。修正はここだけ。** アプリごとに違う値は `{{ }}` で書いてある |
+| `master.html` | **画面の本体。修正はここだけ。** アプリごとに違う値は `{{ }}` で書いてある |
+| `master-manifest.json` | ホーム画面への追加の設定（アイコン・名前・色）の雛形 |
+| `master-sw.js` | Service Worker（キャッシュ・更新検知）の雛形 |
+| `master-share.html` | 共有ページの雛形 |
 | `apps.json` | 5アプリの違いを書いた表（色・番号の上限・ダイヤ名など） |
-| `build.py` | master.html に apps.json を差し込んで5つの index.html を作る |
+| `build.py` | 上の雛形に apps.json を差し込んで、アプリごとに4ファイルを作る |
 | `README.md` | このファイル |
+
+**アプリのリポジトリ側で直接編集してよいのは `logs.html` とデータ・画像・PDFだけです。**
+`index.html` `manifest.json` `sw.js` `share.html` の4つは生成物なので、
+直接編集しても次の生成で消えます。
 
 ---
 
 ## 2. 直すときの手順
 
-1. `master.html` を直す
-2. `build.py` を動かす → `out-<リポジトリ名>.html` が5つできる
-3. できたファイルを各リポジトリの `index.html` として置く
-4. **各リポジトリの `sw.js` のキャッシュ版番号を1つ上げる**（これを忘れると更新が届きません）
-5. `master.html` の中の「バージョン 2.xx」も上げる
+1. `master.html`（または他の雛形）を直す
+2. `master.html` の中の「バージョン 2.xx」を上げる
+3. `python3 build.py bump` を動かす
+   → `out-<リポジトリ名>/` が5つでき、中に4ファイルが入る
+4. できたフォルダの中身を、そのまま各リポジトリの直下に上書きする
 
-`build.py` は `APP_VERSION` を各リポジトリの `sw.js` から自動で読み取ります。
-そのため **sw.js を先に上げてから生成してください。** 順序が逆だと番号がずれます。
+`bump` を付けると、キャッシュの版番号（`a-shukkin-v112` の 112）を
+**build.py が自動で1つ繰り上げます。** 手で上げる必要はありません。
+上げ忘れると更新が届かない、という失敗はこれで起きなくなりました。
+
+版番号を据え置きで作り直したいときだけ `python3 build.py`（bump なし）を使います。
 
 ---
 
@@ -56,6 +66,7 @@ dia-<id>.json        勤務データ（id は a / ikoma / ba / c / yobi）
 pdf/shift-table.pdf   出退勤表PDF（無ければボタンは自動で隠れる）
 pdf/kinmu-keitou.pdf  勤務系統表PDF（同上）
 images/genpage-1.jpg  出退勤表の画像（2枚目以降は -2.jpg -3.jpg …）
+icons/icon-*.png      アイコン8サイズ（72/96/120/144/152/180/192/512）
 logs.html             更新履歴（各アプリで自由に書ける。master とは無関係）
 ```
 
@@ -150,6 +161,21 @@ logs.html             更新履歴（各アプリで自由に書ける。master 
   master 化の際に整理し、通知の切替は正式に使えるようにしました
 - **生駒・BAは色の変数体系が別物でした**（`--label` `--note` など15個）。
   master 化で A系の体系に統一したため、紫系の色味は無くなっています
+
+### 2026-08-25 に見つかったもの
+
+- **`manifest.json` が5アプリで別物でした。** master の管理外だったためです。
+  学園前Aだけアイコンが `raw.githubusercontent.com` の外部URLで、しかも2枚のみ。
+  Cだけ「共有」のショートカットがありませんでした。→ `master-manifest.json` に統一
+- **`share.html` の JavaScript が壊れていました。**
+  学園前AとBAで、変数名 `APP_URL` が URL そのものに置換されており
+  （`const https://silvaoo.github.io/... = "..."`）、構文エラーで
+  **共有ボタンが一切動きませんでした。** 予備だけが正常でした。→ 雛形化して修正
+- **生駒とCに `share.html` が無いのに、manifest から呼んでいました**（404）
+- **生駒の `sw.js` の見出しコメントが「BAダイヤ」のまま**でした
+
+いずれも「master の管理外にあるファイルは、いつのまにか崩れる」という同じ原因です。
+そのため manifest.json / sw.js / share.html も雛形から作る方式に変えました。
 
 ---
 

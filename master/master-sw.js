@@ -1,5 +1,5 @@
 /* =========================================================
-   出退勤検索くん (北大和・学園前 Aダイヤ) - Service Worker
+   出退勤検索くん ({{DIA_NAME}}) - Service Worker
    目的:
    1. PWAとして「インストール可能」にする(Android Chromeの
       インストールバナー/プロンプトは、有効なfetchハンドラを持つ
@@ -10,12 +10,12 @@
 
 // キャッシュ名にバージョンを入れておき、更新のたびにこの値を変えることで
 // 新しいService Workerが「更新あり」と判定されるようにする
-const CACHE_VERSION = 'a-shukkin-v113';
+const CACHE_VERSION = '{{ID}}-shukkin-{{SWVER}}';
 const CACHE_FILES = [
     './',
     './index.html',
     './logs.html',      // 更新履歴。別ファイルに分けてある
-    './dia-a.json',        // ダイヤのデータ。圏外でも使えるよう控えておく
+    './dia-{{ID}}.json',        // ダイヤのデータ。圏外でも使えるよう控えておく
     './mascot.png',
     './icons/icon-192.png',
     './manifest.json'
