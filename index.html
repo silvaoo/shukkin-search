@@ -164,6 +164,14 @@ body {
   overflow: hidden;
   box-shadow: 0 0 20px rgba(255,140,0,0.08);
 }
+/* ==== 更新のお知らせ切替ボタン ==== */
+.notify-btn {
+  background: var(--bg-card2); color: var(--dim);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 7px 14px; font-size: 11px; font-weight: 700; cursor: pointer;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+.notify-btn.on { color: var(--cyan); border-color: var(--cyan); }
 /* ==== インストール案内バナー（生駒・BAと同じ形） ==== */
 .notice-banner {
     width: 100%;
@@ -1145,6 +1153,9 @@ a.source-link:visited {
   <div style="margin-top:8px;"><span class="source-link" onclick="openMemoList()">📝 保存したメモの一覧</span></div>
   <div style="margin-top:8px;"><span class="source-link" onclick="openGuide()">📖 使い方・アプリの入れ方・更新履歴</span></div>
   <div id="pushBox" style="margin-top:12px;"></div>
+  <div style="margin-top:10px;">
+    <button class="notify-btn" id="notifyBtn" onclick="toggleNotify()">🔕 更新のお知らせ：オフ</button>
+  </div>
   <div class="app-info" id="appInfo"></div>
   <div class="credit" style="margin-top:10px;">by AIタケタニ</div>
 </div>
@@ -2149,7 +2160,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v111';
+const APP_VERSION   = 'v112';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -2371,7 +2382,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.33';
+const APP_LABEL = 'バージョン 2.34';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3685,6 +3696,64 @@ async function shareApp(){
   }
 }
 
+/* ==== 更新のお知らせ（端末の通知） ====
+   画面上の帯は、アプリを開いていないと気づけない。
+   そこで「開いた時に新しい版だったら端末の通知でも知らせる」仕組みを足してある。
+   受け取るかどうかは各自がボタンで切り替える。 */
+const NOTIFY_KEY   = 'a-notify-enabled';
+const NOTIFIED_KEY = 'a-last-notified';
+/* お知らせの識別子は版番号から自動で作る。
+   版を上げれば自動で新しいお知らせになるので、手で書き換える必要はない。 */
+const RELEASE = {
+  id: 'a-' + APP_VERSION,
+  notify: true,              // 細かい修正だけの時は false にすれば通知は出ない
+  message: '更新しました！詳しくは更新履歴をご覧下さい。'
+};
+function isNotifyOn(){ try{ return localStorage.getItem(NOTIFY_KEY)==='on'; }catch(e){ return false; } }
+function updateNotifyUI(){
+  const b=document.getElementById('notifyBtn');
+  if(!b)return;
+  const on=isNotifyOn();
+  b.textContent = on ? '🔔 更新のお知らせ：オン' : '🔕 更新のお知らせ：オフ';
+  b.classList.toggle('on',on);
+}
+function toggleNotify(){
+  if(isNotifyOn()){
+    try{ localStorage.setItem(NOTIFY_KEY,'off'); }catch(e){}
+    updateNotifyUI(); showToast('🔕 更新のお知らせをオフにしました'); return;
+  }
+  if(!('Notification' in window)){ showToast('この端末は通知に対応していません'); return; }
+  Notification.requestPermission().then(function(p){
+    if(p==='granted'){
+      try{ localStorage.setItem(NOTIFY_KEY,'on'); }catch(e){}
+      updateNotifyUI(); showToast('🔔 更新のお知らせをオンにしました');
+    }else{
+      showToast('通知が許可されていません。端末の設定から許可してください');
+    }
+  }).catch(function(){ showToast('通知の設定に失敗しました'); });
+}
+async function announceRelease(){
+  if(!RELEASE.notify)return;
+  if(!isNotifyOn())return;
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  let seen=null;
+  try{ seen=localStorage.getItem(NOTIFIED_KEY); }catch(e){ return; }
+  // 初めて使う人に「更新しました」と出さないようにする
+  if(seen===null){ try{ localStorage.setItem(NOTIFIED_KEY,RELEASE.id); }catch(e){} return; }
+  if(seen===RELEASE.id)return;   // 同じお知らせは一度だけ
+  try{
+    const reg=await navigator.serviceWorker.getRegistration();
+    // スマホのChromeでは new Notification() が使えないため、Service Worker経由で出す
+    if(reg&&reg.showNotification){
+      await reg.showNotification('出退勤検索くん (北大和・学園前 Aダイヤ)',{
+        body:RELEASE.message, icon:'icons/icon-192.png',
+        badge:'icons/icon-192.png', tag:'app-update'
+      });
+      try{ localStorage.setItem(NOTIFIED_KEY,RELEASE.id); }catch(e){}
+    }
+  }catch(e){ console.warn('通知の表示に失敗',e); }
+}
+
 /* ==== 更新履歴 ====
    履歴は logs.html に分けてある。masterを触らずにアプリごとへ追記できる。
    ファイルが無いときは、その旨だけ出して黙って閉じる。 */
@@ -3809,6 +3878,8 @@ window.onload=async function(){
   await loadDiaData();   // 先にダイヤのデータを読み込む
   initSW(); // オフライン対応を開始
   renderPushBox();      // フッターの通知ボタンを表示
+  updateNotifyUI();     // 更新のお知らせボタンの状態を戻す
+  announceRelease();    // 新しい版なら端末の通知でも知らせる
   renderAppInfo();      // 版と端末の様子をフッターに出す
   renderPushBar();      // 通知を受け取っていない人にだけ、上に帯を出す
   cleanupStaleWorkers();// 使われなくなった古い登録を片付ける
