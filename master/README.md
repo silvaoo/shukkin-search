@@ -72,6 +72,21 @@ logs.html             更新履歴（各アプリで自由に書ける。master 
 
 画像の枚数は `apps.json` の `PAGES` で指定します。
 
+### 学園前Aだけが持つファイル（正しい非対称）
+
+`shukkin-search`（学園前A）のリポジトリだけ、次のものを持っています。
+**他の4アプリには無くて正常です。消さないでください。**
+
+| ファイル | 役割 |
+|---|---|
+| `news.json` | **5アプリ共通のお知らせバナーの元。** 全アプリが `https://silvaoo.github.io/shukkin-search/news.json` を読みに来る。お知らせ送信アプリ（`shukkin-admin`）の `NEWS_REPO` もここを指しており、GitHub API でこのファイルを書き換えている。消すと5アプリ全部のバナーが止まる |
+| `master/` | この雛形一式 |
+| `scripts/` `.github/workflows/` | 一斉送信（GitHub Actions → Firebase） |
+
+なお、ルート直下にあった `icon_*.png`（アンダースコア）8枚は、
+どこからも参照されていない過去の残骸だったため 2026-08-25 に削除しました。
+現役は `icons/icon-*.png`（**ハイフン**）のほうです。
+
 ---
 
 ## 5. 勤務データ（dia-*.json）の形
