@@ -164,6 +164,24 @@ body {
   overflow: hidden;
   box-shadow: 0 0 20px rgba(255,140,0,0.08);
 }
+/* ==== インストール案内バナー（生駒・BAと同じ形） ==== */
+.notice-banner {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 2px solid;
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 14px;
+    cursor: pointer;
+    text-align: center;
+    font-family: 'Noto Sans JP', sans-serif;
+}
+.install-banner {
+    background: rgba(0, 210, 211, 0.1);
+    border-color: var(--cyan);
+    color: var(--cyan);
+}
 #update-banner {
   position: fixed; left: 0; right: 0; top: 0; z-index: 9999;
   padding: 14px 12px; border: none; cursor: pointer;
@@ -1001,6 +1019,11 @@ a.source-link:visited {
   <p>2026年3月14日改正 ／ 1〜92番</p>
   <button class="mode-btn" onclick="toggleMode()">🌙/☀️</button>
 </div>
+
+<!-- ホーム画面インストールの案内バナー(インストール可能な時だけ表示) -->
+<button id="install-banner" class="notice-banner install-banner" onclick="handleInstallClick()" style="display:none;">
+  📲 アプリとしてインストール
+</button>
 
 <!-- ダイヤ名（独立した行・中央表示） -->
 <div class="dia-name-line"><span class="dia-name">北大和・学園前 Aダイヤ</span></div>
@@ -2441,7 +2464,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.31';
+const APP_LABEL = 'バージョン 2.32';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -2682,7 +2705,32 @@ async function testNotification(){
   }
 }
 
+/* ホーム画面に追加できる状態になったら、その案内を取っておく（生駒・BAと同じ） */
+let deferredInstallPrompt = null;
+/* 📲ボタンを押した時：ブラウザのインストール画面を出す */
+function handleInstallClick(){
+  const banner=document.getElementById('install-banner');
+  if(!deferredInstallPrompt){ banner.style.display='none'; return; }
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.finally(()=>{
+    deferredInstallPrompt=null;
+    banner.style.display='none';
+  });
+}
 function initSW(){
+  // Android Chrome等、ホーム画面に追加できる時に発火する
+  window.addEventListener('beforeinstallprompt',(e)=>{
+    e.preventDefault();
+    deferredInstallPrompt=e;
+    const b=document.getElementById('install-banner');
+    if(b) b.style.display='block';
+  });
+  // 追加が終わったらバナーを隠す
+  window.addEventListener('appinstalled',()=>{
+    const b=document.getElementById('install-banner');
+    if(b) b.style.display='none';
+    deferredInstallPrompt=null;
+  });
   if(!('serviceWorker' in navigator))return;
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg)=>{
     reg.addEventListener('updatefound',()=>{
