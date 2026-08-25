@@ -10,13 +10,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0a0e27">
-<link rel="apple-touch-icon" sizes="180x180" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/icons/icon-180.png">
-<link rel="apple-touch-icon" sizes="152x152" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/icons/icon-152.png">
-<link rel="apple-touch-icon" sizes="144x144" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/icons/icon-144.png">
-<link rel="apple-touch-icon" sizes="120x120" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/icons/icon-120.png">
-<link rel="icon" type="image/png" sizes="192x192" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/icons/icon-192.png">
-<link rel="icon" type="image/png" sizes="96x96" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/icons/icon-96.png">
-<link rel="manifest" href="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/manifest.json">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
+<link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144.png">
+<link rel="apple-touch-icon" sizes="120x120" href="icons/icon-120.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="96x96" href="icons/icon-96.png">
+<link rel="manifest" href="manifest.json">
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700&display=swap');
@@ -116,7 +116,7 @@ body {
   font-weight: 800; cursor: pointer; font-family: inherit;
 }
 .push-ask .yes {
-  background: var(--cyan); color: #04222a; border: none;
+  background: var(--cyan); color: #04202a; border: none;
 }
 .push-ask .later {
   background: var(--bg-card2); color: var(--dim);
@@ -235,7 +235,7 @@ body {
 #news-banner {
   position: relative; width: 100%; margin: 0 0 12px; padding: 13px 40px 13px 14px;
   border: none; border-radius: 14px; cursor: pointer; text-align: center;
-  background: linear-gradient(135deg, #bf00ff, #ff0080);
+  background: linear-gradient(135deg, var(--purple), var(--pink));
   color: #fff; font-size: 14px; font-weight: 800; letter-spacing: 0.5px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.4); transform-origin: center;
   /* 最初だけ元気に脈打ち、その後はゆっくり呼吸する(更新バナーと同じ考え方) */
@@ -264,7 +264,7 @@ body {
   display: block; width: 100%; height: auto; margin: 0 0 12px;
   border-radius: 10px; background: rgba(255,255,255,0.05);
 }
-#newsModal .news-loading { text-align: center; padding: 18px; font-size: 13px; opacity: 0.7; }
+#newsModal .news-loading { text-align: center; padding: 18px; font-size: 13px; color: var(--dim); }
 /* ヘッダーのダイヤ名だけテーマ色にして、アプリを見分けやすくする(サイズは据え置き) */
 .dia-name { color: var(--orange); font-weight: 800; font-size: 16px; }
 .dia-name-line { text-align: center; margin: 0 0 14px; }
@@ -1347,98 +1347,7 @@ a.source-link:visited {
 
     <!-- ===== 更新履歴 ===== -->
     <div class="guide-pane" id="paneLog">
-      <div class="log-item">
-        <div class="log-date">2026/08/11</div>
-        <div class="log-body"><span class="tag tag-fix">修正</span>読み上げを止めたときに、エラーの文字が出ることがあったのを直しました。読み上げ中はボタンが「読み上げを停止」に変わります。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/08/08</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>出退勤表をPDFでも見られるようにしました。「コチラ」から開けます。Adobe Readerなどで開くと、好きなだけ大きく拡大できます。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/08/08</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>大事なお知らせがあるとき、検索画面の下に「お知らせがあります」のバナーが出るようにしました。タップすると内容を見られます。右上の×で閉じられます。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/08/08</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>今日のダイヤ番号を入れると、出勤・退勤までの残り時間が出るようにしました。出勤1時間前になると色が変わってお知らせします。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/08/08</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>期間を検索したとき、その期間の合計労働時間を結果の下に出すようにしました。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/26</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>画面をいちばん上で下に引っ張ると、最新の状態に更新できるようにしました。ホーム画面のアイコンから開いた時も使えます。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/26</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>出退勤検索くんに、マスコットキャラクターとして奈良鹿ケンサクくんが登場しました！ケンサクくんが皆さんの出退勤をいつも見守ってくれてます。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/25</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>メモに画像を貼れるようにしました。日付のメモ・ダイヤ番号のメモの両方に、写真を何枚でも貼れます。貼った画像はメモ一覧やカレンダーからも見られ、タップすると大きく表示されます。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/20</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>検索結果のカレンダーを「保存したカレンダー」としてメモ一覧に保存できるようにしました。さらに、そこから勤務をスマホのカレンダーアプリに一括登録できるようにしました（出勤1時間前のお知らせ付き）。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/20</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>検索結果を「私のカレンダー」として保存できるようにしました。カレンダーの日付を大きく見やすくし、土日祝も色分けしました。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/20</div>
-        <div class="log-body"><span class="tag tag-up">改善</span>アプリ全体のレイアウトを少し変更。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/18</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>「📱 入れ方」タブを追加。iPhone・Androidそれぞれの、ホーム画面へのアイコンの入れ方を載せました。LINEで受け取った人もこれを見れば入れられます。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/18</div>
-        <div class="log-body"><span class="tag tag-up">改善</span>使い方を「まずはこの3つだけ」の形に整理し、文章を短くしました。「きほん」と「もっと便利に」に分けたので、必要なところだけ読めます。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/17</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>「📝 保存したメモの一覧」を追加。これまでに書いたメモを一覧で確認でき、その場で編集・削除もできます。過ぎた日のメモはまとめて片付けられます。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/17</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>検索結果を「📅 カレンダーで見る」を追加。1ヶ月分のダイヤ番号と出退勤時間が一目で分かります。マスをタップすると大きく表示され、分割勤務の詳しい時間も読めます。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/17</div>
-        <div class="log-body"><span class="tag tag-up">改善</span>カレンダーを白ベースの見やすい配色にし、文字とマスを大きくしました。クイック検索の後も自動で結果まで移動します。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/16</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>ダイヤ番号を保存するようにしました。一度入れれば、翌日からは自動で1つ進んだ番号が入るので毎回の入力が不要になります。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/16</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>「指定して検索」を追加。カレンダーで1回目のタップ＝開始日、2回目のタップ＝終了日を選ぶだけで、その期間をまとめて検索できます。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/16</div>
-        <div class="log-body"><span class="tag tag-up">改善</span>アプリを見分けやすくするため、ヘッダーのダイヤ名を色分け表示にしました。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/15</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>オフライン対応。一度開けば圏外でも起動できるようになりました。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/15</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>本日の日付と時刻(24時間表示・秒あり)を表示するようにしました。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/07/15</div>
-        <div class="log-body"><span class="tag tag-new">新機能</span>検索結果にメモ機能を追加(日付ごと・ダイヤ番号ごと、編集・保存・削除)。</div>
-      </div>
-      <div class="log-item">
-        <div class="log-date">2026/03/14</div>
-        <div class="log-body"><span class="tag tag-new">ダイヤ改正</span>2026年3月14日改正のダイヤに対応しました(1〜92番)。</div>
-      </div>
+      <div class="log-loading">読み込み中…</div>
     </div>
   </div>
 </div>
@@ -1457,19 +1366,17 @@ a.source-link:visited {
 
 <div id="sourceModal" class="source-modal" onclick="closeSourceModal()">
   <div class="source-modal-content" onclick="event.stopPropagation()">
-    <a class="source-pdf-btn" href="shift-table-a.pdf?v=2" target="_blank" rel="noopener">
+    <!-- PDFは pdf/ に固定名で置く。無ければ自動で隠れる（ダイヤ改正時は上書きするだけ） -->
+    <a class="source-pdf-btn" id="pdfShift" href="pdf/shift-table.pdf" target="_blank" rel="noopener" style="display:none;">
       📄 出退勤表（PDF版）を開く
       <span>拡大したい時はこちら。共有→Adobe Readerで開くと好きなだけ大きくできます</span>
     </a>
-    <a class="source-pdf-btn" href="kinmu-keitou-a.pdf" target="_blank" rel="noopener">
-      📄 勤務系統表（全16ページ）を開く
+    <a class="source-pdf-btn" id="pdfKeitou" href="pdf/kinmu-keitou.pdf" target="_blank" rel="noopener" style="display:none;">
+      📄 勤務系統表を開く
       <span>系統・行先・中間解放まで載った詳しい表です。拡大しても文字がきれいです</span>
     </a>
-    <div class="source-img-scroll" id="srcScroll">
-      <img id="srcImg"
-           src="https://raw.githubusercontent.com/silvaoo/shukkin-search/main/shift_table_hires.jpg"
-           alt="学園前Ａダイヤ 出退勤表">
-    </div>
+    <!-- 出退勤表の画像は images/genpage-1.jpg から順に。枚数はアプリごとに違う -->
+    <div class="source-img-scroll" id="srcScroll"></div>
     <div class="source-zoom-hint">🔍 指を広げて拡大／狭めて縮小。とじるには下の「とじる」ボタン</div>
     <button class="source-close" onclick="closeSourceModal()">×&nbsp;とじる</button>
   </div>
@@ -2242,7 +2149,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v106';
+const APP_VERSION   = 'v111';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -2464,7 +2371,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.32';
+const APP_LABEL = 'バージョン 2.33';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3172,6 +3079,7 @@ function closeGuide(){
   document.body.style.overflow='';
 }
 function switchGuide(which){
+  if(which==='log') loadChangeLog();   // 履歴は開いた時に読み込む
   // 使い方 / 入れ方 / 更新履歴 の3タブを切り替える
   const map = { use:['paneUse','tabUse'], inst:['paneInst','tabInst'], log:['paneLog','tabLog'] };
   for (const k in map){
@@ -3766,7 +3674,7 @@ function toggleMode(){document.body.classList.toggle('light');}
 /* ==== アプリ共有: ページ遷移せずその場で共有シートを呼び出す ==== */
 async function shareApp(){
   const shareUrl='https://silvaoo.github.io/shukkin-search/';
-  const shareText='学A(出退勤検索くん) 北大和・学園前Aダイヤ';
+  const shareText='学A(出退勤検索くん) 北大和・学園前 Aダイヤ';
   if(navigator.share){
     try{ await navigator.share({title:shareText,text:shareText,url:shareUrl}); }catch(e){}
   }else{
@@ -3775,6 +3683,54 @@ async function shareApp(){
       showToast('📋 リンクをコピーしました');
     }catch(e){ showToast(shareUrl); }
   }
+}
+
+/* ==== 更新履歴 ====
+   履歴は logs.html に分けてある。masterを触らずにアプリごとへ追記できる。
+   ファイルが無いときは、その旨だけ出して黙って閉じる。 */
+function loadChangeLog(){
+  const box=document.getElementById('paneLog');
+  if(!box || box._loaded) return;
+  box._loaded=true;
+  fetch('logs.html',{cache:'no-cache'}).then(function(r){
+    if(!r.ok) throw new Error('なし');
+    return r.text();
+  }).then(function(html){
+    box.innerHTML=html;
+  }).catch(function(){
+    box.innerHTML='<div class="log-loading">更新履歴はまだありません。</div>';
+  });
+}
+
+/* ==== 出退勤表の画像とPDF ====
+   画像は images/genpage-1.jpg から順に。枚数は 1 枚（アプリごとに違う）。
+   PDFは pdf/ に固定名で置く決まり。実際に有る時だけボタンを出すので、
+   ダイヤ改正のときは同じ名前で上書きするだけでよい。 */
+const SRC_PAGES = 1;
+function buildSourceImages(){
+  const box=document.getElementById('srcScroll');
+  if(!box || box._built) return;
+  box._built=true;
+  let html='';
+  for(let i=1;i<=SRC_PAGES;i++){
+    html += '<img class="src-page" id="srcImg'+i+'" src="images/genpage-'+i+'.jpg"'
+          + ' alt="学園前Ａダイヤ 出退勤表 '+i+'枚目">';
+  }
+  box.innerHTML=html;
+  // 1枚目だけは従来どおり srcImg でも掴めるようにしておく
+  const first=document.getElementById('srcImg1');
+  if(first) first.id='srcImg';
+}
+/* PDFが実在するか確かめて、有る時だけボタンを見せる */
+function showPdfIfExists(id, url){
+  fetch(url,{method:'HEAD'}).then(function(r){
+    if(r.ok){ const el=document.getElementById(id); if(el) el.style.display='block'; }
+  }).catch(function(){});
+}
+function initSourceView(){
+  buildSourceImages();
+  showPdfIfExists('pdfShift','pdf/shift-table.pdf');
+  showPdfIfExists('pdfKeitou','pdf/kinmu-keitou.pdf');
 }
 
 /* ==== 花火アニメーション（公休の日があったときのお楽しみ） ==== */
@@ -3840,6 +3796,7 @@ function drawFw(){
 /* ==== 初期化 ==== */
 /* 元データ画像モーダルの開閉 */
 function openSourceModal(){
+  initSourceView();   // 画像を並べ、PDFが有ればボタンを出す
   document.getElementById('sourceModal').classList.add('active');
   const sc = document.getElementById('srcScroll');
   if(sc){ sc.scrollTop = 0; sc.scrollLeft = 0; }   // 開くたび先頭から
