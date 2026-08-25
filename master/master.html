@@ -1,0 +1,3965 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ABBR}}</title>
+
+<!-- ホーム画面追加時のアイコン・タイトル設定 -->
+<meta name="apple-mobile-web-app-title" content="{{ABBR}}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0e27">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
+<link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144.png">
+<link rel="apple-touch-icon" sizes="120x120" href="icons/icon-120.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="96x96" href="icons/icon-96.png">
+<link rel="manifest" href="manifest.json">
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700&display=swap');
+
+/* ==== カラーパレット（ダークモード） ==== */
+:root {
+  --bg: #08080f;
+  --bg-card: #0e0e1c;
+  --bg-card2: #13132a;
+  --cyan: {{COLOR_DARK}};
+  --pink: #ff0080;
+  --purple: #bf00ff;
+  --blue: #3b82f6;
+  --yellow: #ffe600;
+  --green: {{GREEN_D}};
+  --orange: {{ORANGE_D}};
+  --text: {{TEXT_D}};
+  --label: #BA68C8;
+  --note: #CE93D8;
+  --dim: var(--label);
+  --border: {{BORDER_D}};
+}
+/* ==== ライトモード ==== */
+body.light {
+  --bg: #eeeef8;
+  --bg-card: #ffffff;
+  --bg-card2: #f0f0ff;
+  --cyan: {{COLOR_LIGHT}};
+  --pink: #cc0055;
+  --purple: #7700cc;
+  --blue: #1d4ed8;
+  --yellow: #aa7700;
+  --green: {{GREEN_L}};
+  --orange: {{ORANGE_L}};
+  --text: {{TEXT_L}};
+  --label: #8E24AA;
+  --note: #6A1B9A;
+  --dim: var(--label);
+  --border: {{BORDER_L}};
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans JP', sans-serif;
+  min-height: 100vh;
+  padding: 14px 12px 50px;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ==== ヘッダー ==== */
+.header { text-align: center; margin-bottom: 6px; position: relative; padding-top: 4px; }
+.header h1 {
+  /* 数字の形を生駒・北大和Bに合わせるため、本文と同じ書体を使う */
+  /* 題字の見せ方は生駒・北大和Bに合わせる。
+     光を控えめにし、字間を詰めない。 */
+  font-size: clamp(22px, 6.5vw, 30px);
+  color: var(--cyan);
+  text-shadow: 0 0 10px rgba(0, 210, 211, 0.3);
+}
+.header p { font-size: 11.5px; color: var(--dim); margin-top: 3px; letter-spacing: 1px; }
+.mode-btn {
+  position: absolute; top: 0; right: 0;
+  background: var(--bg-card2); border: 1px solid var(--border);
+  color: var(--text); padding: 5px 10px; border-radius: 20px;
+  cursor: pointer; font-size: 15px;
+}
+.share-btn {
+  position: absolute; top: 0; left: 0;
+  background: var(--bg-card2); border: 1px solid var(--border);
+  color: var(--text); padding: 5px 10px; border-radius: 20px;
+  cursor: pointer; font-size: 15px; text-decoration: none; display: inline-block;
+}
+
+/* ==== 通知の受け取りを尋ねる案内 ==== */
+.push-ask-back {
+  display: none; position: fixed; inset: 0; z-index: 10050;
+  background: rgba(0,0,0,0.75); padding: 20px;
+  align-items: center; justify-content: center;
+}
+.push-ask-back.active { display: flex; }
+.push-ask {
+  background: var(--bg-card); border: 1px solid var(--cyan);
+  border-radius: 16px; padding: 22px 18px; max-width: 340px; width: 100%;
+  text-align: center;
+}
+.push-ask h3 {
+  font-size: 16px; color: var(--cyan); margin-bottom: 10px; font-weight: 800;
+}
+.push-ask p {
+  font-size: 13px; color: var(--text); line-height: 1.8; margin-bottom: 18px;
+}
+.push-ask .row { display: flex; gap: 10px; }
+.push-ask button {
+  flex: 1; padding: 13px; border-radius: 10px; font-size: 14px;
+  font-weight: 800; cursor: pointer; font-family: inherit;
+}
+.push-ask .yes {
+  background: var(--cyan); color: {{ON_CYAN}}; border: none;
+}
+.push-ask .later {
+  background: var(--bg-card2); color: var(--dim);
+  border: 1px solid var(--border);
+}
+
+/* ==== 通知の受け取りをすすめる帯 ====
+   まだ許可していない人にだけ、画面の上に細く出す。
+   許可が済んだら消えるので、普段は見えない。 */
+#push-bar{
+  display: none;
+  width: 100%; padding: 11px 14px;
+  background: linear-gradient(90deg, rgba(0,245,255,0.14), rgba(191,0,255,0.14));
+  border: none; border-bottom: 1px solid var(--border);
+  color: var(--cyan); font-size: 13px; font-weight: 700;
+  font-family: inherit; cursor: pointer; text-align: center;
+}
+#push-bar .x{
+  float: right; color: var(--dim); font-weight: 400;
+  padding: 0 2px 0 10px; font-size: 15px; line-height: 1;
+}
+
+/* ==== 通知の受け取りボタン(フッター) ==== */
+.push-btn{
+  background: var(--bg-card2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 9px 16px; font-size: 12px; font-weight: 700; cursor: pointer;
+  font-family: inherit;
+}
+.push-btn.on{ color: var(--green); border-color: var(--green); }
+/* 版と端末の様子。「通知が来ない」と言われたとき、
+   入れ方と通知の許可が分かると原因を絞りやすい。 */
+.app-info { font-size: 10.5px; color: var(--dim); margin-top: 12px; line-height: 1.6; }
+
+.push-note{ font-size: 11px; color: var(--dim); margin-top: 6px; line-height: 1.7; }
+
+/* ==== 今日のダイヤ入力カード ==== */
+.today-card {
+  background: var(--bg-card);
+  border: 1px solid var(--orange);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(255,140,0,0.08);
+}
+/* ==== 更新のお知らせ切替ボタン ==== */
+.notify-btn {
+  background: var(--bg-card2); color: var(--dim);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 7px 14px; font-size: 11px; font-weight: 700; cursor: pointer;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+.notify-btn.on { color: var(--cyan); border-color: var(--cyan); }
+/* ==== インストール案内バナー（生駒・BAと同じ形） ==== */
+.notice-banner {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 2px solid;
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 14px;
+    cursor: pointer;
+    text-align: center;
+    font-family: 'Noto Sans JP', sans-serif;
+}
+.install-banner {
+    background: rgba(0, 210, 211, 0.1);
+    border-color: var(--cyan);
+    color: var(--cyan);
+}
+#update-banner {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 9999;
+  padding: 14px 12px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, var(--cyan), var(--orange));
+  color: #06060f; font-size: 14px; font-weight: 800;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  transform-origin: center;
+  /* 最初の数秒は元気に脈打ち、その後ゆっくりに落ち着く */
+  animation: ub-pulse-strong 0.7s ease-in-out 6, ub-pulse-soft 2.4s ease-in-out 4.2s infinite;
+}
+/* ドクンドクン（元気）：拡大縮小＋うずうず横揺れ */
+@keyframes ub-pulse-strong {
+  0%   { transform: scale(1) translateX(0); }
+  15%  { transform: scale(1.04) translateX(-1.5px); }
+  30%  { transform: scale(0.99) translateX(1.5px); }
+  45%  { transform: scale(1.05) translateX(-1px); }
+  60%  { transform: scale(1) translateX(1px); }
+  100% { transform: scale(1) translateX(0); }
+}
+/* 落ち着いたら、ゆっくり呼吸するだけ */
+@keyframes ub-pulse-soft {
+  0%,100% { transform: scale(1); }
+  50%     { transform: scale(1.02); }
+}
+/* タップ後の破裂 */
+#update-banner.burst { animation: ub-burst 0.5s ease-out forwards; pointer-events: none; }
+@keyframes ub-burst {
+  0%   { transform: scale(1); opacity: 1; }
+  25%  { transform: scale(1.12) rotate(-0.5deg); opacity: 1; }
+  45%  { transform: scale(1.4); opacity: 0.95; filter: brightness(1.5); }
+  100% { transform: scale(0.2); opacity: 0; filter: brightness(2); }
+}
+/* 煙の粒（移動先はJSがCSS変数で渡す） */
+.ub-smoke {
+  position: fixed; z-index: 9998; border-radius: 50%;
+  background: radial-gradient(circle, rgba(220,220,230,0.95), rgba(185,185,195,0.4) 55%, transparent 72%);
+  pointer-events: none; will-change: transform, opacity;
+  animation: ub-smoke-rise 1s ease-out forwards;
+}
+@keyframes ub-smoke-rise {
+  0%   { transform: translate(0,0) scale(0.35); opacity: 0.9; }
+  100% { transform: translate(var(--sx), var(--sy)) scale(2.6); opacity: 0; }
+}
+/* 動きを控えたい人の端末設定は尊重する */
+@media (prefers-reduced-motion: reduce){
+  #update-banner{ animation: none; }
+  #update-banner.burst{ animation: ub-burst 0.3s ease-out forwards; }
+}
+
+/* ==== お知らせバナー(検索カードの上に置く帯) ==== */
+#news-banner {
+  position: relative; width: 100%; margin: 0 0 12px; padding: 13px 40px 13px 14px;
+  border: none; border-radius: 14px; cursor: pointer; text-align: center;
+  background: linear-gradient(135deg, var(--purple), var(--pink));
+  color: #fff; font-size: 14px; font-weight: 800; letter-spacing: 0.5px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4); transform-origin: center;
+  /* 最初だけ元気に脈打ち、その後はゆっくり呼吸する(更新バナーと同じ考え方) */
+  animation: ub-pulse-strong 0.7s ease-in-out 4, ub-pulse-soft 2.4s ease-in-out 2.8s infinite;
+}
+/* 右上の小さな×(バナーを閉じる)。バナー本体のタップとは別扱いにする */
+#news-close {
+  position: absolute; top: 50%; right: 8px; transform: translateY(-50%);
+  width: 26px; height: 26px; line-height: 24px; padding: 0;
+  border: 1px solid rgba(255,255,255,0.55); border-radius: 50%;
+  background: rgba(0,0,0,0.18); color: #fff; font-size: 15px; font-weight: 700;
+  cursor: pointer; z-index: 2;
+}
+#news-close:active { background: rgba(0,0,0,0.35); }
+#news-banner.burst { animation: ub-burst 0.5s ease-out forwards; pointer-events: none; }
+@media (prefers-reduced-motion: reduce){
+  #news-banner{ animation: none; }
+  #news-banner.burst{ animation: ub-burst 0.3s ease-out forwards; }
+}
+
+/* ==== お知らせの中身(画像を縦に並べて見せる) ==== */
+#newsModal { background: #000; }   /* 後ろの画面が透けないよう完全な黒にする */
+#newsModal .news-img-wrap { flex: 1; min-height: 0; width: 100%; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+#newsModal .news-img-wrap img:last-child { margin-bottom: 0; }
+#newsModal .news-img-wrap img {
+  display: block; width: 100%; height: auto; margin: 0 0 12px;
+  border-radius: 10px; background: rgba(255,255,255,0.05);
+}
+#newsModal .news-loading { text-align: center; padding: 18px; font-size: 13px; color: var(--dim); }
+/* ヘッダーのダイヤ名だけテーマ色にして、アプリを見分けやすくする(サイズは据え置き) */
+.dia-name { color: var(--orange); font-weight: 800; font-size: 16px; }
+.dia-name-line { text-align: center; margin: 0 0 14px; }
+.mydial-note {
+  margin-top: 8px; font-size: 12.5px; color: var(--text); text-align: center;
+  line-height: 1.7; font-weight: 600;
+}
+.mydial-forget {
+  color: var(--cyan); text-decoration: underline; cursor: pointer;
+  margin-left: 6px; font-weight: 700; white-space: nowrap;
+}
+/* ==== 指定して検索・カレンダー ==== */
+.range-label {
+  margin-top: 10px; text-align: center; font-size: 12px;
+  color: var(--dim); font-weight: 700;
+}
+.range-label.set { color: var(--cyan); }
+
+.cal-modal {
+  display: none; position: fixed; inset: 0; z-index: 10002;
+  background: rgba(0,0,0,0.92); padding: 14px; overflow-y: auto;
+}
+.cal-modal.active { display: block; }
+/* カレンダーは暗いと見にくいので、テーマに関係なく白ベースにする */
+.cal-inner {
+  max-width: 400px; margin: 0 auto;
+  background: #ffffff; border: 1px solid #d8d8e0;
+  border-radius: 14px; padding: 14px;
+  color: #1a1a2e;
+}
+.cal-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cal-title { font-size: 14px; font-weight: 800; color: #1a1a2e; }
+.cal-x {
+  background: #f0f0f5; border: 1px solid #d8d8e0; color: var(--label);
+  border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 800; cursor: pointer;
+}
+.cal-hint {
+  font-size: 10.5px; color: var(--note); text-align: center; margin-bottom: 10px;
+  line-height: 1.5;
+}
+.cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.cal-arrow {
+  background: #f0f0f5; border: 1px solid #d8d8e0; color: #1a1a2e;
+  border-radius: 6px; width: 40px; height: 34px; font-size: 18px; font-weight: 800; cursor: pointer;
+}
+.cal-month { font-size: 16px; font-weight: 800; color: #1a1a2e; }
+
+/* minmax(0,1fr) にしないと中身の最小幅で列が広がり、横にはみ出してしまう */
+.cal-dw { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 2px; margin-bottom: 2px; }
+.cal-dw div { text-align: center; font-size: 11px; font-weight: 700; color: var(--label); padding: 3px 0; }
+.cal-dw .sun { color: #d92626; }
+.cal-dw .sat { color: #2660d9; }
+
+.cal-grid {
+  display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 2px;
+}
+.cal-day {
+  aspect-ratio: 1 / 1; min-width: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: #f5f5fa; border: 1px solid #e6e6ee;
+  border-radius: 6px; font-size: 14px; font-weight: 600; color: #1a1a2e;
+  cursor: pointer; user-select: none; -webkit-user-select: none;
+}
+.cal-day.empty { background: none; border-color: transparent; cursor: default; }
+.cal-day.sun { color: #d92626; }
+.cal-day.sat { color: #2660d9; }
+.cal-day.today { border-color: #ff8c00; border-width: 2px; font-weight: 800; }
+.cal-day.inrange { background: #d8f5e6; }
+.cal-day.edge { background: var(--cyan); color: {{ON_CYAN}}; font-weight: 800; }
+
+.cal-sel {
+  margin-top: 10px; text-align: center; font-size: 13px; font-weight: 700;
+  color: #1a1a2e; padding: 9px;
+  background: #f0f0f5; border-radius: 8px;
+}
+.cal-actions { display: flex; gap: 6px; margin-top: 10px; }
+.cal-btn {
+  flex: 1; padding: 12px 4px; border-radius: 8px; font-size: 12.5px;
+  font-weight: 800; cursor: pointer; border: 1px solid #d8d8e0;
+  background: #f0f0f5; color: var(--label);
+}
+.cal-ok { background: var(--cyan); color: {{ON_CYAN}}; border-color: var(--cyan); flex: 1.3; }
+.cal-ok:disabled { opacity: 0.35; cursor: default; }
+
+/* ==== 検索結果カレンダー（番号と出退勤時間を一覧表示） ==== */
+.act-cal {
+  background: rgba(0,230,118,0.16); color: var(--cyan);
+  border: 1px solid rgba(0,230,118,0.55);
+}
+.act-cal:active { background: rgba(0,230,118,0.85); color: #002; }
+/* 画面の縦を目一杯使って、マスと文字を大きくする */
+.rescal-grid .cal-day {
+  aspect-ratio: auto; min-height: 104px;
+  flex-direction: column; justify-content: flex-start;
+  gap: 0; padding: 4px 1px; border: 1px solid #e6e6ee;
+  cursor: pointer;
+}
+/* 日付は公休の日も勤務の日も必ず同じ高さに揃うよう、常に上端に置く */
+.rescal-grid .rc-date { flex: none; }
+/* 勤務内容(番号・時間・公休)は日付の下の残り部分で中央に寄せる */
+.rc-body {
+  flex: 1; width: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1px;
+}
+.rescal-grid .cal-day.empty { border-color: transparent; }
+.rc-date { font-size: 18px; color: #1a1a2e; line-height: 1.15; font-weight: 800; }
+.rc-dial { font-size: 14px; font-weight: 800; color: #e07000; line-height: 1.15; }
+.rc-t { font-size: 12.5px; color: #1a1a2e; line-height: 1.3; letter-spacing: -0.4px; font-weight: 600; }
+.rc-off { font-size: 13px; font-weight: 800; color: #00915a; line-height: 1.5; }
+.rc-memo-mark { font-size: 9.5px; font-weight: 800; color: #d0700a; background: #fff2df; border-radius: 4px; margin-top: 1px; line-height: 1.4; }
+.rescal-grid .cal-day.nodata { opacity: 0.3; }
+/* 今日の枠を太くする分、内側の余白を1px減らして日付の位置がズレないようにする */
+.rescal-grid .cal-day.today { border-color: #ff8c00; border-width: 2px; padding: 3px 0; }
+.rescal-grid .cal-day.sat .rc-date { color: #2660d9; }
+.rescal-grid .cal-day.sun .rc-date { color: #d92626; }
+.rescal-grid .cal-day.hol .rc-date { color: #d92626; }
+.rescal-grid .cal-day:active { background: #e8f5ff; }
+.rc-save-btn {
+  width: 100%; margin-top: 10px; padding: 12px; border: none; border-radius: 10px;
+  background: {{BAND_BG}}; color: {{BAND_TX}}; font-size: 15px; font-weight: 800;
+  cursor: pointer; font-family: 'Noto Sans JP', sans-serif;
+}
+.rc-save-btn:active { transform: scale(0.98); filter: brightness(0.95); }
+.ml-cal-btn {
+  width: 100%; margin-top: 8px; padding: 10px; border: none; border-radius: 8px;
+  background: #2e7d5b; color: #ffffff; font-size: 13px; font-weight: 800;
+  cursor: pointer; font-family: 'Noto Sans JP', sans-serif;
+}
+.ml-cal-btn:active { filter: brightness(0.92); }
+.rescal-legend {
+  margin-top: 8px; font-size: 10.5px; color: var(--note);
+  text-align: center; line-height: 1.6;
+}
+.rc-legend-off { color: #00915a; font-weight: 700; }
+
+/* ==== マスをタップした時の詳細表示（拡大して読めるようにする） ==== */
+.rc-detail {
+  display: none; position: fixed; inset: 0; z-index: 10003;
+  background: rgba(0,0,0,0.6); padding: 20px;
+  align-items: center; justify-content: center;
+}
+.rc-detail.active { display: flex; }
+.rc-detail-box {
+  background: #fff; border-radius: 16px; padding: 20px;
+  width: 100%; max-width: 340px; color: #1a1a2e;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+.rcd-date { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+.rcd-date .rcd-badge {
+  font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 10px;
+  margin-left: 8px; vertical-align: middle;
+}
+.rcd-badge.hei { background: #e8eefc; color: #2660d9; }
+.rcd-badge.dosun { background: #ffe9e9; color: #d92626; }
+.rcd-badge.bon { background: #fff3d6; color: #a86800; }
+.rcd-dial { font-size: 34px; font-weight: 800; color: #e07000; line-height: 1.2; margin-bottom: 10px; }
+.rcd-dial span { font-size: 15px; color: var(--label); font-weight: 700; }
+.rcd-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-top: 1px solid #eaeaf0; font-size: 15px;
+}
+.rcd-row .lbl { color: var(--label); font-size: 13px; font-weight: 700; }
+.rcd-row .val { font-weight: 800; font-size: 17px; }
+.rcd-note {
+  margin-top: 10px; padding: 10px; background: #fff6e5; border-radius: 8px;
+  font-size: 13px; color: #8a5000; font-weight: 600; line-height: 1.6;
+}
+.rcd-off-big {
+  text-align: center; font-size: 26px; font-weight: 800; color: #00915a;
+  padding: 18px 0;
+}
+.rcd-close {
+  width: 100%; margin-top: 14px; padding: 13px; border: none; border-radius: 10px;
+  background: #1a1a2e; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer;
+}
+
+/* ==== メモ一覧（保存したメモをまとめて見る・直す） ==== */
+
+.memolist-modal {
+  display: none; position: fixed; inset: 0; z-index: 10002;
+  background: rgba(0,0,0,0.9); padding: 16px; overflow-y: auto;
+}
+.memolist-modal.active { display: block; }
+.ml-box {
+  max-width: 560px; margin: 0 auto 40px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px;
+}
+.ml-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.ml-head h2 { font-size: 15px; color: var(--cyan); font-weight: 800; margin: 0; }
+.ml-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.ml-tab {
+  flex: 1; padding: 9px; font-size: 12px; font-weight: 800; cursor: pointer;
+  background: var(--bg-card2); color: var(--dim);
+  border: 1px solid var(--border); border-radius: 8px;
+}
+.ml-tab.on { background: var(--cyan); color: {{ON_CYAN}}; border-color: var(--cyan); }
+.ml-pane { display: none; }
+.ml-pane.on { display: block; }
+.ml-item {
+  background: var(--bg-card2); border: 1px solid var(--border);
+  border-left: 3px solid var(--cyan); border-radius: 8px;
+  padding: 10px 12px; margin-bottom: 8px;
+}
+.ml-item.past { opacity: 0.5; border-left-color: var(--dim); }
+.ml-item.dial { border-left-color: var(--orange); }
+.ml-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.ml-key { font-size: 14px; font-weight: 800; color: var(--text); }
+.ml-key .ml-sub { font-size: 10px; color: var(--dim); font-weight: 700; margin-left: 6px; }
+.ml-acts { display: flex; gap: 5px; flex: none; }
+.ml-act {
+  padding: 5px 9px; font-size: 11px; font-weight: 800; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg-card); color: var(--dim);
+}
+.ml-act.del { color: var(--pink); border-color: rgba(255,0,128,0.4); }
+.ml-text {
+  font-size: 13px; color: var(--text); line-height: 1.6;
+  white-space: pre-wrap; word-break: break-word;
+}
+.ml-edit { margin-top: 8px; }
+.ml-edit textarea {
+  width: 100%; padding: 8px; font-size: 13px; box-sizing: border-box;
+  background: var(--bg-card); color: var(--text);
+  border: 1px solid var(--cyan); border-radius: 6px; resize: vertical; font-family: inherit;
+}
+.ml-edit-acts { display: flex; gap: 6px; margin-top: 6px; }
+.ml-empty {
+  text-align: center; font-size: 12px; color: var(--dim);
+  padding: 30px 10px; line-height: 1.8;
+}
+.ml-count { font-size: 11px; color: var(--dim); margin-bottom: 8px; font-weight: 700; }
+.ml-clean {
+  width: 100%; margin-top: 10px; padding: 10px; border-radius: 8px;
+  border: 1px dashed var(--border); background: none; color: var(--dim);
+  font-size: 11.5px; font-weight: 700; cursor: pointer;
+}
+
+/* ==== 使い方と更新履歴モーダル ==== */
+.guide-modal {
+  display: none; position: fixed; inset: 0; z-index: 10001;
+  background: rgba(0,0,0,0.9); padding: 16px; overflow-y: auto;
+}
+.guide-modal.active { display: block; }
+.guide-box {
+  max-width: 560px; margin: 0 auto 40px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px;
+}
+.guide-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.guide-head h2 { font-size: 15px; color: var(--cyan); font-weight: 800; margin: 0; }
+.guide-close {
+  background: var(--bg-card2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.guide-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.guide-tab {
+  flex: 1; padding: 9px; font-size: 12px; font-weight: 800; cursor: pointer;
+  background: var(--bg-card2); color: var(--dim);
+  border: 1px solid var(--border); border-radius: 8px;
+}
+.guide-tab.on { background: var(--cyan); color: {{ON_CYAN}}; border-color: var(--cyan); }
+.guide-pane { display: none; }
+.guide-pane.on { display: block; }
+.guide-step { margin-bottom: 18px; }
+.guide-step h3 {
+  font-size: 13px; color: var(--orange); font-weight: 800; margin: 0 0 6px;
+  display: flex; align-items: center; gap: 6px;
+}
+.guide-step p { font-size: 12px; color: var(--text); line-height: 1.7; margin: 0 0 8px; }
+.guide-step img {
+  width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block;
+}
+.guide-note {
+  font-size: 11px; color: var(--dim); line-height: 1.7;
+  background: var(--bg-card2); border-left: 3px solid var(--orange);
+  border-radius: 4px; padding: 8px 10px; margin-top: 8px;
+}
+.log-item { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--border); }
+.log-item:last-child { border-bottom: none; }
+.log-date { font-size: 11px; color: var(--cyan); font-weight: 800; margin-bottom: 3px; }
+.log-body { font-size: 12px; color: var(--text); line-height: 1.7; }
+.log-body .tag {
+  display: inline-block; font-size: 10px; font-weight: 800; padding: 1px 6px;
+  border-radius: 6px; margin-right: 5px;
+}
+.tag-new { background: rgba(0,230,118,0.18); color: var(--cyan); }
+.tag-fix { background: rgba(255,0,128,0.15); color: var(--pink); }
+.tag-up  { background: rgba(29,233,182,0.15); color: var(--orange); }
+.today-clock {
+  font-size: 17px; color: var(--orange); font-weight: 800;
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+/* 「本日は」の左の縦棒は出さない */
+.today-clock::before { display: none; }
+/* 秒も本体と同じ大きさ・同じ色にする */
+.clock-ss { font-size: inherit; color: inherit; font-weight: inherit; }
+.today-label {
+  font-size: 11px; color: var(--orange); letter-spacing: 2px;
+  margin-bottom: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px;
+}
+.today-label::before {
+  content: ''; width: 3px; height: 14px; background: var(--orange);
+  border-radius: 2px; box-shadow: 0 0 6px var(--orange); display: inline-block;
+}
+.dial-row { display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 10px; }
+.dial-row span { font-size: 17px; color: var(--text); font-weight: 700; }
+/* ダイヤ番号の入力欄。大きさ・余白・角丸は生駒・北大和Bに合わせる。
+   色だけはこのアプリのもの（オレンジ）を保つ。 */
+#todayInput {
+  width: 90px; font-size: 28px; font-weight: bold; text-align: center;
+  padding: 4px;
+  background: #000; border: 3px solid var(--orange); border-radius: 8px;
+  color: var(--orange); outline: none;
+  box-shadow: 0 0 0 1px var(--border);
+}
+/* 未入力時のヒント文字は、実際の入力値(オレンジ)と区別できるよう薄いグレーにする */
+#todayInput::placeholder { color: #9a9ab0; opacity: 0.2; }
+body.light #todayInput { background: #fff; }
+.today-preview {
+  background: var(--bg-card2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 13px; font-size: 12.5px; line-height: 1.7; color: var(--dim); min-height: 40px;
+}
+/* 未入力時のヒント文章は、枠や背景を付けずシンプルなテキストだけにする */
+.today-preview.empty { background: none; border: none; padding: 4px 2px; min-height: 0; }
+.today-preview b { color: var(--orange); }
+.ok-text { color: var(--green); font-weight: 700; }
+.warn-text { color: var(--pink); font-weight: 700; }
+.speak-today-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: 5px; margin-top: 8px;
+  background: rgba(0,255,136,0.1); color: var(--green);
+  border: 1px solid rgba(0,255,136,0.3); border-radius: 9px;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  font-family: 'Noto Sans JP', sans-serif; transition: all 0.15s;
+}
+.speak-today-btn:active { background: rgba(0,255,136,0.25); }
+.speak-today-btn.speaking { background: rgba(255,0,128,0.12); color: var(--pink); border-color: rgba(255,0,128,0.3); }
+
+/* ==== カード共通 ==== */
+.card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px; margin-bottom: 14px;
+}
+.card-title {
+  font-size: 14px; color: var(--cyan); letter-spacing: 2px; margin-bottom: 12px;
+  font-weight: 700; display: flex; align-items: center; gap: 6px;
+}
+.card-title::before {
+  content: ''; width: 3px; height: 14px; background: var(--cyan);
+  border-radius: 2px; box-shadow: 0 0 6px var(--cyan); display: inline-block;
+}
+
+/* ==== クイック検索 ==== */
+.quick-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.qbtn {
+  background: var(--bg-card2); border: 1px solid var(--blue); color: var(--blue);
+  padding: 7px 6px; border-radius: 10px; cursor: pointer; font-size: 14px;
+  font-family: 'Noto Sans JP', sans-serif; text-align: center; font-weight: 700; transition: all 0.15s;
+}
+.qbtn.wide { grid-column: span 2; }
+.qbtn:active { background: var(--blue); color: #fff; transform: scale(0.97); }
+
+/* ==== 日付入力 ==== */
+.input-wrap { margin-bottom: 8px; }
+.input-wrap label { font-size: 11px; color: var(--dim); margin-bottom: 4px; display: block; letter-spacing: 1px; }
+input[type="date"] {
+  background: var(--bg-card2); border: 1px solid var(--border); color: var(--text);
+  padding: 11px 12px; border-radius: 10px; font-size: 16px;
+  font-family: 'Noto Sans JP', sans-serif; width: 100%; outline: none;
+}
+.search-btn {
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  border: none; color: #fff; padding: 13px; border-radius: 10px; cursor: pointer;
+  font-size: 15px; font-family: 'Noto Sans JP', sans-serif; font-weight: 700;
+  width: 100%; margin-top: 6px; letter-spacing: 1px; transition: all 0.15s;
+}
+.search-btn:active { transform: scale(0.98); }
+
+/* ==== 結果エリア ==== */
+.res-summary { font-size: 11px; color: var(--dim); margin-bottom: 10px; letter-spacing: 0.5px; }
+.empty { text-align: center; padding: 40px 20px; color: var(--dim); font-size: 13px; }
+
+.day-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px; margin-bottom: 12px; position: relative; overflow: hidden;
+}
+.day-card.long { border-color: rgba(255,0,128,0.4); }
+
+/* ==== C案: 期間の合計労働時間 ==== */
+.res-total {
+  background: var(--bg-card2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 10px 12px; margin-bottom: 12px; text-align: center;
+  font-size: 15px; font-weight: 700; color: var(--cyan); letter-spacing: 0.5px;
+}
+.res-total small { display: block; font-size: 11px; font-weight: 400; color: var(--dim); margin-top: 2px; }
+
+/* ==== A案: 出勤・退勤カウントダウン ==== */
+.today-countdown {
+  margin-top: 8px; text-align: center; font-size: 14px; font-weight: 700;
+  color: var(--cyan); background: rgba(0,230,118,0.07);
+  border: 1px solid var(--border); border-radius: 10px; padding: 8px;
+}
+.today-countdown.soon {
+  color: var(--yellow); border-color: rgba(255,230,0,0.5); background: rgba(255,230,0,0.08);
+  animation: cdPulse 1.4s ease-in-out infinite;
+}
+@keyframes cdPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .today-countdown.soon { animation: none; } }
+.day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; }
+.day-date { font-size: 18px; font-weight: 700; color: var(--text); }
+.day-date.holiday { color: var(--pink); }
+.day-date.saturday { color: var(--cyan); }
+.day-badge { font-size: 12px; padding: 3px 10px; border-radius: 12px; font-weight: 700; white-space: nowrap; }
+.badge-week { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid var(--green); }
+.badge-sat  { background: rgba(0,245,255,0.1); color: var(--cyan); border: 1px solid var(--cyan); }
+.badge-hday { background: rgba(255,0,128,0.1); color: var(--pink); border: 1px solid var(--pink); }
+.day-dial {
+  font-size: 32px; font-weight: 900; color: var(--orange);   /* 書体は本文と同じ */
+  text-shadow: 0 0 10px rgba(255,140,0,0.4); line-height: 1; margin-bottom: 10px;
+}
+.day-dial span { font-size: 14px; color: var(--dim); font-family: 'Noto Sans JP', sans-serif; font-weight: 400; }
+.day-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.day-box { background: var(--bg-card2); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px 12px; }
+.day-box-label { font-size: 10px; color: var(--dim); margin-bottom: 4px; letter-spacing: 1px; }
+/* 出退勤の時間と労働時間は、生駒・北大和Bに合わせて本文と同じ書体にする。
+   以前は英字用の書体を当てていたため、数字の形が他のダイヤと違って見えた。 */
+.day-box-val { font-size: 14px; color: var(--text); line-height: 1.5; }
+.day-box-val.holiday-val { color: var(--pink); font-family: 'Noto Sans JP', sans-serif; font-size: 17px; font-weight: 700; }
+/* 今日の表示だけBA風の枠付きカードにする(検索結果の.day-boxesには影響させない) */
+.today-boxes { grid-template-columns: 1.7fr 1fr; margin-top: 2px; }
+.today-boxes .day-box-val { font-weight: 700; }
+/* 出退勤の時間と労働時間は、今日のカードでも検索結果でも同じ大きさにする。
+   以前は「今日のカードの中だけ」に効く書き方だったため、
+   検索結果では小さいままだった（生駒・北大和Bと見た目が揃っていなかった）。 */
+/* 分割勤務のとき、前半・後半を行ごとに見せる。
+   「前半」の見出しは小さく添えるだけにして、時刻を読みやすくする。
+   （生駒・北大和Bと同じ見せ方） */
+.sp-row { display: block; white-space: nowrap; }
+.sp-lb  { display: inline-block; font-size: 10px; color: var(--dim);
+          font-weight: 700; margin-right: 5px; letter-spacing: 1px; }
+
+.day-box-val.is-day   { font-size: 24px; white-space: nowrap; font-weight: 700; }
+.day-box-val.is-split { font-size: 15px; line-height: 1.5; font-weight: 700; }
+.today-head { margin-bottom: 8px; color: var(--text); font-size: 13px; }
+.today-head b { color: var(--orange); font-size: 20px; }
+.today-note { margin-top: 8px; font-size: 12px; color: var(--note); line-height: 1.5; }
+.day-note { font-size: 12px; color: var(--note); margin-top: 8px; font-style: italic; line-height: 1.6; }
+.teiire-label {
+  display: inline-block; margin-bottom: 8px; padding: 4px 10px;
+  background: rgba(255,230,0,0.1); border: 1px solid rgba(255,230,0,0.3);
+  border-radius: 8px; font-size: 11.5px; color: var(--yellow); font-weight: 700;
+}
+.shift-badge { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 10.5px; font-weight: 700; margin-left: 6px; }
+.sb-long { background: rgba(255,0,128,0.12); color: var(--pink); border: 1px solid var(--pink); }
+
+/* ==== アクションボタン ==== */
+/* ==== メモ機能 ==== */
+.memo-area {
+  margin-top: 10px; padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+.memo-line {
+  font-size: 12px; color: var(--text); line-height: 1.5;
+  background: var(--bg-card2); border-left: 3px solid var(--cyan);
+  border-radius: 4px; padding: 6px 8px; margin-bottom: 6px;
+  white-space: pre-wrap; word-break: break-word;
+}
+.memo-line.memo-dial-line { border-left-color: var(--orange); }
+.memo-btn {
+  width: 100%; padding: 8px; font-size: 12px; font-weight: 700;
+  background: transparent; color: var(--dim);
+  border: 1px dashed var(--border); border-radius: 8px; cursor: pointer;
+}
+.memo-btn:active { border-color: var(--cyan); color: var(--cyan); }
+.memo-edit { margin-top: 8px; }
+.memo-label {
+  display: block; font-size: 11.5px; font-weight: 700;
+  color: var(--text); margin: 6px 0 4px;
+}
+.memo-input {
+  width: 100%; padding: 8px; font-size: 13px;
+  background: var(--bg-card2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  resize: vertical; font-family: inherit; box-sizing: border-box;
+}
+.memo-input:focus { outline: none; border-color: var(--cyan); }
+        /* ==== メモに貼る画像 ==== */
+        .mimg-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; }
+        .mimg-item { position: relative; width: 64px; height: 64px; }
+        .mimg-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid rgba(150,150,180,0.5); cursor: pointer; }
+        .mimg-del { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; border: none; background: #d92626; color: #fff; font-size: 11px; font-weight: 900; line-height: 20px; text-align: center; cursor: pointer; padding: 0; }
+        .mimg-add { display: block; margin-top: 6px; padding: 8px; text-align: center; border: 1px dashed rgba(120,180,220,0.8); border-radius: 8px; color: #55b8e0; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .mimg-add input { display: none; }
+        .mimg-view { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 2px; }
+        .mimg-view img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(150,150,180,0.5); cursor: pointer; }
+        #imgViewer { display: none; position: fixed; inset: 0; z-index: 10060; background: rgba(0,0,0,0.94); overflow: auto; text-align: center; }
+        #imgViewer.on { display: block; }
+        #imgViewer img { max-width: 100%; margin-top: 54px; }
+        .iv-close { position: fixed; top: 12px; right: 12px; z-index: 2; background: rgba(255,255,255,0.92); color: #222; border: none; border-radius: 20px; padding: 8px 14px; font-size: 13px; font-weight: 800; cursor: pointer; }
+        .rcd-imgs { justify-content: center; margin: 8px 0 2px; }
+        .rcd-imgs img { width: 60px; height: 60px; border: 1px solid #d8d8e0; }
+.memo-actions { display: flex; gap: 6px; margin-top: 8px; }
+.memo-act {
+  flex: 1; padding: 9px 4px; font-size: 12px; font-weight: 700;
+  border: none; border-radius: 6px; cursor: pointer; color: #fff;
+}
+.memo-save { background: var(--cyan); color: #04241a; }
+.memo-del { background: rgba(255,0,128,0.15); color: var(--pink); border: 1px solid rgba(255,0,128,0.4); }
+.memo-close { background: var(--bg-card2); color: var(--dim); border: 1px solid var(--border); }
+
+.action-row { display: flex; gap: 8px; margin-top: 4px; }
+.act-btn {
+  flex: 1; padding: 11px 4px; border-radius: 10px; cursor: pointer; font-size: 13px;
+  font-family: 'Noto Sans JP', sans-serif; font-weight: 700; border: 1px solid;
+  background: var(--bg-card2); transition: all 0.15s;
+}
+.act-copy { border-color: var(--green); color: var(--green); }
+.act-copy:active { background: var(--green); color: #000; }
+.act-tts { border-color: var(--yellow); color: var(--yellow); }
+.act-tts:active { background: var(--yellow); color: #000; }
+.act-tts.speaking { background: rgba(255,0,128,0.15); color: var(--pink); border-color: var(--pink); }
+.act-cal, .act-more {
+  background: var(--bg-card2);
+  border: 1px solid var(--blue);
+  color: var(--blue);
+}
+.act-cal:active, .act-more:active { background: var(--blue); color: #fff; }
+
+/* ==== フッター ==== */
+.footer { text-align: center; font-size: 11px; color: var(--dim); margin-top: 10px; line-height: 1.8; }
+
+.data-source-notice {
+  text-align: center;
+  font-size: 12px;
+  color: var(--dim);
+  margin-top: 14px;
+  line-height: 1.8;
+}
+.source-link,
+a.source-link:link,
+a.source-link:visited {
+  color: var(--cyan);
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.source-modal {
+  overscroll-behavior: contain;   /* モーダル内の引っ張りで画面が再読み込みされるのを防ぐ */
+  display: none;
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: #000;   /* 後ろの画面が透けないよう完全な黒にする */
+  z-index: 10000;
+  padding: 12px;
+  box-sizing: border-box;
+}
+.source-modal.active { display: flex; flex-direction: column; }
+.source-modal-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  margin: 0 auto;
+}
+.source-img-scroll {
+  overscroll-behavior: contain;   /* 画像スクロール中のプルリフレッシュ防止 */
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
+  background: #fff;
+}
+.source-img-scroll img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+}
+.source-pdf-btn {
+  display: block; margin: 0 auto 10px; padding: 11px 14px; max-width: 520px; width: 100%;
+  background: linear-gradient(135deg, {{SOON_A}}, {{SOON_B}}); color: {{SOON_TX}};
+  border-radius: 10px; text-align: center; text-decoration: none;
+  font-size: 15px; font-weight: 800; line-height: 1.4;
+  box-shadow: 0 3px 10px {{SOON_SHADOW}};
+}
+.source-pdf-btn span {
+  display: block; margin-top: 3px; font-size: 11px; font-weight: 500; opacity: 0.95;
+}
+.source-pdf-btn:active { filter: brightness(0.93); }
+.source-zoom-hint {
+  text-align: center;
+  color: #eee;
+  font-size: 13px;
+  margin-top: 10px;
+}
+.source-close {
+  display: block;
+  margin: 10px auto 0;
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 700;
+  border: 0;
+  border-radius: 22px;
+  background: #fff;
+  color: #333;
+}
+.source-close:active { background: #ddd; }
+.source-pdf-link {
+  text-align: center;
+  color: #fff;
+  font-size: 13px;
+  margin-top: 10px;
+}
+.source-pdf-link a { color: #7ec8ff; font-weight: 700; }
+.footer .credit { color: var(--green); font-weight: 700; margin-top: 4px; }
+
+/* ==== 花火・トースト ==== */
+#fw { position: fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; }
+.toast {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+  background: rgba(15,23,30,0.96); border: 1px solid var(--cyan); color: #ffffff; font-weight: 700;
+  padding: 10px 24px; border-radius: 20px; font-size: 13px; z-index: 10010;
+  opacity: 0; transition: opacity 0.3s; white-space: nowrap;
+  pointer-events: none; /* 見えていない時に下のボタン(更新バナー等)のタップを邪魔しないようにする */
+}
+.toast.show { opacity: 1; }
+.clear-results-btn { display: block; width: 100%; margin: 12px 0 4px; padding: 11px; border: 1.5px solid #ff6b5e; border-radius: 10px; background: transparent; color: #ff6b5e; font-size: 14px; font-weight: 800; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; }
+.clear-results-btn:active { background: rgba(255,107,94,0.14); }
+#resultsArea:empty + .clear-results-btn { display: none; }
+
+/* ==== 追加: かんたん3ステップ・見出し・入れ方タブ ==== */
+.guide-tabs .guide-tab { padding: 9px 3px; font-size: 11.5px; white-space: nowrap; }
+.guide-banner {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  background: var(--bg-card2); border: 1px dashed var(--cyan); border-radius: 10px;
+  padding: 11px 12px; margin-bottom: 14px;
+  font-size: 12.5px; font-weight: 800; color: var(--cyan); line-height: 1.6;
+}
+.guide-banner span { display: block; font-size: 10.5px; font-weight: 600; color: var(--note); margin-top: 3px; }
+.guide-quick {
+  background: var(--bg-card2); border: 1px solid var(--cyan); border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 6px;
+}
+.guide-quick h4 { font-size: 13px; color: var(--cyan); font-weight: 800; margin: 0 0 8px; }
+.guide-quick ol { margin: 0; padding-left: 20px; }
+.guide-quick li { font-size: 13px; color: var(--text); line-height: 1.9; font-weight: 700; }
+.guide-quick li b { color: var(--orange); }
+.guide-quick .qq { font-size: 11px; color: var(--dim); line-height: 1.7; margin-top: 9px; }
+.guide-sec {
+  font-size: 11px; font-weight: 800; color: var(--dim); letter-spacing: 2px;
+  margin: 22px 0 12px; display: flex; align-items: center; gap: 8px;
+}
+.guide-sec::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+/* ==== 入れ方(ホーム画面に追加) ==== */
+.inst-lead { font-size: 12.5px; color: var(--text); line-height: 1.8; margin: 0 0 12px; }
+.inst-lead b { color: var(--orange); }
+.inst-warn {
+  background: var(--bg-card2); border-left: 3px solid var(--pink); border-radius: 4px;
+  padding: 10px 12px; margin-bottom: 18px; font-size: 11.5px; color: var(--dim); line-height: 1.8;
+}
+.inst-warn b { color: var(--pink); }
+.inst-os { margin-bottom: 22px; }
+.inst-os h3 {
+  font-size: 13.5px; font-weight: 800; color: var(--orange); margin: 0 0 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.inst-step { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+.inst-num {
+  flex: none; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--cyan); color: {{ON_CYAN}};
+  font-size: 12px; font-weight: 900; margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+}
+.inst-txt { font-size: 12.5px; color: var(--text); line-height: 1.75; }
+.inst-txt b { color: var(--orange); }
+.inst-key {
+  display: inline-block; background: var(--bg-card2); border: 1px solid var(--border);
+  border-radius: 5px; padding: 0 6px; margin: 0 1px; font-weight: 800; color: var(--text);
+}
+.inst-done {
+  background: var(--bg-card2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; margin-top: 6px; font-size: 11.5px; color: var(--dim); line-height: 1.75;
+}
+.inst-done b { color: var(--orange); }
+
+
+/* ヘッダーのマスコットアイコン（旧🚌の位置）。タイトル文字サイズに追従・角丸で馴染ませる */
+.mascot-icon{height:1.4em;width:1.4em;object-fit:cover;border-radius:24%;vertical-align:-0.34em;margin-right:.16em;}
+
+/* ===== 起動スプラッシュ（アイコン＋鹿くん） ===== */
+#launch-splash{position:fixed;inset:0;z-index:99999;background:{{SPLASH_BG}};
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  transition:opacity .4s ease;}
+#launch-splash.hide{opacity:0;pointer-events:none;}
+#launch-splash .ls-icon{width:104px;height:104px;border-radius:22%;
+  box-shadow:0 6px 22px rgba(0,0,0,.45);}
+#launch-splash .ls-mascot{width:96px;height:96px;border-radius:24%;
+  box-shadow:0 4px 16px rgba(0,0,0,.35);animation:ls-pop .5s ease .12s both;}
+@keyframes ls-pop{from{transform:scale(.55);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* ===== 引っ張って更新（ホーム画面アプリでも動く独自リロード） ===== */
+#ptr-indicator{position:fixed;top:0;left:50%;transform:translate(-50%,-70px);
+  display:flex;align-items:center;gap:8px;z-index:9000;
+  background:rgba(20,20,30,.88);color:#fff;padding:8px 16px;border-radius:0 0 16px 16px;
+  font-size:13px;font-weight:600;box-shadow:0 3px 12px rgba(0,0,0,.3);pointer-events:none;}
+#ptr-indicator .ptr-spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.35);
+  border-top-color:#fff;border-radius:50%;}
+#ptr-indicator.spin .ptr-spinner{animation:ptr-rot .7s linear infinite;}
+@keyframes ptr-rot{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div id="ptr-indicator"><div class="ptr-spinner"></div><span class="ptr-text">引っ張って更新</span></div>
+
+<!-- 起動スプラッシュ：OSの「{{ABBR}}」アイコン表示に続けて、アイコン＋鹿くんを一瞬見せる。タップで即スキップ -->
+<div id="launch-splash" onclick="hideLaunchSplash()">
+  <img class="ls-icon" src="icons/icon-192.png" alt="{{ABBR}}">
+  <img class="ls-mascot" src="mascot.png" alt="出退勤検索くん">
+</div>
+
+<button id="update-banner" onclick="handleUpdateClick()" style="display:none;">🔄 新しいバージョンがあります。タップで更新</button>
+
+<!-- 通知を受け取っていない人にだけ出す帯。許可すると消える -->
+<div id="push-bar" onclick="pushBarTap(event)">🔔 通知を受け取る<span class="x" onclick="pushBarClose(event)">✕</span></div>
+
+
+<canvas id="fw"></canvas>
+<div class="toast" id="toast"></div>
+
+<!-- 通知の受け取りを尋ねる案内。ホーム画面に追加した人にだけ、更新のたびに一度出す -->
+<div class="push-ask-back" id="pushAsk">
+  <div class="push-ask">
+    <h3>🔔 通知</h3>
+    <p>このアプリからの通知を<br>受け取りますか？</p>
+    <div class="row">
+      <button class="later" onclick="pushAskLater()">あとで</button>
+      <button class="yes" onclick="pushAskYes()">受け取る</button>
+    </div>
+  </div>
+</div>
+
+<div class="header">
+  <a href="#" class="share-btn" onclick="shareApp(); return false;" aria-label="アプリを共有">📤</a>
+  <h1><img class="mascot-icon" src="mascot.png" alt="出退勤検索くん">出退勤検索くん</h1>
+  <p>2026年3月14日改正 ／ 1〜92番</p>
+  <button class="mode-btn" onclick="toggleMode()">🌙/☀️</button>
+</div>
+
+<!-- ホーム画面インストールの案内バナー(インストール可能な時だけ表示) -->
+<button id="install-banner" class="notice-banner install-banner" onclick="handleInstallClick()" style="display:none;">
+  📲 アプリとしてインストール
+</button>
+
+<!-- ダイヤ名（独立した行・中央表示） -->
+<div class="dia-name-line"><span class="dia-name">{{DIA_NAME}}</span></div>
+
+<!-- 今日のダイヤ入力 -->
+<div class="today-card">
+  <div class="today-clock" id="todayClock">本日は—</div>
+  <div class="dial-row">
+    <span>今日は</span>
+    <input type="number" id="todayInput" min="1" max="{{MAX}}" inputmode="numeric" autocomplete="off">
+    <span>番ダイヤ</span>
+  </div>
+  <div class="today-preview empty" id="todayPreviewBox">↑ 1〜92の番号を入力してください</div>
+  <div class="today-countdown" id="todayCountdown" style="display:none;"></div>
+  <div class="mydial-note" id="myDialNote" style="display:none;">
+    ✅ この番号を保存し、明日から自動で1つずつ進みます。
+    <span class="mydial-forget" onclick="forgetMyDial()">保存を消す</span>
+  </div>
+  <button class="speak-today-btn" id="speakTodayBtn" onclick="handleSpeakToday()">🔊 今日の勤務を読み上げ</button>
+</div>
+
+<!-- お知らせバナー(タップで破裂→中身を表示。×で閉じる)
+     初期は非表示。news.json にお知らせが1件以上ある時だけJSで表示する。 -->
+<button id="news-banner" onclick="handleNewsClick()" style="display:none;">
+  📢 お知らせがあります！ ▸ タップして見る
+  <span id="news-close" onclick="event.stopPropagation();closeNewsBanner()">×</span>
+</button>
+
+<!-- クイック検索 -->
+<div class="card">
+  <div class="card-title">クイック検索</div>
+  <div class="quick-grid">
+    <button class="qbtn" onclick="quickSearch('tomorrow')">明日</button>
+    <button class="qbtn" onclick="quickSearch('week1')">1週間</button>
+    <button class="qbtn" onclick="quickSearch('month1')">1ヶ月</button>
+  </div>
+</div>
+
+<!-- 指定して検索（タップするとカレンダーが開く） -->
+<div class="card">
+  <div class="card-title">指定して検索</div>
+  <button class="search-btn" onclick="openCal()">📅 指定して検索</button>
+  <!-- 選んだ期間の保持用（画面には出さないが、他の処理がここを参照する） -->
+  <input type="hidden" id="dateFrom">
+  <input type="hidden" id="dateTo">
+</div>
+
+<!-- 全画面カレンダー（開始日→終了日をタップで選ぶ） -->
+<div id="calModal" class="cal-modal">
+  <div class="cal-inner">
+    <div class="cal-top">
+      <div class="cal-title">📅 日付を指定</div>
+      <button class="cal-x" onclick="closeCal()">✕</button>
+    </div>
+
+    <div class="cal-hint" id="calHint">1回目のタップ＝開始日 / 2回目のタップ＝終了日<br>同じ日を2回タップすると、その日1日だけになります</div>
+
+    <div class="cal-nav">
+      <button class="cal-arrow" onclick="calMove(-1)">‹</button>
+      <div class="cal-month" id="calMonth"></div>
+      <button class="cal-arrow" onclick="calMove(1)">›</button>
+    </div>
+
+    <div class="cal-dw">
+      <div class="sun">日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="sat">土</div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+
+    <div class="cal-sel" id="calSel">開始日を選んでください</div>
+
+    <div class="cal-actions">
+      <button class="cal-btn cal-today" onclick="calToday()">今日に戻る</button>
+      <button class="cal-btn cal-clear" onclick="calClear()">選び直す</button>
+      <button class="cal-btn cal-ok" id="calOk" onclick="applyCal()">設定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 検索結果をカレンダーで見る -->
+<div id="resCalModal" class="cal-modal">
+  <div class="cal-inner">
+    <div class="cal-top">
+      <div class="cal-title">📅 検索くん 私のカレンダー</div>
+      <button class="cal-x" onclick="closeResultCal()">✕ 閉じる</button>
+    </div>
+    <div class="cal-nav">
+      <button class="cal-arrow" id="rcPrev" onclick="resCalMove(-1)">‹</button>
+      <div class="cal-month" id="resCalMonth"></div>
+      <button class="cal-arrow" id="rcNext" onclick="resCalMove(1)">›</button>
+    </div>
+    <div class="cal-dw">
+      <div class="sun">日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="sat">土</div>
+    </div>
+    <div class="cal-grid rescal-grid" id="resCalGrid"></div>
+    <div class="rescal-legend">
+      上段＝ダイヤ番号 ／ 下段＝出退勤時間<br>
+      <span class="rc-legend-off">緑は公休</span>・薄い日は検索範囲外です
+    </div>
+    <button class="rc-save-btn" onclick="saveCurrentCal()">⭐ メモ一覧に保存</button>
+  </div>
+</div>
+
+<!-- マスをタップした時の詳細（拡大表示） -->
+<div id="rcDetail" class="rc-detail" onclick="if(event.target===this)closeRcDetail()">
+  <div class="rc-detail-box" id="rcDetailBox"></div>
+</div>
+
+<!-- 検索結果 -->
+<div id="resultsArea"></div>
+    <button class="clear-results-btn" onclick="clearRangeResults()">🗑 検索結果を消す</button>
+
+<div class="data-source-notice">
+  このアプリは<span class="source-link" onclick="openSourceModal()">コチラ</span>のデータを元に作成しております。
+</div>
+
+<div class="footer">
+  <div>⚠ あくまでも目安としてお使いください。</div>
+  <div>出退勤時間に誤りがあっても当方は責任を負いかねます。</div>
+  <div style="margin-top:8px;"><span class="source-link" onclick="openMemoList()">📝 保存したメモの一覧</span></div>
+  <div style="margin-top:8px;"><span class="source-link" onclick="openGuide()">📖 使い方・アプリの入れ方・更新履歴</span></div>
+  <div id="pushBox" style="margin-top:12px;"></div>
+  <div style="margin-top:10px;">
+    <button class="notify-btn" id="notifyBtn" onclick="toggleNotify()">🔕 更新のお知らせ：オフ</button>
+  </div>
+  <div class="app-info" id="appInfo"></div>
+  <div class="credit" style="margin-top:10px;">by AIタケタニ</div>
+</div>
+
+</div>
+
+<!-- メモ一覧 -->
+<div id="memoListModal" class="memolist-modal" onclick="if(event.target===this)closeMemoList()">
+  <div class="ml-box">
+    <div class="ml-head">
+      <h2>📝 メモ一覧</h2>
+      <button class="guide-close" onclick="closeMemoList()">✕ 閉じる</button>
+    </div>
+    <div class="ml-tabs">
+      <button class="ml-tab on" id="mlTabDate" onclick="switchMemoList('date')">日付のメモ</button>
+      <button class="ml-tab" id="mlTabDial" onclick="switchMemoList('dial')">ダイヤ番号のメモ</button>
+      <button class="ml-tab" id="mlTabCal" onclick="switchMemoList('cal')">保存したカレンダー</button>
+    </div>
+    <div class="ml-pane on" id="mlPaneDate"></div>
+    <div class="ml-pane" id="mlPaneDial"></div>
+    <div class="ml-pane" id="mlPaneCal"></div>
+  </div>
+</div>
+
+<!-- 使い方と更新履歴 -->
+<div id="guideModal" class="guide-modal" onclick="if(event.target===this)closeGuide()">
+  <div class="guide-box">
+    <div class="guide-head">
+      <h2>📖 使い方・入れ方・更新履歴</h2>
+      <button class="guide-close" onclick="closeGuide()">✕ 閉じる</button>
+    </div>
+
+    <div class="guide-tabs">
+      <button class="guide-tab on" id="tabUse" onclick="switchGuide('use')">使い方</button>
+      <button class="guide-tab" id="tabInst" onclick="switchGuide('inst')">📱 入れ方</button>
+      <button class="guide-tab" id="tabLog" onclick="switchGuide('log')">更新履歴</button>
+    </div>
+
+    <!-- ===== 使い方 ===== -->
+    <div class="guide-pane on" id="paneUse">
+
+      <button class="guide-banner" onclick="switchGuide('inst')">
+        📱 まだホーム画面に入れてない人は → 「入れ方」を見る
+        <span>アイコンを押すだけで一発で開けるようになります</span>
+      </button>
+
+      <div class="guide-quick">
+        <h4>⚡ まずはこの3つだけ</h4>
+        <ol>
+          <li>自分の<b>ダイヤ番号</b>を入れる</li>
+          <li>すぐ下に<b>今日の出退勤</b>が出る</li>
+          <li>先の予定は<b>「1週間」など</b>を押す</li>
+        </ol>
+        <div class="qq">
+          これだけで使えます。番号は保存されるので、次の日からは<b>開くだけ</b>でOKです。<br>
+          ④から下は「もっと便利に使いたい人」向けなので、読まなくても大丈夫です。
+        </div>
+      </div>
+
+      <div class="guide-sec">きほんの使い方</div>
+
+      <div class="guide-step">
+        <h3>① ダイヤ番号を入れる</h3>
+        <p>一番上の枠に、今日の自分のダイヤ番号(1〜{{MAX}})を入れるだけ。すぐ下に今日の勤務が出ます。</p>
+        <img src="images/guide-1.jpg" alt="ダイヤ番号を入力する画面">
+        <div class="guide-note">
+          <b>次の日からは入れ直さなくてOK。</b>開くだけで、自動で1つ進んだ番号が入っています。<br>
+          番号がズレた時は「保存を消す」を押して入れ直してください。<br>
+          ※ 保存されるのはこの端末の中だけです。同僚の番号と混ざることはありません。
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <h3>② 「明日」「1週間」「1ヶ月」を押す</h3>
+        <p>押すだけで勤務が出ます。「明日」は明日1日だけ、「1週間」「1ヶ月」はその期間をまとめて表示します。次の日以降は、番号が1日ずつ進んだ状態で出ます。</p>
+        <img src="images/guide-2.jpg" alt="クイック検索と指定して検索">
+      </div>
+
+      <div class="guide-step">
+        <h3>③ 結果の見方</h3>
+        <p>日ごとに <b>ダイヤ番号・出退勤の時間・労働時間</b> が並びます。休みの日は「公休」と出ます。</p>
+        <img src="images/guide-3.jpg" alt="検索結果の見方">
+      </div>
+
+      <div class="guide-sec">もっと便利に（読まなくてもOK）</div>
+
+      <div class="guide-step">
+        <h3>④ 日にちを指定して調べる</h3>
+        <p>「📅 指定して検索」を押すとカレンダーが開きます。<b>1回目のタップ＝開始日、2回目のタップ＝終了日</b>。その間をまとめて調べられます。期間の長さに<b>制限はありません</b>ので、何ヶ月先でも指定できます。</p>
+        <img src="images/guide-cal.jpg" alt="カレンダーで期間を指定する">
+        <div class="guide-note">
+          同じ日を2回タップすれば、その日1日だけを調べられます。<br>
+          ‹ › で月を移動できるので、月をまたいだ期間もOKです。カレンダーを<b>左右に指ではらっても</b>月を移動できます。<br>
+          「設定」を押すと結果が出て、画面が自動で下まで流れます。
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <h3>⑤ カレンダーで見る・保存・スマホに登録</h3>
+        <p>結果の一番下の「📅 カレンダーを見る」を押すと、<b>1ヶ月分が一目で分かります</b>。マスをタップすると大きく表示され、分割勤務の詳しい時間も読めます。土曜は青、日曜・祝日は赤で色分けされます。</p>
+        <img src="images/guide-rescal.jpg" alt="検索結果をカレンダーで一覧">
+        <div class="guide-note">
+          この画面の<b>「⭐ メモ一覧に保存」</b>で検索結果を保存でき、あとで<b>「📝 保存したメモの一覧」→「保存したカレンダー」</b>からいつでも開けます。<br>
+          さらに<b>「📅 カレンダーアプリに一括保存」</b>を押すと、勤務を<b>スマホのカレンダーにまとめて登録</b>できます（出勤1時間前のお知らせ付き。公休の日も番号入りで入ります）。<br>
+          ※ 押すとファイル（勤務カレンダー.ics）がダウンロードされるので、それを開いてカレンダーに追加してください。<b>追加した後のファイルは削除して大丈夫です</b>（ダウンロードフォルダに溜まっていくので、ときどき消してください）。
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <h3>⑥ メモを残す</h3>
+        <p>各日の「📝 メモを追加」から書けます。2種類あります。</p>
+        <img src="images/guide-4.jpg" alt="メモ機能">
+        <div class="guide-note">
+          <b>日付のメモ</b>…その日だけに出ます（例：年休申請済み）<br>
+          <b>ダイヤ番号のメモ</b>…その番号の日すべてに出ます（例：さつき最終便に注意）<br><br>
+          <b>📷 メモには画像も貼れます。</b>「📷 画像を追加」から、写真を何枚でも貼れます（ダイヤ表の写真、連絡票、駐車位置のメモなど）。貼った画像はメモ一覧やカレンダーからも見られ、<b>タップすると大きく表示</b>されます。画像は自動で小さくしてから保存されますが、貼りすぎると端末の容量を使うのでほどほどに。<br><br>
+          ⚠ メモと画像はこの端末の中だけに保存されます。同僚には見えません。機種変更やブラウザのデータ削除で消えるのでご注意ください。
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <h3>⑦ 書いたメモをまとめて見る</h3>
+        <p>下の「📝 保存したメモの一覧」を押すと、<b>これまでのメモを全部まとめて見られます</b>。その場で編集・削除もできます。</p>
+        <img src="images/guide-memolist.jpg" alt="メモ一覧">
+        <div class="guide-note">
+          「日付のメモ」と「ダイヤ番号のメモ」がタブで分かれています。過ぎた日には印が付き、<b>🧹 過ぎた日のメモをまとめて削除</b>で一度に片付けられます。
+        </div>
+      </div>
+
+<div class="guide-step">
+        <h3>⑧ 圏外でも使えます</h3>
+        <p>一度オンラインで開いておけば、その後は圏外や機内モードでも起動できます。</p>
+        <div class="guide-note">「🔄 新しいバージョンがあります」と出たらタップしてください。最新バージョンのアプリに更新されます。</div>
+      </div>
+    </div>
+
+
+    <!-- ===== アプリの入れ方(ホーム画面に追加) ===== -->
+    <div class="guide-pane" id="paneInst">
+
+      <p class="inst-lead">
+        ホーム画面に入れておくと、<b>アイコンを押すだけで一発で開けます</b>。<br>
+        毎回LINEをさかのぼって探す必要も、URLを打ち直す必要もありません。圏外でも開けます。
+      </p>
+
+      <div class="inst-warn">
+        <b>⚠ ここだけ先に読んでください</b><br>
+        LINEから開いた画面のままでは、ホーム画面に追加できません。<br>
+        まず <b>iPhoneなら「Safari」／Androidなら「Chrome」で開き直して</b> から、下の手順をやってください。
+      </div>
+
+      <div class="inst-os">
+        <h3>🍎 iPhone の人</h3>
+        <div class="inst-step"><div class="inst-num">1</div><div class="inst-txt">
+          LINEでこのアプリを開いたら、画面のすみにある <span class="inst-key">⋯</span> や <span class="inst-key">↗</span> のマークを押して、<b>「Safariで開く」</b>（または「他のアプリで開く」→ Safari）を選びます。
+        </div></div>
+        <div class="inst-step"><div class="inst-num">2</div><div class="inst-txt">
+          Safariで開いたら、画面の<b>下の真ん中にある共有ボタン</b> <span class="inst-key">⬆︎</span>（四角から上矢印が出たマーク）を押します。<br>
+          ※ ボタンが出ていない時は、画面を少し下にスワイプすると出てきます。
+        </div></div>
+        <div class="inst-step"><div class="inst-num">3</div><div class="inst-txt">
+          出てきたメニューを<b>下にスクロール</b>して、<b>「ホーム画面に追加」</b>を押します。
+        </div></div>
+        <div class="inst-step"><div class="inst-num">4</div><div class="inst-txt">
+          右上の<b>「追加」</b>を押したら完成です。
+        </div></div>
+        <div class="inst-done">
+          ホーム画面に <b>「{{ABBR}}」</b> というアイコンができていればOK。次からはそれを押すだけです。<br>
+          ※「Safariで開く」が見つからない時は、リンクを長押しして<b>コピー</b>し、Safariのアドレス欄に貼り付けて開いてもOKです。
+        </div>
+      </div>
+
+      <div class="inst-os">
+        <h3>🤖 Android の人</h3>
+        <div class="inst-step"><div class="inst-num">1</div><div class="inst-txt">
+          LINEでこのアプリを開いたら、画面のすみにある <span class="inst-key">⋮</span> のマークを押して、<b>「他のアプリで開く」→ Chrome</b>（または「ブラウザで開く」）を選びます。
+        </div></div>
+        <div class="inst-step"><div class="inst-num">2</div><div class="inst-txt">
+          Chromeで開いたら、<b>右上の</b> <span class="inst-key">⋮</span> を押します。
+        </div></div>
+        <div class="inst-step"><div class="inst-num">3</div><div class="inst-txt">
+          メニューの中の <b>「ホーム画面に追加」</b>（機種によっては<b>「アプリをインストール」</b>）を押します。
+        </div></div>
+        <div class="inst-step"><div class="inst-num">4</div><div class="inst-txt">
+          <b>「追加」</b>や<b>「インストール」</b>を押したら完成です。
+        </div></div>
+        <div class="inst-done">
+          ホーム画面に <b>「{{ABBR}}」</b> というアイコンができていればOK。次からはそれを押すだけです。<br>
+          ※ 画面の下に「アプリをインストール」というバーが自動で出ることもあります。その時はそれを押すだけでOKです。
+        </div>
+      </div>
+
+      <div class="inst-warn" style="margin-bottom:0;">
+        <b>💡 うまくいかない時</b><br>
+        ・LINEの画面のままだと「ホーム画面に追加」は出てきません。SafariかChromeで開き直してください。<br>
+        ・iPhoneはSafari、AndroidはChromeが確実です。他のブラウザだと出ないことがあります。<br>
+        ・入れたあとにこのアプリを一度開いておくと、圏外でも使えるようになります。
+      </div>
+    </div>
+
+    <!-- ===== 更新履歴 ===== -->
+    <div class="guide-pane" id="paneLog">
+      <div class="log-loading">読み込み中…</div>
+    </div>
+  </div>
+</div>
+
+<!-- 元データ画像モーダル -->
+<!-- お知らせモーダル(元データ表示と同じ作りを流用) -->
+<div id="newsModal" class="source-modal" onclick="closeNewsModal()">
+  <div class="source-modal-content" onclick="event.stopPropagation()">
+    <div class="news-img-wrap" id="newsImgWrap">
+      <div class="news-loading">読み込み中…</div>
+    </div>
+    <div class="source-zoom-hint">🔍 指を広げると拡大できます</div>
+    <button class="source-close" onclick="closeNewsModal()">×&nbsp;とじる</button>
+  </div>
+</div>
+
+<div id="sourceModal" class="source-modal" onclick="closeSourceModal()">
+  <div class="source-modal-content" onclick="event.stopPropagation()">
+    <!-- PDFは pdf/ に固定名で置く。無ければ自動で隠れる（ダイヤ改正時は上書きするだけ） -->
+    <a class="source-pdf-btn" id="pdfShift" href="pdf/shift-table.pdf" target="_blank" rel="noopener" style="display:none;">
+      📄 出退勤表（PDF版）を開く
+      <span>拡大したい時はこちら。共有→Adobe Readerで開くと好きなだけ大きくできます</span>
+    </a>
+    <a class="source-pdf-btn" id="pdfKeitou" href="pdf/kinmu-keitou.pdf" target="_blank" rel="noopener" style="display:none;">
+      📄 勤務系統表を開く
+      <span>系統・行先・中間解放まで載った詳しい表です。拡大しても文字がきれいです</span>
+    </a>
+    <!-- 出退勤表の画像は images/genpage-1.jpg から順に。枚数はアプリごとに違う -->
+    <div class="source-img-scroll" id="srcScroll"></div>
+    <div class="source-zoom-hint">🔍 指を広げて拡大／狭めて縮小。とじるには下の「とじる」ボタン</div>
+    <button class="source-close" onclick="closeSourceModal()">×&nbsp;とじる</button>
+  </div>
+</div>
+
+<script>
+/* =====================================================
+   出退勤検索くん - ダイヤ表データ
+   ※このデータは実機で動作確認済みの正確なデータです
+   ===================================================== */
+let DB={};   // 中身は dia-{{ID}}.json から入れる（下の loadDiaData で読み込む）
+
+/* 手入れ（研修）ダイヤの特記事項 */
+const TEIIRE={28:'手入れダイヤ',64:'手入れダイヤ 掃除付き',76:'午後手入れ 掃除付き'};
+
+/* 2026・2027年の祝日一覧（国立天文台「暦要項」で確認済み） */
+let HOLIDAYS=new Set();   // 中身は dia-{{ID}}.json から入れる
+
+
+/* ==== ダイヤのデータを読み込む ====
+   勤務データ・祝日・お盆・基準日は dia-{{ID}}.json にまとめてある。
+   ダイヤ改正のときは、この JSON だけを差し替えればよい。
+
+   読み込みに失敗するとアプリが使えないので、
+   通信できないときのために、いったん端末に控えておく。 */
+const DIA_JSON = './dia-{{ID}}.json';
+const DIA_CACHE_KEY = '{{ID}}-dia-cache';
+
+function applyDiaData(d){
+  DB = d.dials || {};
+  HOLIDAYS = new Set(d.holidays || []);
+  OBON_DAYS = new Set(d.obon || []);
+  if(d.meta && d.meta.baseDate){
+    const p = String(d.meta.baseDate).split('-').map(Number);
+    BASE_DATE = new Date(p[0], p[1]-1, p[2]);
+  }
+  if(d.meta && d.meta.baseDial) BASE_DIAL = d.meta.baseDial;
+}
+
+async function loadDiaData(){
+  // まず端末に控えてあるものを使う（通信できなくても動くように）
+  try{
+    const cached = localStorage.getItem(DIA_CACHE_KEY);
+    if(cached) applyDiaData(JSON.parse(cached));
+  }catch(e){}
+
+  try{
+    const res = await fetch(DIA_JSON + '?v=' + Date.now());
+    if(res.ok){
+      const d = await res.json();
+      applyDiaData(d);
+      try{ localStorage.setItem(DIA_CACHE_KEY, JSON.stringify(d)); }catch(e){}
+      return true;
+    }
+  }catch(e){}
+  return Object.keys(DB).length > 0;   // 控えがあればそれで動かす
+}
+
+/* 曜日の日本語表記 */
+const DW=['日','月','火','水','木','金','土'];
+
+/* ダイヤ番号「初期値」計算にのみ使う基準日・基準ダイヤ */
+let BASE_DATE=new Date();   // 中身は dia-{{ID}}.json から入れる
+let BASE_DIAL=1;
+
+/* 日付をYYYY-MM-DD形式の文字列に変換する */
+function toISO(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+
+/* 指定した日付のNヶ月後を計算する（月末日をまたぐ場合は月末に丸める） */
+function addMonths(date,n){
+  const d=new Date(date);
+  const day=d.getDate();
+  d.setDate(1); // 繰り上がりで日付がズレないよう、いったん1日にしてから月を進める
+  d.setMonth(d.getMonth()+n);
+  const lastDay=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  d.setDate(Math.min(day,lastDay)); // 元の日が翌月に存在しない場合は月末に丸める
+  return d;
+}
+
+/* その日が祝日かどうか判定する */
+function isHol(d){return HOLIDAYS.has(toISO(d));}
+
+/* お盆期間（土曜日ダイヤ扱いになる日）*/
+let OBON_DAYS=new Set();   // 中身は dia-{{ID}}.json から入れる
+function isObon(d){return OBON_DAYS.has(toISO(d));}
+
+/* 日付の種別（平日／土曜／日祝）を判定する（お盆期間は土曜日ダイヤ扱い） */
+function dayType(d){const w=d.getDay();if(isObon(d))return '土';if(w===0||isHol(d))return '日祝';if(w===6)return '土';return '平';}
+
+/* 「今日のダイヤ番号」を起点に、対象日のダイヤ番号を計算する
+   実際の端末の「今日」からの日数差で計算するので、基準日が多少古くなってもズレない */
+function calcDial(target,todayDial){
+  const today=new Date();today.setHours(0,0,0,0);
+  const diff=Math.round((target-today)/86400000);
+  return ((todayDial-1+diff)%{{MAX}}+{{MAX}})%{{MAX}}+1;
+}
+
+/* 分割勤務の労働時間文字列（例:'3:01/6:25'）を合計時間（数値・h）に変換する */
+function parseTotalHours(w){
+  if(!w||w==='—')return 0;
+  return w.split('/').reduce((sum,part)=>{
+    const m=part.match(/(\d+):(\d+)/);
+    return m?sum+parseInt(m[1])+parseInt(m[2])/60:sum;
+  },0);
+}
+
+/* 出退勤時刻を画面表示用に見やすく整形する（2分割は前半/後半、3分割以上は番号表記） */
+function formatDisplayTime(o){
+  if(!o||o==='—')return '<span class="warn-text">要確認</span>';
+  if(!o.includes('/'))return o;
+  const parts=o.split('〜');
+  if(parts.length!==2)return o;
+  const starts=parts[0].split('/').map(x=>x.trim()),ends=parts[1].split('/').map(x=>x.trim());
+  if(starts.length<2||ends.length<2)return o;
+  // 前半＝出勤側ペア(入り〜出)、後半＝退勤側ペア(入り〜出)。横ペアだと誤読するため正しく組む
+  if(starts.length===2&&ends.length===2){
+    // 前半・後半を行ごとに区切り、途中で折り返さないようにする。
+    // 「前半」の見出しは小さく添えるだけにして、時刻を読みやすくする。
+    // データは「前半出勤/後半出勤 〜 前半退勤/後半退勤」の並び。
+    // 前半は starts[0]〜starts[1]、後半は ends[0]〜ends[1] になる。
+    return `<span class="sp-row"><span class="sp-lb">前半</span>${starts[0]}〜${starts[1]}</span>`
+         + `<span class="sp-row"><span class="sp-lb">後半</span>${ends[0]}〜${ends[1]}</span>`;
+  }
+  // 3分割以上はペアが確定できないため元の並びをそのまま表示(誤ペア回避)
+  return o;
+}
+
+/* 労働時間を画面表示用に整形する（2分割は前半/後半、3分割以上は番号表記） */
+function formatDisplayLabor(w){
+  if(!w||w==='—')return '—';
+  if(!w.includes('/'))return w+'h';
+  const parts=w.split('/').map(x=>x.trim());
+  const labels=parts.length===2?['前半','後半']:parts.map((_,i)=>`${i+1}本目`);
+  return parts.map((p,i)=>
+    `<span class="sp-row"><span class="sp-lb">${labels[i]}</span>${p}h</span>`).join('');
+}
+
+/* 時刻文字列を読み上げ用の日本語に変換する（24時以降は「翌」を付ける） */
+function fmtT(t){
+  if(!t)return '';
+  t=t.trim();
+  const m=t.match(/^(\d+):(\d+)$/);
+  if(!m)return t;
+  const h=parseInt(m[1]),min=m[2];
+  if(h>=24)return `翌${h-24}時${min==='00'?'':min+'分'}`;
+  return `${h}時${min==='00'?'':min+'分'}`;
+}
+
+/* 出退勤時刻の文字列を読み上げ用の自然な日本語文に変換する */
+function timeToSpeech(o,w){
+  if(!o||o==='—')return '詳細はダイヤ表を確認してください';
+  if(!o.includes('/')){
+    const [start,end]=o.split('〜');
+    const ws=w?w.replace(':','時間')+'分':'';
+    return `${fmtT(start)}から${fmtT(end)}。労働時間${ws}`;
+  }
+  const tildeSplit=o.split('〜');
+  if(tildeSplit.length===2){
+    const starts=tildeSplit[0].split('/'),ends=tildeSplit[1].split('/');
+    const wParts=w?w.split('/').map(x=>x.trim()):[];
+    if(starts.length>=2&&ends.length>=2){
+      let text=`前半、${fmtT(starts[0])}から${fmtT(starts[1])}`;
+      if(wParts[0])text+=`、労働${wParts[0].replace(':','時間')}分`;
+      text+=`。後半、${fmtT(ends[0])}から${fmtT(ends[1])}`;
+      if(wParts[1])text+=`、労働${wParts[1].replace(':','時間')}分`;
+      text+='。';
+      return text;
+    }
+  }
+  return o.replace(/〜/g,'から').replace(/\//g,'または');
+}
+
+/* 出勤時刻からシフト種別（日勤／中間／遅出）を判定する */
+function getShiftType(o){
+  if(!o||o==='—')return null;
+  if(o.includes('/'))return '中間';
+  const firstStart=o.split('〜')[0].trim();
+  const m=firstStart.match(/^(\d+):(\d+)/);
+  if(!m)return null;
+  const h=parseInt(m[1]);
+  if(h>=14)return '遅出';
+  return '日勤';
+}
+
+/* ==== 今日のダイヤ入力欄：ライブプレビュー ==== */
+function updateTodayPreview(){
+  const v=parseInt(document.getElementById('todayInput').value);
+  const box=document.getElementById('todayPreviewBox');
+  if(!v||v<1||v>{{MAX}}){
+    box.classList.add('empty'); // ヒント文章の間は枠を消す
+    box.innerHTML='↑ 1〜92の番号を入力してください';
+    return;
+  }
+  box.classList.remove('empty'); // 実際のシフト内容を表示する時は枠を戻す
+  launchFireworks(); // 有効な番号が入力されたら花火1発
+  rocketFirework(); // ロケット花火風の音
+  const today=new Date();
+  const m=today.getMonth()+1,d=today.getDate();
+  const dw=DW[today.getDay()];
+  const dtLabel=isObon(today)?`${dw}（お盆休みで土曜ダイヤ）`:isHol(today)?`${dw}・祝`:dw;
+  const dt=dayType(today);
+  const rec=DB[v];
+  if(!rec||!rec[dt]){
+    box.innerHTML=`<b>${v}番ダイヤ</b> → ${m}/${d}（${dtLabel}）は <span class="ok-text">🎉 公休</span> です`;
+    return;
+  }
+  const slot=rec[dt];
+  if(slot.o==='—'){
+    box.innerHTML=`<b>${v}番ダイヤ</b> → ${m}/${d}（${dtLabel}）勤務: <span class="warn-text">要確認</span>${slot.n?' 📌'+slot.n:''}`;
+    return;
+  }
+  const isSplit=slot.o.includes('/');
+  const tcls=isSplit?'is-split':'is-day';
+  const noteHtml=slot.n?`<div class="today-note">📌 ${slot.n}</div>`:'';
+  box.innerHTML=`<div class="today-head"><b>${v}番ダイヤ</b> ／ ${m}/${d}（${dtLabel}）</div>
+    <div class="day-boxes today-boxes">
+      <div class="day-box"><div class="day-box-label">勤務時間</div><div class="day-box-val ${tcls}">${formatDisplayTime(slot.o)}</div></div>
+      <div class="day-box"><div class="day-box-label">労働時間</div><div class="day-box-val ${tcls}">${formatDisplayLabor(slot.w)}</div></div>
+    </div>${noteHtml}`;
+}
+
+/* ==== 今日の勤務を読み上げ ==== */
+function handleSpeakToday(){
+  const v=parseInt(document.getElementById('todayInput').value);
+  if(!v||v<1||v>{{MAX}}){speakText('ダイヤ番号を入力してください','speakTodayBtn');return;}
+  const today=new Date();
+  const m=today.getMonth()+1,d=today.getDate();
+  const dw=DW[today.getDay()];
+  const dt=dayType(today);
+  const holLabel=isObon(today)?'お盆休みで土曜ダイヤ':isHol(today)?'祝日':'';
+  const rec=DB[v];
+  let text=`${m}月${d}日、${dw}曜日${holLabel}。${v}番ダイヤ。`;
+  if(!rec||!rec[dt]){
+    text+='公休。お疲れ様です！';
+  }else{
+    const slot=rec[dt];
+    if(!slot||slot.o==='—'){
+      text+='詳細はダイヤ表を確認してください。';
+    }else{
+      const st=getShiftType(slot.o);
+      if(st)text+=`${st}。`;
+      if(TEIIRE[v])text+=`${TEIIRE[v]}。`;
+      text+=timeToSpeech(slot.o,slot.w)+'。';
+    }
+  }
+  speakText(text,'speakTodayBtn');
+}
+
+/* ==== 検索結果を読み上げ ==== */
+function handleSpeakResults(){
+  const rows=window._lastRows;
+  if(!rows||!rows.length){speakText('先に検索してください','speakResBtn');return;}
+  let text='';
+  rows.forEach(r=>{
+    const allKyu=!r.rec||(r.rec&&r.slot===null);
+    const holLabel=r.obon?'お盆休みで土曜ダイヤ':r.hol?'祝日':'';
+    text+=`${r.m}月${r.d}日${r.dw}曜${holLabel}、${r.dn}番ダイヤ。`;
+    if(allKyu){text+='公休。';}
+    else if(r.slot&&r.slot.o!=='—'){
+      const st=getShiftType(r.slot.o);
+      if(st)text+=`${st}。`;
+      if(TEIIRE[r.dn])text+=`${TEIIRE[r.dn]}。`;
+      text+=timeToSpeech(r.slot.o,r.slot.w)+'。';
+    }else{text+='要確認。';}
+  });
+  speakText(text,'speakResBtn');
+}
+
+/* ==== 音声読み上げ本体 ====
+   句点「。」で文単位に分割し、1文ずつ順番に読み上げる。
+   長い一文をタイマーで延命させる方式はAndroidで途切れやすいため、
+   短い発話を鎖のようにつなげる方式にしている。 */
+let _speakQueue=[];   // 読み上げ待ちの文章の配列
+let _speakBtn=null;   // 現在読み上げ中のボタン要素
+
+function speakText(text,btnId){
+  if(!('speechSynthesis' in window)){showToast('このブラウザは読み上げ非対応です');return;}
+  const btn=btnId?document.getElementById(btnId):null;
+
+  // 読み上げ中（またはキュー待ち）なら、再タップで停止する
+  if(window.speechSynthesis.speaking||_speakQueue.length){
+    window.speechSynthesis.cancel();
+    _speakQueue=[];
+    if(_speakBtn){_speakBtn.textContent=_speakBtn.dataset.orig;_speakBtn.classList.remove('speaking');}
+    _speakBtn=null;
+    return;
+  }
+
+  // 句点で分割してキューに積む（空文字は除外）
+  _speakQueue=text.split('。').map(s=>s.trim()).filter(s=>s).map(s=>s+'。');
+  if(!_speakQueue.length){showToast('読み上げる内容がありません');return;}
+
+  _speakBtn=btn;
+  if(btn){btn.dataset.orig=btn.textContent;btn.textContent='⏹ 停止する';btn.classList.add('speaking');}
+
+  // 端末に音声エンジンが1つも見つからない場合は、その旨を先に表示する
+  // （この場合onerrorが発火せず無音になることがあるため、事前に分かるようにする）
+  const voiceCount=window.speechSynthesis.getVoices().length;
+  if(voiceCount===0){
+    showToast('⚠ 音声エンジンが見つかりません（端末側の設定要確認）');
+  }
+
+  // ボタンのタップ操作と同じタイミングで同期的に呼び出す
+  // （音声リストの読み込みを待って非同期にすると、ブラウザによっては
+  // 「ユーザー操作起因ではない」と判定され再生がブロックされることがある）
+  speakNextChunk();
+}
+
+/* キューの先頭を1文読み上げ、終わったら次の文へ進む */
+function speakNextChunk(){
+  if(!_speakQueue.length){
+    if(_speakBtn){_speakBtn.textContent=_speakBtn.dataset.orig;_speakBtn.classList.remove('speaking');}
+    _speakBtn=null;
+    return;
+  }
+  const chunk=_speakQueue.shift();
+  const utter=new SpeechSynthesisUtterance(chunk);
+  utter.lang='ja-JP';utter.rate=0.95;utter.pitch=1.05;
+  const voices=window.speechSynthesis.getVoices();
+  const jaVoice=voices.find(v=>v.lang==='ja-JP')||voices.find(v=>v.lang.startsWith('ja'));
+  if(jaVoice)utter.voice=jaVoice;
+  utter.onend=speakNextChunk;
+  utter.onerror=function(e){
+    // 「停止ボタンを押した」「画面を離れた」ときも、仕組みの上では
+    // エラー扱いになる。それを画面に出すと不具合のように見えるので、
+    // 本当に読み上げられなかったときだけ知らせる。
+    const kind=e&&e.error;
+    if(kind&&kind!=='interrupted'&&kind!=='canceled'){
+      showToast('読み上げできませんでした（'+kind+'）');
+    }
+    speakNextChunk();
+  };
+  window.speechSynthesis.speak(utter);
+}
+
+function stopSpeakIfNeeded(){
+  if(window.speechSynthesis?.speaking)window.speechSynthesis.cancel();
+  _speakQueue=[];
+  if(_speakBtn){_speakBtn.textContent=_speakBtn.dataset.orig;_speakBtn.classList.remove('speaking');}
+  _speakBtn=null;
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopSpeakIfNeeded();});
+window.addEventListener('pagehide',stopSpeakIfNeeded);
+/* 注: 'blur'イベントでの停止は、スマホでボタンをタップした際に
+   誤って発火し読み上げが即座に止まってしまうことがあるため削除した */
+
+/* ==== 検索結果の描画 ==== */
+/* ==== メモ機能 ====
+   ・日付メモ  : その日1日だけに紐づくメモ（例: 年休申請済み）
+   ・ダイヤメモ: そのダイヤ番号すべてに紐づくメモ（例: 2番は朝の道が混む）
+   保存先はこの端末のブラウザ内(localStorage)のみ。同僚には共有されない。 */
+const MEMO_DATE_KEY='{{ID}}-memos-date';
+const MEMO_DIAL_KEY='{{ID}}-memos-dial';
+/* メモに貼る画像（長辺800px・画質60%に縮小して端末内に保存） */
+const MEMOIMG_DATE_KEY='{{ID}}-memoimgs-date';
+const MEMOIMG_DIAL_KEY='{{ID}}-memoimgs-dial';
+function loadImgs(key){ try{ return JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){ return {}; } }
+function saveImgs(key,obj){
+  try{ localStorage.setItem(key,JSON.stringify(obj)); return true; }
+  catch(e){ showToast('⚠️ 画像を保存できませんでした（容量がいっぱいかもしれません）'); return false; }
+}
+function getDateImgs(iso){ return loadImgs(MEMOIMG_DATE_KEY)[iso]||[]; }
+function getDialImgs(dn){ return loadImgs(MEMOIMG_DIAL_KEY)[dn]||[]; }
+function shrinkImage(file){
+  return new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onload=()=>{
+      const im=new Image();
+      im.onload=()=>{
+        const MAX=800;
+        let w=im.width,h=im.height;
+        if(w>h){ if(w>MAX){ h=Math.round(h*MAX/w); w=MAX; } }
+        else { if(h>MAX){ w=Math.round(w*MAX/h); h=MAX; } }
+        const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+        cv.getContext('2d').drawImage(im,0,0,w,h);
+        resolve(cv.toDataURL('image/jpeg',0.6));
+      };
+      im.onerror=reject; im.src=fr.result;
+    };
+    fr.onerror=reject; fr.readAsDataURL(file);
+  });
+}
+async function pickMemoImages(kind, iso, dn, input){
+  const files=[...(input.files||[])];
+  if(!files.length) return;
+  showToast('画像を読み込んでいます…');
+  const store = kind==='date' ? MEMOIMG_DATE_KEY : MEMOIMG_DIAL_KEY;
+  const key   = kind==='date' ? iso : dn;
+  const obj=loadImgs(store);
+  const list=(obj[key]||[]).slice();
+  for(const f of files){
+    if(!/^image\//.test(f.type)) continue;
+    try{ list.push(await shrinkImage(f)); }catch(e){}
+  }
+  obj[key]=list;
+  if(saveImgs(store,obj)){
+    showToast('📷 画像を追加しました');
+    renderMemoImgList(kind,iso,dn);
+    refreshMemoViews();
+  }
+  input.value='';
+}
+function renderMemoImgList(kind,iso,dn){
+  const box=document.getElementById('mimg-'+kind+'-'+iso);
+  if(!box) return;
+  const list = kind==='date' ? getDateImgs(iso) : getDialImgs(dn);
+  box.innerHTML = list.map((src,i)=>
+    `<div class="mimg-item">
+       <img src="${src}" onclick="openImgViewer('${kind}','${iso}',${dn},${i})">
+       <button class="mimg-del" onclick="deleteMemoImage('${kind}','${iso}',${dn},${i})">✕</button>
+     </div>`).join('');
+}
+function deleteMemoImage(kind,iso,dn,idx){
+  if(!confirm('この画像を削除しますか？')) return;
+  const store = kind==='date' ? MEMOIMG_DATE_KEY : MEMOIMG_DIAL_KEY;
+  const key   = kind==='date' ? iso : dn;
+  const obj=loadImgs(store);
+  const list=(obj[key]||[]).slice();
+  list.splice(idx,1);
+  if(list.length) obj[key]=list; else delete obj[key];
+  if(saveImgs(store,obj)){
+    showToast('🗑 画像を削除しました');
+    renderMemoImgList(kind,iso,dn);
+    refreshMemoViews();
+  }
+}
+function openImgViewer(kind,iso,dn,idx){
+  const list = kind==='date' ? getDateImgs(iso) : getDialImgs(dn);
+  showImgViewer(list[idx]);
+}
+function openImgViewerSrc(key,kind,idx){
+  const list = kind==='date' ? getDateImgs(key) : getDialImgs(key);
+  showImgViewer(list[idx]);
+}
+function showImgViewer(src){
+  if(!src) return;
+  let v=document.getElementById('imgViewer');
+  if(!v){
+    v=document.createElement('div'); v.id='imgViewer';
+    v.innerHTML='<button class="iv-close" onclick="closeImgViewer()">✕ 閉じる</button><img id="ivImg">';
+    v.addEventListener('click',(e)=>{ if(e.target===v) closeImgViewer(); });
+    document.body.appendChild(v);
+  }
+  document.getElementById('ivImg').src=src;
+  v.classList.add('on');
+}
+function closeImgViewer(){
+  const v=document.getElementById('imgViewer'); if(v) v.classList.remove('on');
+}
+function deleteMemoListImage(type,key,idx){
+  if(!confirm('この画像を削除しますか？')) return;
+  const store=type==='date'?MEMOIMG_DATE_KEY:MEMOIMG_DIAL_KEY;
+  const obj=loadImgs(store);
+  const list=(obj[key]||[]).slice();
+  list.splice(idx,1);
+  if(list.length) obj[key]=list; else delete obj[key];
+  if(saveImgs(store,obj)){
+    showToast('🗑 画像を削除しました');
+    renderMemoList(); refreshMemoViews(); editMemoItem(type,key);
+  }
+}
+async function addMemoListImages(type,key,input){
+  const files=[...(input.files||[])];
+  if(!files.length) return;
+  showToast('画像を読み込んでいます…');
+  const store=type==='date'?MEMOIMG_DATE_KEY:MEMOIMG_DIAL_KEY;
+  const obj=loadImgs(store);
+  const list=(obj[key]||[]).slice();
+  for(const f of files){
+    if(!/^image\//.test(f.type)) continue;
+    try{ list.push(await shrinkImage(f)); }catch(e){}
+  }
+  obj[key]=list;
+  if(saveImgs(store,obj)){
+    showToast('📷 画像を追加しました');
+    renderMemoList(); refreshMemoViews(); editMemoItem(type,key);
+  }
+  input.value='';
+}
+
+const SAVED_CAL_KEY='{{ID}}-saved-cals';
+const SAVED_CAL_SEQ_KEY='{{ID}}-saved-cals-seq';
+
+/* メモ本文をそのままHTMLに埋め込むと崩れる/危険なので必ずエスケープする */
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function loadMemos(key){
+  try{ return JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){ return {}; }
+}
+function saveMemos(key,obj){
+  try{ localStorage.setItem(key,JSON.stringify(obj)); return true; }
+  catch(e){ showToast('⚠️ メモを保存できませんでした'); return false; }
+}
+function getDateMemo(iso){ return loadMemos(MEMO_DATE_KEY)[iso]||''; }
+function getDialMemo(dn){ return loadMemos(MEMO_DIAL_KEY)[dn]||''; }
+
+/* 1日分のカードに差し込むメモ欄のHTML */
+function memoBlockHtml(iso,dn){
+  return `<div class="memo-area" data-iso="${iso}" data-dial="${dn}">
+    <div class="memo-view">${memoViewHtml(iso,dn)}</div>
+    <button class="memo-btn" onclick="toggleMemo('${iso}',${dn})">${memoBtnLabel(iso,dn)}</button>
+    <div class="memo-edit" style="display:none"></div>
+  </div>`;
+}
+function memoViewHtml(iso,dn){
+  const dm=getDateMemo(iso), dlm=getDialMemo(dn);
+  let h='';
+  if(dm) h+=`<div class="memo-line">📝 ${escapeHtml(dm)}</div>`;
+  if(dlm) h+=`<div class="memo-line memo-dial-line">🔖 ${dn}番: ${escapeHtml(dlm)}</div>`;
+  if(getDateImgs(iso).length) h+=`<div class="mimg-view">${getDateImgs(iso).map((s,i)=>`<img src="${s}" onclick="openImgViewer('date','${iso}',${dn},${i})">`).join('')}</div>`;
+  if(getDialImgs(dn).length) h+=`<div class="mimg-view">${getDialImgs(dn).map((s,i)=>`<img src="${s}" onclick="openImgViewer('dial','${iso}',${dn},${i})">`).join('')}</div>`;
+  return h;
+}
+function memoBtnLabel(iso,dn){
+  return (getDateMemo(iso)||getDialMemo(dn)||getDateImgs(iso).length||getDialImgs(dn).length)?'✏️ メモを編集':'📝 メモを追加';
+}
+
+/* メモ編集欄の開閉（同じボタンを再タップで閉じる） */
+function toggleMemo(iso,dn){
+  const area=document.querySelector(`.memo-area[data-iso="${iso}"]`);
+  if(!area)return;
+  const edit=area.querySelector('.memo-edit');
+  if(edit.style.display!=='none'){ edit.style.display='none'; edit.innerHTML=''; return; }
+  const md=iso.slice(5).replace('-','/');
+  edit.innerHTML=`
+    <label class="memo-label">📝 ${md} 日付にメモ</label>
+    <textarea class="memo-input" id="mi-date-${iso}" rows="2" placeholder="例: 年休申請済み">${escapeHtml(getDateMemo(iso))}</textarea>
+    <div class="mimg-list" id="mimg-date-${iso}"></div>
+    <label class="mimg-add">📷 この日に画像を追加
+      <input type="file" accept="image/*" multiple onchange="pickMemoImages('date','${iso}',${dn},this)">
+    </label>
+    <label class="memo-label">🔖 ${dn}番 ダイヤにメモ（この番号の日すべてに表示）</label>
+    <textarea class="memo-input" id="mi-dial-${iso}" rows="2" placeholder="例: 朝の道が混む">${escapeHtml(getDialMemo(dn))}</textarea>
+    <div class="mimg-list" id="mimg-dial-${iso}"></div>
+    <label class="mimg-add">📷 ${dn}番ダイヤに画像を追加
+      <input type="file" accept="image/*" multiple onchange="pickMemoImages('dial','${iso}',${dn},this)">
+    </label>
+    <div class="memo-actions">
+      <button class="memo-act memo-save" onclick="saveMemo('${iso}',${dn})">💾 保存</button>
+      <button class="memo-act memo-del" onclick="deleteMemo('${iso}',${dn})">🗑 削除</button>
+      <button class="memo-act memo-close" onclick="toggleMemo('${iso}',${dn})">✕ 閉じる</button>
+    </div>`;
+  edit.style.display='block';
+  renderMemoImgList('date',iso,dn);
+  renderMemoImgList('dial',iso,dn);
+}
+
+function saveMemo(iso,dn){
+  const dv=document.getElementById('mi-date-'+iso).value.trim();
+  const lv=document.getElementById('mi-dial-'+iso).value.trim();
+  const dm=loadMemos(MEMO_DATE_KEY);
+  if(dv) dm[iso]=dv; else delete dm[iso];
+  const lm=loadMemos(MEMO_DIAL_KEY);
+  if(lv) lm[dn]=lv; else delete lm[dn];
+  if(saveMemos(MEMO_DATE_KEY,dm)&&saveMemos(MEMO_DIAL_KEY,lm)) showToast('💾 メモを保存しました');
+  toggleMemo(iso,dn);      // 編集欄を閉じる
+  refreshMemoViews();      // 表示を更新（ダイヤメモは他の日にも反映される）
+}
+
+function deleteMemo(iso,dn){
+  const md=iso.slice(5).replace('-','/');
+  if(!confirm(`${md}のメモと、${dn}番のダイヤにメモを削除します。よろしいですか？\n（${dn}番のメモは他の日からも消えます）`))return;
+  const dm=loadMemos(MEMO_DATE_KEY); delete dm[iso]; saveMemos(MEMO_DATE_KEY,dm);
+  const lm=loadMemos(MEMO_DIAL_KEY); delete lm[dn]; saveMemos(MEMO_DIAL_KEY,lm);
+  const di=loadImgs(MEMOIMG_DATE_KEY); delete di[iso]; saveImgs(MEMOIMG_DATE_KEY,di);
+  const li=loadImgs(MEMOIMG_DIAL_KEY); delete li[dn]; saveImgs(MEMOIMG_DIAL_KEY,li);
+  showToast('🗑 メモを削除しました');
+  const area=document.querySelector(`.memo-area[data-iso="${iso}"]`);
+  if(area){ const e=area.querySelector('.memo-edit'); e.style.display='none'; e.innerHTML=''; }
+  refreshMemoViews();
+}
+
+/* 画面上のメモ表示だけを更新する（再検索せずに済ませるため） */
+function refreshMemoViews(){
+  document.querySelectorAll('.memo-area').forEach(area=>{
+    const iso=area.dataset.iso, dn=area.dataset.dial;
+    area.querySelector('.memo-view').innerHTML=memoViewHtml(iso,dn);
+    area.querySelector('.memo-btn').textContent=memoBtnLabel(iso,dn);
+  });
+}
+
+
+/* ==== A案: 出勤・退勤までのカウントダウン ==== */
+/* "8:30" のような時刻文字列を0時からの分数に変換する(24時以降もそのまま扱える) */
+function cdToMin(t){const m=t.match(/^(\d+):(\d+)$/);return m?parseInt(m[1])*60+parseInt(m[2]):null;}
+/* 残り分数を「あと◯時間◯分」の読みやすい形にする */
+function cdFmt(min){const h=Math.floor(min/60),m=min%60;return h>0?`あと${h}時間${m}分`:`あと${m}分`;}
+/* 今日のダイヤの勤務ペア[出勤,退勤]を返す。公休・要確認・3分割以上はnull */
+function todayShiftPairs(v){
+  const rec=DB[v];const dt=dayType(new Date());
+  if(!rec||!rec[dt])return null;
+  const o=rec[dt].o;
+  if(!o||o==='—'||!o.includes('〜'))return null;
+  const parts=o.split('〜');
+  if(parts.length!==2)return null;
+  const st=parts[0].split('/').map(x=>x.trim()),en=parts[1].split('/').map(x=>x.trim());
+  if(st.length===2&&en.length===2)return[[st[0],st[1]],[en[0],en[1]]]; // 中間解放(前半・後半)
+  if(st.length===1&&en.length===1)return[[st[0],en[0]]];               // 通常の通し勤務
+  return null;
+}
+/* 今日カードの下にカウントダウンを表示する(updateClockから毎秒呼ばれる) */
+function updateCountdown(){
+  const el=document.getElementById('todayCountdown');
+  if(!el)return;
+  const v=parseInt(document.getElementById('todayInput').value);
+  const pairs=(v>=1&&v<={{MAX}})?todayShiftPairs(v):null;
+  if(!pairs){el.style.display='none';return;}
+  const n=new Date();
+  const nowMin=n.getHours()*60+n.getMinutes();
+  let msg='',soon=false;
+  for(let i=0;i<pairs.length;i++){
+    const s=cdToMin(pairs[i][0]),e=cdToMin(pairs[i][1]);
+    if(s===null||e===null){el.style.display='none';return;}
+    const label=pairs.length===2?(i===0?'前半':'後半'):'';
+    if(nowMin<s){msg=`🚌 ${label}出勤まで ${cdFmt(s-nowMin)}`;soon=(s-nowMin)<=60;break;}
+    if(nowMin<e){msg=`🏠 ${label}退勤まで ${cdFmt(e-nowMin)}`;break;}
+  }
+  if(!msg){el.style.display='none';return;} // 全勤務が終わった後は表示しない
+  el.style.display='block';
+  el.textContent=msg;
+  el.classList.toggle('soon',soon);
+}
+
+/* ==== 本日の日付＋時刻(24時間表示・秒あり) ====
+   以前は日付をHTMLに直書きしていたため更新されないバグがあった。
+   1秒ごとに書き換えることで日付も必ず最新になる。 */
+function updateClock(){
+  const el=document.getElementById('todayClock');
+  if(!el)return;
+  const n=new Date();
+  const DWJ=['日','月','火','水','木','金','土'];
+  const hh=n.getHours();                                   // 24時間表示
+  const mm=String(n.getMinutes()).padStart(2,'0');
+  const ss=String(n.getSeconds()).padStart(2,'0');
+  el.innerHTML=`本日は${n.getMonth()+1}/${n.getDate()}(${DWJ[n.getDay()]}) ${hh}:${mm} <span class="clock-ss">${ss}</span>`;
+
+  updateCountdown(); // A案: カウントダウンも毎秒更新
+
+  // 日付が変わったら今日の勤務表示も作り直す(日をまたいでも正しく表示させるため)
+  const key=toISO(n);
+  if(window._clockDay && window._clockDay!==key){
+    restoreMyDial();   // 日付が変わったら番号も1つ進める
+    updateTodayPreview();
+    const t=new Date();t.setHours(0,0,0,0);
+    const df=document.getElementById('dateFrom');
+    if(df && df.value===window._clockDay) df.value=toISO(t); // 未変更なら開始日も今日に更新
+  }
+  window._clockDay=key;
+}
+
+
+/* ==== オフライン対応 (Service Worker) ====
+   一度オンラインで開けば、以降は圏外・機内モードでも起動できる。
+   新しい版を公開した時は「更新があります」バナーで知らせる。 */
+/* ==== 通知のテスト（試験中） ====
+   出勤時刻の自動通知を作る前に、この端末で通知そのものが出せるかを確かめる。
+   ここで確認したいのは2点。
+     ① 通知の許可が取れるか
+     ② アプリを閉じた状態でも通知が届くか
+   ②はAndroidでは届き、iPhoneでは届かない見込み。その差を実際に見るためのテスト。 */
+
+/* ==== 出勤通知の設定画面 ====
+   利用者がやることは「受け取るかどうか」と「何分前か」の2つだけ。
+   トークンなどの専門的な話は一切表に出さない。 */
+
+const NOTIFY_ON_KEY   = '{{ID}}-notify-on';    // 通知を受け取るかどうか
+const NOTIFY_LEAD_KEY = '{{ID}}-notify-lead';  // 何分前に知らせるか
+
+/* 指定した日の、指定したダイヤ番号の「出勤時刻」を取り出す。
+   公休・要確認・時刻が読み取れないものは null を返す。 */
+/* 次に通知される予定を割り出す。
+   今日から順に見ていき、まだ過ぎていない最初の勤務を返す。
+   公休が続く場合も飛ばして探すので、最大14日先まで見る。 */
+/* 通知を受け取る / 止める を切り替える */
+/* 何分前に知らせるかを選ぶ */
+/* 設定画面の中身を描き直す */
+/* ダイヤ番号が変わったとき、サーバー側の登録も合わせ直す。
+   これをしないと、番号を変えても前の勤務で通知が来てしまう。 */
+/* アプリを開いたとき、1日1回だけ登録をサーバーに送り直す。
+
+   登録がサーバーから消えていても、アプリ側は「受け取る設定」のままなので、
+   本人は気づかないまま通知が来なくなる。実際にそれが起きた。
+   毎日入れ直しておけば、消えていても設定がずれていても自動で戻る。 */
+const NOTIFY_SYNC_KEY = '{{ID}}-notify-synced';
+
+/* ==== 通知設定をサーバーに預ける ====
+   端末に保存するだけでは、送信する側（GitHub Actions）が設定を知る手段がない。
+   そこで「宛先・基準番号・何分前か」の3点だけを預ける。
+   名前も社員番号も送らないので、誰のものかは分からない。
+
+   Firestore の読み込み部品は使わず、REST という仕組みを直接呼ぶ。
+   読み込むファイルが増えないので、アプリが重くならない。 */
+
+const FS_BASE = 'https://firestore.googleapis.com/v1/projects/shukkin-notify'
+              + '/databases/(default)/documents/notifyTargets';
+const CLIENTID_KEY = '{{ID}}-client-id';
+const APP_CODE = '{{ID}}';
+
+/* この端末を表す番号。初回に作って以後ずっと使い回す。
+   これがあるので、設定を変えても登録が増え続けない。 */
+function getClientId(){
+  try{
+    let id = localStorage.getItem(CLIENTID_KEY);
+    if(!id){
+      id = APP_CODE + '-' + Date.now().toString(36) + '-'
+         + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem(CLIENTID_KEY, id);
+    }
+    return id;
+  }catch(e){ return null; }
+}
+
+/* 保存してある「基準日と基準番号」を取り出す。
+   この2つが分かれば、何年先でもその日の番号を計算できる。 */
+/* 設定をサーバーに登録する（すでにあれば上書き） */
+/* 登録を取り消す（通知を止めたとき） */
+/* ==== プッシュ通知の登録（試験中） ====
+   アプリを閉じていても通知を受け取れるようにするための準備。
+   Firebaseから発行される「トークン」がこの端末の宛先になる。
+   トークンは端末ごとに違い、これが分からないと誰にも通知は届かない。 */
+
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAtawIGwf6hfZU3o79JN5R83CLmTivQVIg",
+  authDomain: "shukkin-notify.firebaseapp.com",
+  projectId: "shukkin-notify",
+  storageBucket: "shukkin-notify.firebasestorage.app",
+  messagingSenderId: "587667482421",
+  appId: "1:587667482421:web:080064fd0444ff49f90e7c"
+};
+// ウェブプッシュ証明書の公開鍵。Firebaseの画面で生成したもの
+const VAPID_KEY = "BNe_fplsGawcGvD4hXnlMrjhkTrP75zIP2n4X2-oLgv683whyD_dzqG023WzURV4B1mtnmmfI_Dlg6jGihjukR0";
+// 取得したトークンをこの端末に覚えておくための保存先
+const PUSHTOKEN_KEY = '{{ID}}-push-token';
+
+/* 以前、置き場所を指定せずに登録してしまった通知用ワーカーを片付ける。
+   本体と同じ区画に居座っていると、更新の帯が出続ける原因になる。 */
+async function cleanupWrongPushWorker(){
+  try{
+    const appScope = new URL('./', location.href).href;
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for(const r of regs){
+      if(r.scope !== appScope) continue;
+      const w = r.active || r.waiting || r.installing;
+      if(w && w.scriptURL && w.scriptURL.indexOf('firebase-messaging-sw.js') >= 0){
+        await r.unregister();
+      }
+    }
+  }catch(e){ /* 片付けに失敗しても、登録自体は続行する */ }
+}
+
+/* ==== お知らせ通知の受け取り ====
+   仕組みは3段階。
+     1. 端末の宛先(トークン)をFirebaseに発行してもらう
+     2. その宛先を、どのダイヤのアプリかを添えてサーバーに預ける
+     3. 送信側(管理ページ)が、ダイヤを指定して一斉に送る
+
+   預けるのは「宛先・ダイヤ記号・端末を表す番号」の3つだけ。
+   名前も社員番号もダイヤ番号も送らないので、誰のものかは分からない。
+
+   ホーム画面に追加していない場合は登録しない。
+   ブラウザのタブで開いているだけの状態では通知が届かない端末が多く、
+   届かない宛先を残すと送信時に無駄な失敗が積み上がるため。 */
+
+const PUSH_FS_URL = 'https://firestore.googleapis.com/v1/projects/shukkin-notify'
+                  + '/databases/(default)/documents/pushTokens';
+const PUSH_ON_KEY   = '{{ID}}-push-on';      // 受け取る設定にしているか
+const PUSH_ASK_KEY  = '{{ID}}-push-asked';   // どの版のときに案内を出したか
+const PUSH_BAR_KEY  = '{{ID}}-push-bar';     // どの版のときに帯を閉じたか
+const PUSH_FAIL_KEY = '{{ID}}-push-fail';    // 預け直しに続けて失敗した回数
+/* 案内を出し分けるための版。sw.js の版と合わせて上げる。
+   これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
+const APP_VERSION   = '{{SWVER}}';
+const PUSH_SYNC_KEY = '{{ID}}-push-synced';  // 最後に預け直した日
+
+/* 宛先をサーバーに預ける（すでにあれば上書き） */
+/* 宛先をサーバーに預ける（すでにあれば上書き）
+
+   自分のダイヤの分だけを預ける。
+   一時期、他のアプリの分もまとめて書き換えるようにしたが、
+   学園前A宛に送ったのに別のダイヤのアプリが立ち上がる、
+   という取り違えを起こしたのでやめた。 */
+async function savePushToken(token){
+  const cid = getClientId();
+  if(!cid || !token) return false;
+  const url = PUSH_FS_URL + '/' + encodeURIComponent(cid)
+            + '?key=' + FIREBASE_CONFIG.apiKey;
+  try{
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          token:     { stringValue: token },
+          app:       { stringValue: APP_CODE },
+          updatedAt: { stringValue: new Date().toISOString() }
+        }
+      })
+    });
+    return res.ok;
+  }catch(e){ return false; }
+}
+
+/* 預けた宛先を取り消す（受け取らない設定にしたとき） */
+async function deletePushToken(){
+  const cid = getClientId();
+  if(!cid) return false;
+  const url = PUSH_FS_URL + '/' + encodeURIComponent(cid)
+            + '?key=' + FIREBASE_CONFIG.apiKey;
+  try{
+    const res = await fetch(url, { method: 'DELETE' });
+    return res.ok;
+  }catch(e){ return false; }
+}
+
+async function setupPush(){
+  // 通知に対応していない端末・ブラウザをはじく
+  if(!('Notification' in window) || !('serviceWorker' in navigator)){
+    showToast('この端末は通知に対応していません');
+    return false;
+  }
+  // ホーム画面に追加していない場合は登録しない
+  if(!isStandaloneApp()){
+    showToast('「ホーム画面に追加」してから開いてください');
+    return false;
+  }
+  // Firebaseの読み込みに失敗している場合(オフラインなど)
+  if(typeof firebase === 'undefined' || !firebase.messaging){
+    showToast('通信できないため準備できません');
+    return false;
+  }
+  // 一度ブロックすると、アプリ側からは許可を出し直せない
+  if(Notification.permission === 'denied'){
+    showToast('通知がブロックされています。端末の設定から許可してください');
+    return false;
+  }
+  // 許可を求める。ボタンを押した直後でないとブラウザに拒否されるため、この位置で呼ぶ
+  let perm = Notification.permission;
+  if(perm !== 'granted'){
+    try{ perm = await Notification.requestPermission(); }catch(e){ perm = 'denied'; }
+  }
+  if(perm !== 'granted'){
+    showToast('通知が許可されませんでした');
+    return false;
+  }
+
+  try{
+    showToast('準備しています…');
+    // 通知専用のService Workerを登録する(検索機能用の sw.js とは別物)
+    // 場所を指定せずに登録すると本体の sw.js と同じ区画に入り、互いを
+    // 上書きし合って更新バナーが出続ける。専用の区画に置いて衝突を避ける。
+    await cleanupWrongPushWorker();
+    const swReg = await navigator.serviceWorker.register(
+      'firebase-messaging-sw.js',
+      { scope: './firebase-cloud-messaging-push-scope' }
+    );
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    const messaging = firebase.messaging();
+
+    // この端末あての「宛名」にあたるトークンを発行してもらう
+    const token = await messaging.getToken({
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: swReg
+    });
+    if(!token){ showToast('宛先を取得できませんでした'); return false; }
+
+    try{ localStorage.setItem(PUSHTOKEN_KEY, token); }catch(e){}
+
+    // 宛先を預ける。ここまで済んで初めて通知が届くようになる
+    if(!await savePushToken(token)){
+      showToast('登録できませんでした。時間をおいて試してください');
+      return false;
+    }
+    try{
+      localStorage.setItem(PUSH_ON_KEY, '1');
+      localStorage.setItem(PUSH_SYNC_KEY, toISO(new Date()));
+      localStorage.removeItem(PUSH_FAIL_KEY);
+    }catch(e){}
+
+    // アプリを開いたまま通知が届いた場合の処理
+    messaging.onMessage(function(payload){
+      const d = (payload && payload.data) || (payload && payload.notification) || {};
+      showToast(d.title || '通知が届きました');
+    });
+
+    showToast('✅ 通知を受け取れるようになりました');
+    renderPushBox();
+    renderPushBar();   // 受け取る設定になったので帯を消す
+    return true;
+
+  }catch(e){
+    showToast('準備に失敗しました');
+    console.warn('プッシュ登録に失敗', e);
+    return false;
+  }
+}
+
+/* ==== 通知の受け取りを尋ねる案内 ====
+   ホーム画面に追加した人にだけ、更新のたびに一度出す。
+   「あとで」を押したらその版ではもう出さない。次の更新でまた出る。
+   すでに受け取る設定にしている人には出さない。
+
+   いきなり端末の許可を求めない理由:
+   一度「ブロック」を押されると、アプリ側からは二度と尋ねられなくなる。
+   先にこの案内をはさむことで、誤ってブロックされるのを防いでいる。 */
+/* ※ 以下のポップアップは今は使っていない。
+      上部の帯だけにしたため呼び出していないが、
+      戻したくなったときのために残してある。 */
+function shouldAskPush(){
+  if(!('Notification' in window) || !('serviceWorker' in navigator)) return false;
+  if(!isStandaloneApp()) return false;              // ホーム画面から開いた人だけ
+  if(Notification.permission === 'denied') return false;  // すでに断られている
+  try{
+    if(localStorage.getItem(PUSH_ON_KEY) === '1') return false;   // もう受け取っている
+    if(localStorage.getItem(PUSH_ASK_KEY) === APP_VERSION) return false; // この版では尋ねた
+  }catch(e){ return false; }
+  return true;
+}
+
+function openPushAsk(){
+  const el = document.getElementById('pushAsk');
+  if(el) el.classList.add('active');
+}
+function closePushAsk(){
+  const el = document.getElementById('pushAsk');
+  if(el) el.classList.remove('active');
+}
+
+/* 「あとで」を押したとき。この版ではもう出さない */
+function pushAskLater(){
+  try{ localStorage.setItem(PUSH_ASK_KEY, APP_VERSION); }catch(e){}
+  closePushAsk();
+}
+
+/* 「受け取る」を押したとき。ここで初めて端末に許可を求める */
+async function pushAskYes(){
+  try{ localStorage.setItem(PUSH_ASK_KEY, APP_VERSION); }catch(e){}
+  closePushAsk();
+  await setupPush();
+}
+
+/* ==== 上部の帯 ====
+   まだ通知を受け取っていない人にだけ出す。
+   押すと受け取りの確認へ。✕ を押すとその版では出さない。 */
+function renderPushBar(){
+  const bar = document.getElementById('push-bar');
+  if(!bar) return;
+  bar.style.display = shouldShowPushBar() ? 'block' : 'none';
+}
+
+function shouldShowPushBar(){
+  if(!('Notification' in window) || !('serviceWorker' in navigator)) return false;
+  if(!isStandaloneApp()) return false;                     // ホーム画面から開いた人だけ
+  if(Notification.permission === 'denied') return false;   // すでに断られている
+  try{
+    if(localStorage.getItem(PUSH_ON_KEY) === '1') return false;          // もう受け取っている
+    if(localStorage.getItem(PUSH_BAR_KEY) === APP_VERSION) return false; // この版では閉じた
+  }catch(e){ return false; }
+  return true;
+}
+
+/* 帯そのものを押したとき */
+function pushBarTap(ev){
+  if(ev && ev.target && ev.target.classList.contains('x')) return; // ✕は別処理
+  setupPush();
+}
+
+/* ✕ を押したとき。この版ではもう出さない */
+function pushBarClose(ev){
+  if(ev){ ev.stopPropagation(); }
+  try{ localStorage.setItem(PUSH_BAR_KEY, APP_VERSION); }catch(e){}
+  const bar = document.getElementById('push-bar');
+  if(bar) bar.style.display = 'none';
+}
+
+/* 受け取りをやめる */
+async function stopPush(){
+  if(!confirm('通知を受け取らないようにしますか？')) return;
+  await deletePushToken();
+  try{
+    localStorage.removeItem(PUSH_ON_KEY);
+    localStorage.removeItem(PUSH_SYNC_KEY);
+  }catch(e){}
+  showToast('通知を止めました');
+  renderAppInfo();
+  renderPushBox();
+  renderPushBar();   // 受け取らない設定に戻ったので帯を出す
+}
+
+/* フッターの表示を作る。
+   ホーム画面に追加していない場合は、ボタンではなく案内を出す。 */
+/* 版と端末の様子をフッターに出す。
+   「通知が来ない」と言われたときに、入れ方や許可の状態を
+   その場で確かめられるようにするため。 */
+const APP_LABEL = 'バージョン 2.34';
+
+function renderAppInfo(){
+  const box = document.getElementById('appInfo');
+  if(!box) return;
+
+  const ua = navigator.userAgent;
+  let dev = 'パソコン';
+  if(/iPad|iPhone|iPod/.test(ua)) dev = 'iPhone';
+  else if(/Android/.test(ua))     dev = 'Android';
+
+  const how = isStandaloneApp() ? 'ホーム画面' : 'ブラウザ';
+
+  let notify = '非対応';
+  if('Notification' in window){
+    const p = Notification.permission;
+    notify = p === 'granted' ? '通知OK'
+           : p === 'denied'  ? '通知ブロック中'
+           : '通知は未設定';
+  }
+
+  box.textContent = `${APP_LABEL} ／ ${dev}・${how}・${notify}`;
+}
+
+function renderPushBox(){
+  const box = document.getElementById('pushBox');
+  if(!box) return;
+
+  if(!('Notification' in window) || !('serviceWorker' in navigator)){
+    box.innerHTML = '';
+    return;
+  }
+  if(!isStandaloneApp()){
+    box.innerHTML = '<div class="push-note">🔔 ホーム画面に追加すると、'
+                  + 'このアプリからの通知を受け取れます</div>';
+    return;
+  }
+
+  let on = false;
+  try{ on = localStorage.getItem(PUSH_ON_KEY) === '1'; }catch(e){}
+
+  if(on){
+    box.innerHTML = '<button class="push-btn on" onclick="stopPush()">🔔 通知を受け取る設定です</button>'
+                  + '<div class="push-note">押すと通知を止められます</div>';
+  }else{
+    box.innerHTML = '<button class="push-btn" onclick="setupPush()">🔕 通知を受け取る</button>'
+                  + '<div class="push-note">このアプリからの通知が届きます</div>';
+  }
+}
+
+/* アプリを開いたとき、1日1回だけ宛先を預け直す。
+   宛先はFirebase側の都合で作り直されることがあり、
+   古いままだと本人が気づかないうちに通知が届かなくなるため。 */
+/* アプリを開くたびに、宛先が変わっていないか確かめて預け直す。
+
+   【1日1回では足りなかった】
+   Firebaseは端末やブラウザの都合で宛先を作り直すことがある。
+   作り直された時点で古い宛先は使えなくなるが、
+   保存してあるのは古いままなので、送っても届かなくなる。
+   本人は「受け取る設定」のままなので、気づけない。
+
+   そこで開くたびに、いま発行される宛先と控えを見比べ、
+   違っていればすぐ預け直す。同じなら何もしない。 */
+async function resyncPushToken(){
+  let on = false, saved = '';
+  try{
+    on    = localStorage.getItem(PUSH_ON_KEY) === '1';
+    saved = localStorage.getItem(PUSHTOKEN_KEY) || '';
+  }catch(e){}
+  if(!on) return;
+  if(!isStandaloneApp()) return;
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  if(typeof firebase === 'undefined' || !firebase.messaging) return;
+
+  try{
+    const swReg = await navigator.serviceWorker.register(
+      'firebase-messaging-sw.js',
+      { scope: './firebase-cloud-messaging-push-scope' }
+    );
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    const token = await firebase.messaging().getToken({
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: swReg
+    });
+    if(!token) return;
+
+    // 変わっていなければ、預け直す必要はない
+    if(token === saved){
+      try{ localStorage.setItem(PUSH_SYNC_KEY, toISO(new Date())); }catch(e){}
+      return;
+    }
+
+    // 変わっていた場合は預け直す。
+    // 控えを書き換えるのは、預け終わってから。
+    // 先に書き換えると、預けに失敗したときズレたままになる。
+    if(await savePushToken(token)){
+      try{
+        localStorage.setItem(PUSHTOKEN_KEY, token);
+        localStorage.setItem(PUSH_SYNC_KEY, toISO(new Date()));
+        localStorage.removeItem(PUSH_FAIL_KEY);
+      }catch(e){}
+      console.log('宛先が変わっていたので預け直しました');
+    }else{
+      // 預けられなかった。何度も続くようなら、届かない状態が続いている。
+      // 「受け取る設定です」と出たまま届かないのが一番たちが悪いので、
+      // 3回続いたら設定を戻して、もう一度登録してもらう。
+      let n = 0;
+      try{ n = parseInt(localStorage.getItem(PUSH_FAIL_KEY) || '0', 10) + 1; }catch(e){}
+      try{ localStorage.setItem(PUSH_FAIL_KEY, String(n)); }catch(e){}
+      if(n >= 3){
+        try{
+          localStorage.removeItem(PUSH_ON_KEY);
+          localStorage.removeItem(PUSH_FAIL_KEY);
+        }catch(e){}
+        renderPushBox();
+        renderPushBar();
+        showToast('通知の登録が切れました。もう一度設定してください');
+      }
+    }
+  }catch(e){ /* 失敗しても次に開いたときに試す */ }
+}
+
+/* 使われなくなったService Workerを片付ける。
+   古い試作や、消したアプリの登録が端末に残り続けることがある。
+   残っていても実害は小さいが、調べるときに紛らわしい。 */
+async function cleanupStaleWorkers(){
+  try{
+    const keep = new URL('./', location.href).pathname;   // このアプリの区画
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for(const r of regs){
+      const path = new URL(r.scope).pathname;
+      // このアプリの区画（と、その中の通知用の区画）だけ残す
+      if(path === keep || path.indexOf(keep + 'firebase-cloud-messaging') === 0) continue;
+      // 他のダイヤのアプリは触らない
+      if(/^\/shukkin-search(-ikoma|-ba|-c|-yobi)?\/$/.test(path)) continue;
+      if(/^\/shukkin-search(-ikoma|-ba|-c|-yobi)?\/firebase-cloud-messaging/.test(path)) continue;
+      await r.unregister();
+    }
+  }catch(e){ /* 片付けに失敗しても動作には影響しない */ }
+}
+
+/* 発行されたトークンを画面に出す。試験中のみの表示。
+   長い文字列なので、コピー用のボタンを付けておく。 */
+function showPushToken(token){
+  let box = document.getElementById('pushTokenBox');
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'pushTokenBox';
+    box.style.cssText = 'margin:12px auto;padding:12px;max-width:92%;'
+      + 'background:#102030;border:1px solid #2a4a6a;border-radius:10px;'
+      + 'color:#cfe6ff;font-size:11px;line-height:1.5;word-break:break-all;text-align:left;';
+    const footer = document.querySelector('.footer');
+    if(footer) footer.appendChild(box);
+    else document.body.appendChild(box);
+  }
+  box.innerHTML = '<div style="margin-bottom:6px;font-size:12px;">✅ 登録できました。この端末の宛先：</div>'
+    + '<div id="pushTokenText">' + escapeHtml(token) + '</div>'
+    + '<button onclick="copyPushToken()" style="margin-top:8px;padding:6px 14px;'
+    + 'background:#2a5a8a;color:#fff;border:none;border-radius:6px;font-size:13px;">'
+    + '宛先をコピー</button>';
+}
+
+/* トークンをクリップボードにコピーする */
+function copyPushToken(){
+  const el = document.getElementById('pushTokenText');
+  if(!el) return;
+  const t = el.textContent;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){ showToast('コピーしました'); })
+      .catch(function(){ showToast('コピーできませんでした'); });
+  }else{
+    showToast('コピーに対応していません');
+  }
+}
+
+/* ホーム画面から起動しているかどうか（iPhoneの通知はこれが条件） */
+function isStandaloneApp(){
+  return window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+}
+
+async function testNotification(){
+  // 通知に対応していない端末・ブラウザをはじく
+  if(!('Notification' in window) || !('serviceWorker' in navigator)){
+    showToast('この端末は通知に対応していません');
+    return;
+  }
+  // iPhoneはホーム画面に追加していないと通知を受け取れない
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if(isIOS && !isStandaloneApp()){
+    showToast('iPhoneは「ホーム画面に追加」してから開いてください');
+    return;
+  }
+  // 一度ブロックすると、アプリ側からは許可を出し直せない
+  if(Notification.permission === 'denied'){
+    showToast('通知がブロックされています。端末の設定から許可してください');
+    return;
+  }
+  // 許可を求める。ボタンを押した直後でないとブラウザに拒否されるため、この位置で呼ぶ
+  let perm = Notification.permission;
+  if(perm !== 'granted'){
+    try{ perm = await Notification.requestPermission(); }catch(e){ perm = 'denied'; }
+  }
+  if(perm !== 'granted'){
+    showToast('通知が許可されませんでした');
+    return;
+  }
+
+  try{
+    const reg = await navigator.serviceWorker.ready;
+
+    // テスト①：すぐに出す。通知そのものが表示できるかの確認
+    reg.showNotification('🔔 通知テスト①', {
+      body: 'いま出した通知です。これが見えていれば第一段階はOK。',
+      icon: './icons/icon-192.png',
+      badge: './icons/icon-192.png',
+      tag: 'test-now',
+      vibrate: [200,100,200]
+    });
+
+    showToast('15秒後にもう1件出します。アプリを閉じて待ってみてください');
+
+    // テスト②：15秒後に出す。アプリを閉じた状態で届くかの確認
+    // 注意：この待ち時間は画面側で数えているため、iPhoneでは
+    //       アプリを閉じると止まってしまう可能性が高い。
+    //       止まるなら「外から送る仕組み（プッシュ通知）が要る」という結論になる。
+    setTimeout(function(){
+      reg.showNotification('🔔 通知テスト②', {
+        body: '15秒後の通知です。閉じていても届いたなら合格。',
+        icon: './icons/icon-192.png',
+        badge: './icons/icon-192.png',
+        tag: 'test-later',
+        vibrate: [200,100,200]
+      });
+    }, 15000);
+
+  }catch(e){
+    showToast('通知の準備に失敗しました');
+  }
+}
+
+/* ホーム画面に追加できる状態になったら、その案内を取っておく（生駒・BAと同じ） */
+let deferredInstallPrompt = null;
+/* 📲ボタンを押した時：ブラウザのインストール画面を出す */
+function handleInstallClick(){
+  const banner=document.getElementById('install-banner');
+  if(!deferredInstallPrompt){ banner.style.display='none'; return; }
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.finally(()=>{
+    deferredInstallPrompt=null;
+    banner.style.display='none';
+  });
+}
+function initSW(){
+  // Android Chrome等、ホーム画面に追加できる時に発火する
+  window.addEventListener('beforeinstallprompt',(e)=>{
+    e.preventDefault();
+    deferredInstallPrompt=e;
+    const b=document.getElementById('install-banner');
+    if(b) b.style.display='block';
+  });
+  // 追加が終わったらバナーを隠す
+  window.addEventListener('appinstalled',()=>{
+    const b=document.getElementById('install-banner');
+    if(b) b.style.display='none';
+    deferredInstallPrompt=null;
+  });
+  if(!('serviceWorker' in navigator))return;
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg)=>{
+    reg.addEventListener('updatefound',()=>{
+      const nw=reg.installing; if(!nw)return;
+      nw.addEventListener('statechange',()=>{
+        // 既に旧SWが動いている状態で新SWが入った=更新あり
+        if(nw.state==='installed'&&navigator.serviceWorker.controller){
+          const b=document.getElementById('update-banner');
+          if(b){ b.style.display='block'; document.body.style.paddingTop=b.offsetHeight+'px'; }
+        }
+      });
+    });
+  }).catch((e)=>{console.warn('Service Workerの登録に失敗しました',e);});
+
+  // 新しいSWに切り替わったら自動で読み込み直す
+  let refreshing=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(refreshing)return; refreshing=true; window.location.reload();
+  });
+}
+/* 更新帯の動きを、実際の更新をせずに確認するためのプレビュー */
+function previewUpdateBanner(){
+  const b=document.getElementById('update-banner');
+  if(!b || b._bursting) return;
+  b.classList.remove('burst');
+  b.style.display='block';
+  b.style.animation='none';           // いったんアニメを止めて…
+  void b.offsetWidth;                 // 強制リフロー（アニメを最初から再生させる）
+  b.style.animation='';               // CSSの脈打ちアニメを再開
+  document.body.style.paddingTop=b.offsetHeight+'px';
+  showToast('この帯をタップすると更新します（今はお試し）');
+  // 2.5秒ほど脈打ちを見せてから、自動で破裂させる
+  b._preview=setTimeout(()=>{
+    playUpdateBurst(b);
+    setTimeout(()=>{                  // 破裂後、帯を元の非表示に戻す（リロードしない）
+      b.classList.remove('burst');
+      b.style.display='none';
+      b._bursting=false;
+      document.body.style.paddingTop='';
+    },1100);
+  },2500);
+}
+/* 「プシュー」と空気が抜ける音。ホワイトノイズをだんだん絞って作る。 */
+function hissSound(){
+  const ctx=getAudioCtx();
+  if(!ctx)return;
+  const dur=0.6;
+  const buf=ctx.createBuffer(1, ctx.sampleRate*dur, ctx.sampleRate);
+  const data=buf.getChannelData(0);
+  for(let i=0;i<data.length;i++) data[i]=Math.random()*2-1;   // ホワイトノイズ
+  const src=ctx.createBufferSource(); src.buffer=buf;
+  const bp=ctx.createBiquadFilter(); bp.type='bandpass';
+  bp.frequency.setValueAtTime(1800,ctx.currentTime);
+  bp.frequency.exponentialRampToValueAtTime(600,ctx.currentTime+dur); // だんだん低く=抜ける感じ
+  bp.Q.value=0.7;
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0.0001,ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.35,ctx.currentTime+0.04);     // 一気に立ち上がり
+  g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+dur);    // すーっと消える
+  src.connect(bp); bp.connect(g); g.connect(ctx.destination);
+  src.start(); src.stop(ctx.currentTime+dur);
+}
+/* =====================================================
+   お知らせバナー
+   一覧は全アプリ共通の news.json(学園前Aのリポジトリに1つだけ置いてある)を読む。
+   急告を出す時は news.json に1行足すだけで、5アプリすべてに反映される。
+   画像そのものはGoogleドライブの共有フォルダに置いたものを表示する。
+   ===================================================== */
+const NEWS_LIST_URL = 'https://silvaoo.github.io/shukkin-search/news.json';
+let NEWS_ITEMS = [];
+
+/* ドライブの画像URLは2種類あり、時期によって使える方が変わる。
+   まず lh3 を試し、だめなら thumbnail に切り替える(onerrorで自動フォールバック)。 */
+function newsImgTags(){
+  const t=Date.now();   // 開くたびに違う値を付け、ブラウザに必ず取り直させる
+  return NEWS_ITEMS.map((it,i)=>{
+    const id=it.fileId;
+    const primary=`https://lh3.googleusercontent.com/d/${id}=w1200&_=${t}`;
+    const backup=`https://drive.google.com/thumbnail?id=${id}&sz=w1200&_=${t}`;
+    return `<img src="${primary}" alt="お知らせ${i+1}" loading="lazy"
+      onerror="if(!this._retried){this._retried=1;this.src='${backup}';}else{this.style.display='none';}">`;
+  }).join('');
+}
+
+/* 起動時に一覧を読み込み、1件以上あればバナーを出す。
+   ?_= を付けて必ず最新を取りに行く(古い一覧が残ると急告が届かないため)。 */
+async function loadNews(){
+  try{
+    const res=await fetch(NEWS_LIST_URL+'?_='+Date.now(),{cache:'no-store'});
+    if(!res.ok)return;
+    const data=await res.json();
+    NEWS_ITEMS=Array.isArray(data.items)?data.items.filter(x=>x&&x.fileId):[];
+    if(NEWS_ITEMS.length>0){
+      const b=document.getElementById('news-banner');
+      if(b)b.style.display='';
+    }
+  }catch(e){
+    /* 圏外や通信失敗の時は黙って何もしない(バナーを出さないだけ) */
+  }
+}
+
+/* バナーをタップ: 破裂演出→お知らせを開く */
+function handleNewsClick(){
+  const b=document.getElementById('news-banner');
+  if(!b||b._bursting)return;
+  b._bursting=true;
+  playUpdateBurst(b);                       // 更新バナーと同じ「パシュッ＋煙」
+  setTimeout(()=>{
+    b.style.display='none';                 // 帯は消して、中身を出す
+    b._bursting=false;
+    openNewsModal();
+  },900);
+}
+/* 右上の×: 中身は見ずにバナーだけ閉じる(次に開いた時はまた出る) */
+function closeNewsBanner(){
+  const b=document.getElementById('news-banner');
+  if(b)b.style.display='none';
+}
+function openNewsModal(){
+  const wrap=document.getElementById('newsImgWrap');
+  if(wrap)wrap.innerHTML=newsImgTags();
+  document.getElementById('newsModal').classList.add('active');
+  document.body.style.overflow='hidden';
+}
+function closeNewsModal(){
+  document.getElementById('newsModal').classList.remove('active');
+  document.body.style.overflow='';
+}
+
+function handleUpdateClick(){
+  const b=document.getElementById('update-banner');
+  if(!b || b._bursting) return;
+  // プレビュー中のタップ：更新はせず、その場で破裂だけ見せて戻す
+  if(b._preview){
+    clearTimeout(b._preview); b._preview=null;
+    b._bursting=true;
+    playUpdateBurst(b);
+    setTimeout(()=>{
+      b.classList.remove('burst'); b.style.display='none';
+      b._bursting=false; document.body.style.paddingTop='';
+    },1100);
+    return;
+  }
+  b._bursting=true;
+  playUpdateBurst(b);                 // 破裂＆煙の演出
+  // 演出(約0.8秒)を見せてから更新を適用する
+  setTimeout(()=>{
+    if(!('serviceWorker' in navigator)){window.location.reload();return;}
+    navigator.serviceWorker.getRegistration().then((reg)=>{
+      if(reg&&reg.waiting){reg.waiting.postMessage('SKIP_WAITING');}
+      else{window.location.reload();}
+    }).catch(()=>window.location.reload());
+  },950);
+}
+/* 更新帯をタップした時の「破裂→煙」演出 */
+function playUpdateBurst(b){
+  try{ hissSound(); beep(520,90,0.02); beep(260,160,0.1); }catch(e){}   // プシュー＋破裂の低音
+  if(navigator.vibrate) navigator.vibrate([20,30,50,30,80]);
+  const r=b.getBoundingClientRect();
+  const cx=r.left+r.width/2, cy=r.top+r.height/2;
+  b.classList.add('burst');           // 帯がしぼんで消える
+  // 煙の粒を放射状に飛ばす（多め・大きめ・遠くまで）
+  const N=28;
+  for(let i=0;i<N;i++){
+    const s=document.createElement('div');
+    s.className='ub-smoke';
+    const size=30+Math.random()*46;
+    s.style.width=size+'px'; s.style.height=size+'px';
+    // 帯の幅方向に散らして出す（1点からではなく帯全体から噴く感じ）
+    const ox=(Math.random()-0.5)*r.width*0.7;
+    s.style.left=(cx+ox-size/2)+'px'; s.style.top=(cy-size/2)+'px';
+    const ang=(Math.PI*2*i/N)+(Math.random()-0.5)*0.6;
+    const dist=90+Math.random()*140;
+    s.style.setProperty('--sx',(Math.cos(ang)*dist).toFixed(0)+'px');
+    s.style.setProperty('--sy',(Math.sin(ang)*dist-40).toFixed(0)+'px'); // 上に流す
+    s.style.animationDuration=(0.9+Math.random()*0.4).toFixed(2)+'s';    // 粒ごとに速さを変える
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(),1400);
+  }
+}
+
+/* ==== メモ一覧 ====
+   保存したメモを日付・ダイヤ番号ごとに一覧で見て、その場で直せるようにする。
+   検索して探さなくても、どの日に何を書いたかが分かるようにするのが目的。 */
+function openMemoList(){
+  renderMemoList();
+  document.getElementById('memoListModal').classList.add('active');
+  document.body.style.overflow='hidden';
+}
+function closeMemoList(){
+  document.getElementById('memoListModal').classList.remove('active');
+  document.body.style.overflow='';
+}
+/* ==== 保存したカレンダー ==== */
+function loadCalList(){ try{ return JSON.parse(localStorage.getItem(SAVED_CAL_KEY)||'[]'); }catch(e){ return []; } }
+function saveCalList(a){ try{ localStorage.setItem(SAVED_CAL_KEY, JSON.stringify(a)); }catch(e){} }
+function clearRangeResults(){ const c=document.getElementById('resultsArea'); if(c) c.innerHTML=''; window._lastRows=null; }
+window.addEventListener('pageshow', function(e){ if(e.persisted){ clearRangeResults(); } }); // iOS: リロード/キャッシュ復元時に検索結果を消す(Androidと同じ挙動に)
+function icsEsc(t){ return String(t==null?'':t).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n'); }
+function icsDT(iso, hhmm){
+  const pr=String(hhmm).split(':'); const h=parseInt(pr[0],10), mi=parseInt(pr[1],10);
+  const d=new Date(iso+'T00:00:00'); d.setMinutes(h*60+mi);
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}T${p(d.getHours())}${p(d.getMinutes())}00`;
+}
+function exportCalendarICS(rows){
+  rows = rows || window._lastRows;
+  if(!rows||!rows.length){ showToast('データがありません'); return; }
+  const stamp=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+  let ev='', count=0;
+  rows.forEach(r=>{
+    const slot=r.slot;
+    // 公休の日も番号入りで終日予定として登録する(このダイヤ番号は公休=DBに勤務が無い)
+    if((!slot || !slot.o) && r.dn>=1 && r.dn<={{MAX}}){
+      const d0=new Date(r.iso+'T00:00:00'), d1=new Date(r.iso+'T00:00:00'); d1.setDate(d1.getDate()+1);
+      const p=n=>String(n).padStart(2,'0');
+      const ymd=(d)=>`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}`;
+      ev+='BEGIN:VEVENT\r\nUID:sk-'+r.iso+'-'+r.dn+'-off-'+Date.now()+Math.random().toString(36).slice(2,6)+'@shukkin\r\n'
+        +'DTSTAMP:'+stamp+'\r\nDTSTART;VALUE=DATE:'+ymd(d0)+'\r\nDTEND;VALUE=DATE:'+ymd(d1)+'\r\n'
+        +'SUMMARY:'+icsEsc('🚌'+r.dn+'番ダイヤ（公休）')+'\r\nDESCRIPTION:'+icsEsc('公休')+'\r\nTRANSP:TRANSPARENT\r\nEND:VEVENT\r\n';
+      count++;
+      return;
+    }
+    if(!slot || !slot.o || !String(slot.o).includes('〜')) return;
+    const parts=String(slot.o).split('〜');
+    if(parts.length!==2) return;
+    const starts=parts[0].split('/').map(x=>x.trim());
+    const ends=parts[1].split('/').map(x=>x.trim());
+    let blocks;
+    if(starts.length>=2 && ends.length>=2){ blocks=[['前半',starts[0],starts[1]],['後半',ends[0],ends[1]]]; }
+    else { blocks=[['',starts[0],ends[0]]]; }
+    blocks.forEach((bl,bi)=>{
+      if(!String(bl[1]).includes(':')||!String(bl[2]).includes(':')) return;
+      const dts=icsDT(r.iso,bl[1]), dte=icsDT(r.iso,bl[2]);
+      const sum=`🚌${r.dn}番ダイヤ${bl[0]?'('+bl[0]+')':''}`;
+      const desc=`労働時間 ${slot.w||'-'}${slot.n?'\n'+slot.n:''}`;
+      ev+='BEGIN:VEVENT\r\nUID:sk-'+r.iso+'-'+r.dn+'-'+bi+'-'+Date.now()+Math.random().toString(36).slice(2,6)+'@shukkin\r\n'
+        +'DTSTAMP:'+stamp+'\r\nDTSTART:'+dts+'\r\nDTEND:'+dte+'\r\nSUMMARY:'+icsEsc(sum)+'\r\nDESCRIPTION:'+icsEsc(desc)+'\r\n'
+        +'BEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER:-PT60M\r\nDESCRIPTION:'+icsEsc('まもなく出勤 '+sum)+'\r\nEND:VALARM\r\nEND:VEVENT\r\n';
+      count++;
+    });
+  });
+  if(!count){ showToast('登録できる勤務がありません'); return; }
+  const ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//出退勤検索くん//JP\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n'+ev+'END:VCALENDAR\r\n';
+  try{
+    const blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='勤務カレンダー.ics';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    showToast('📅 '+count+'件をカレンダー用に書き出しました');
+  }catch(e){ showToast('書き出しに失敗しました'); }
+}
+function saveCurrentCal(){
+  const rows=window._lastRows;
+  if(!rows||!rows.length){ showToast('先に検索してください'); return; }
+  const list=loadCalList();
+  list.push({ id:'c'+Date.now(), savedAt:Date.now(), rows });
+  saveCalList(list);
+  showToast('⭐ カレンダー保存しました！メモ一覧からご覧下さい');
+}
+function openSavedCal(id){
+  const item=loadCalList().find(c=>c.id===id);
+  if(!item){ showToast('見つかりませんでした'); return; }
+  closeMemoList();
+  window._lastRows=item.rows;
+  openResultCal();
+}
+function deleteSavedCal(id){
+  if(!confirm('この保存カレンダーを削除しますか？')) return;
+  saveCalList(loadCalList().filter(c=>c.id!==id));
+  renderMemoList();
+}
+function exportSavedCal(id){
+  const item=loadCalList().find(c=>c.id===id);
+  if(!item){ showToast('見つかりませんでした'); return; }
+  exportCalendarICS(item.rows);
+}
+function switchMemoList(which){
+  const panes={date:'mlPaneDate',dial:'mlPaneDial',cal:'mlPaneCal'};
+  const tabs={date:'mlTabDate',dial:'mlTabDial',cal:'mlTabCal'};
+  for(const k in panes){
+    document.getElementById(panes[k]).classList.toggle('on',k===which);
+    document.getElementById(tabs[k]).classList.toggle('on',k===which);
+  }
+  document.getElementById('memoListModal').scrollTop=0;
+}
+function renderMemoList(){
+  const t=new Date();t.setHours(0,0,0,0);
+  const todayIso=toISO(t);
+
+  // --- 日付のメモ（日付順。過ぎた日は薄く表示する） ---
+  const dm=loadMemos(MEMO_DATE_KEY);
+  const dimgs=loadImgs(MEMOIMG_DATE_KEY);
+  const dkeys=[...new Set([...Object.keys(dm), ...Object.keys(dimgs)])].sort();
+  let h='';
+  if(dkeys.length===0){
+    h='<div class="ml-empty">日付のメモはまだありません。<br>検索結果の「📝 メモを追加」から書けます。</div>';
+  }else{
+    const past=dkeys.filter(k=>k<todayIso).length;
+    h=`<div class="ml-count">${dkeys.length}件${past?`（うち過ぎた日 ${past}件）`:''}</div>`;
+    dkeys.forEach(k=>{
+      const d=new Date(k+'T00:00:00');
+      const isPast=k<todayIso;
+      const label=`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}（${DW[d.getDay()]}）`;
+      h+=`<div class="ml-item${isPast?' past':''}" id="ml-d-${k}">
+        <div class="ml-top">
+          <div class="ml-key">${label}${isPast?'<span class="ml-sub">過ぎた日</span>':(k===todayIso?'<span class="ml-sub">今日</span>':'')}</div>
+          <div class="ml-acts">
+            <button class="ml-act" onclick="editMemoItem('date','${k}')">編集</button>
+            <button class="ml-act del" onclick="deleteMemoItem('date','${k}')">削除</button>
+          </div>
+        </div>
+        ${dm[k]?`<div class="ml-text">${escapeHtml(dm[k])}</div>`:''}
+        ${(dimgs[k]||[]).length?`<div class="mimg-view">${(dimgs[k]||[]).map((src,i)=>`<img src="${src}" onclick="openImgViewerSrc('${k}','date',${i})">`).join('')}</div>`:''}
+      </div>`;
+    });
+    if(dkeys.some(k=>k<todayIso)){
+      h+='<button class="ml-clean" onclick="cleanPastMemos()">🧹 過ぎた日のメモをまとめて削除</button>';
+    }
+  }
+  document.getElementById('mlPaneDate').innerHTML=h;
+
+  // --- ダイヤ番号のメモ（番号順） ---
+  const lm=loadMemos(MEMO_DIAL_KEY);
+  const limgs=loadImgs(MEMOIMG_DIAL_KEY);
+  const lkeys=[...new Set([...Object.keys(lm), ...Object.keys(limgs)])].sort((a,b)=>Number(a)-Number(b));
+  let h2='';
+  if(lkeys.length===0){
+    h2='<div class="ml-empty">ダイヤ番号のメモはまだありません。<br>検索結果の「📝 メモを追加」から書けます。</div>';
+  }else{
+    h2=`<div class="ml-count">${lkeys.length}件</div>`;
+    lkeys.forEach(k=>{
+      h2+=`<div class="ml-item dial" id="ml-l-${k}">
+        <div class="ml-top">
+          <div class="ml-key">${k} 番ダイヤ<span class="ml-sub">この番号の日すべてに出ます</span></div>
+          <div class="ml-acts">
+            <button class="ml-act" onclick="editMemoItem('dial','${k}')">編集</button>
+            <button class="ml-act del" onclick="deleteMemoItem('dial','${k}')">削除</button>
+          </div>
+        </div>
+        ${lm[k]?`<div class="ml-text">${escapeHtml(lm[k])}</div>`:''}
+        ${(limgs[k]||[]).length?`<div class="mimg-view">${(limgs[k]||[]).map((src,i)=>`<img src="${src}" onclick="openImgViewerSrc('${k}','dial',${i})">`).join('')}</div>`:''}
+      </div>`;
+    });
+  }
+  document.getElementById('mlPaneDial').innerHTML=h2;
+
+  const cals=loadCalList();
+  let h3='';
+  if(cals.length===0){
+    h3='<div class="ml-empty">保存したカレンダーはまだありません。<br>「検索くん 私のカレンダー」を開いて⭐で保存すると、ここに並びます。</div>';
+  }else{
+    h3=`<div class="ml-count">${cals.length}件</div>`;
+    cals.forEach((c,i)=>{
+      const d=new Date(c.savedAt);
+      const sub=`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} 保存`;
+      h3+=`<div class="ml-item">
+        <div class="ml-top">
+          <div class="ml-key">検索くん 私のカレンダー${i+1}<span class="ml-sub">${sub}</span></div>
+          <div class="ml-acts">
+            <button class="ml-act" onclick="openSavedCal('${c.id}')">開く</button>
+            <button class="ml-act del" onclick="deleteSavedCal('${c.id}')">削除</button>
+          </div>
+        </div>
+        <button class="ml-cal-btn" onclick="exportSavedCal('${c.id}')">📅 カレンダーアプリに一括保存</button>
+      </div>`;
+    });
+  }
+  document.getElementById('mlPaneCal').innerHTML=h3;
+}
+/* 一覧の中で直接編集する */
+function editMemoItem(type,key){
+  const id=(type==='date'?'ml-d-':'ml-l-')+key;
+  const box=document.getElementById(id);
+  if(!box||box.querySelector('.ml-edit'))return;
+  const cur=(type==='date'?loadMemos(MEMO_DATE_KEY):loadMemos(MEMO_DIAL_KEY))[key]||'';
+  const ed=document.createElement('div');
+  ed.className='ml-edit';
+  const imgs=(type==='date'?getDateImgs(key):getDialImgs(key));
+  const imgHtml = imgs.length ? `<div class="mimg-list">${imgs.map((src,i)=>`<div class="mimg-item"><img src="${src}" onclick="openImgViewerSrc('${key}','${type}',${i})"><button class="mimg-del" onclick="deleteMemoListImage('${type}','${key}',${i})">✕</button></div>`).join('')}</div>` : '';
+  ed.innerHTML=`<textarea rows="3" id="ml-in-${type}-${key}">${escapeHtml(cur)}</textarea>
+    ${imgHtml}
+    <label class="mimg-add">📷 画像を追加<input type="file" accept="image/*" multiple onchange="addMemoListImages('${type}','${key}',this)"></label>
+    <div class="ml-edit-acts">
+      <button class="memo-act memo-save" onclick="saveMemoItem('${type}','${key}')">💾 保存</button>
+      <button class="memo-act memo-close" onclick="renderMemoList()">✕ 取消</button>
+    </div>`;
+  const txt=box.querySelector('.ml-text');
+  if(txt) txt.style.display='none';
+  box.appendChild(ed);
+  document.getElementById(`ml-in-${type}-${key}`).focus();
+}
+function saveMemoItem(type,key){
+  const v=document.getElementById(`ml-in-${type}-${key}`).value.trim();
+  const store=type==='date'?MEMO_DATE_KEY:MEMO_DIAL_KEY;
+  const obj=loadMemos(store);
+  if(v) obj[key]=v; else delete obj[key];   // 空にして保存すれば削除になる
+  saveMemos(store,obj);
+  showToast(v?'💾 メモを保存しました':'🗑 メモを削除しました');
+  renderMemoList();
+  refreshMemoViews();   // 検索結果側の表示も合わせる
+}
+function deleteMemoItem(type,key){
+  const label=type==='date'?`${key} のメモ`:`${key}番ダイヤのメモ`;
+  if(!confirm(`${label}を削除します。よろしいですか？`))return;
+  const store=type==='date'?MEMO_DATE_KEY:MEMO_DIAL_KEY;
+  const obj=loadMemos(store);
+  delete obj[key];
+  saveMemos(store,obj);
+  const istore=type==='date'?MEMOIMG_DATE_KEY:MEMOIMG_DIAL_KEY;
+  const iobj=loadImgs(istore); delete iobj[key]; saveImgs(istore,iobj);
+  showToast('🗑 メモを削除しました');
+  renderMemoList();
+  refreshMemoViews();
+}
+/* 過ぎた日のメモをまとめて片付ける */
+function cleanPastMemos(){
+  const t=new Date();t.setHours(0,0,0,0);
+  const todayIso=toISO(t);
+  const obj=loadMemos(MEMO_DATE_KEY);
+  const past=Object.keys(obj).filter(k=>k<todayIso);
+  if(past.length===0)return;
+  if(!confirm(`過ぎた日のメモ ${past.length}件をまとめて削除します。よろしいですか？`))return;
+  past.forEach(k=>delete obj[k]);
+  saveMemos(MEMO_DATE_KEY,obj);
+  showToast(`🧹 ${past.length}件のメモを削除しました`);
+  renderMemoList();
+  refreshMemoViews();
+}
+
+/* ==== 使い方と更新履歴モーダル ==== */
+function openGuide(){
+  document.getElementById('guideModal').classList.add('active');
+  document.body.style.overflow='hidden';   // 背面のスクロールを止める
+}
+function closeGuide(){
+  document.getElementById('guideModal').classList.remove('active');
+  document.body.style.overflow='';
+}
+function switchGuide(which){
+  if(which==='log') loadChangeLog();   // 履歴は開いた時に読み込む
+  // 使い方 / 入れ方 / 更新履歴 の3タブを切り替える
+  const map = { use:['paneUse','tabUse'], inst:['paneInst','tabInst'], log:['paneLog','tabLog'] };
+  for (const k in map){
+    const on = (k === which);
+    const pane = document.getElementById(map[k][0]);
+    const tab  = document.getElementById(map[k][1]);
+    if (pane) pane.classList.toggle('on', on);
+    if (tab)  tab.classList.toggle('on', on);
+  }
+  document.getElementById('guideModal').scrollTop = 0;
+}
+
+function render(rows){
+  const el=document.getElementById('resultsArea');
+  if(!rows.length){el.innerHTML='<div class="empty">📋 該当する日がありません</div>';return;}
+  const wkCnt=rows.filter(r=>r.rec&&r.slot&&r.slot.o!=='—').length;
+  const kyuCnt=rows.filter(r=>!r.rec||(r.rec&&r.slot===null)).length;
+
+  // C案: 期間内の労働時間を分単位で合計する(公休・要確認の日は除く)
+  const totalMin=rows.reduce((sum,r)=>{
+    if(!r.rec||r.slot===null||!r.slot||!r.slot.w||r.slot.w==='—')return sum;
+    return sum+Math.round(parseTotalHours(r.slot.w)*60);
+  },0);
+  let html=`<div class="res-summary">${rows.length}日間 ／ 勤務${wkCnt}日 ／ 公休${kyuCnt}日</div>`;
+
+  rows.forEach((r,idx)=>{
+    const allKyu=!r.rec;
+    const dayKyu=r.rec&&r.slot===null;
+    const isOff=allKyu||dayKyu;
+
+    let dateClass='day-date',badgeClass='day-badge badge-week',badgeText='平日';
+    if(r.dt==='土'){dateClass+=' saturday';badgeClass='day-badge badge-sat';badgeText=r.obon?'お盆休みで土曜ダイヤ':'土曜';}
+    if(r.dt==='日祝'){dateClass+=' holiday';badgeClass='day-badge badge-hday';badgeText=r.hol?'祝日':'日曜';}
+
+    const totalH=(!isOff&&r.slot)?parseTotalHours(r.slot.w):0;
+    const longClass=totalH>=9?' long':'';
+    const longBadge=totalH>=9?'<span class="shift-badge sb-long">長時間</span>':'';
+
+    let bodyHtml;
+    if(isOff){
+      bodyHtml=`<div class="day-boxes">
+        <div class="day-box"><div class="day-box-label">勤務時間</div><div class="day-box-val holiday-val">公休</div></div>
+        <div class="day-box"><div class="day-box-label">労働時間</div><div class="day-box-val" style="color:var(--dim)">—</div></div>
+      </div>`;
+    }else{
+      const slot=r.slot;
+      // 分割勤務かどうかで大きさを変える（今日のカードと同じ扱いにする）
+      const rcls=slot.o.includes('/')?'is-split':'is-day';
+      const teiireLabel=TEIIRE[r.dn]?`<div class="teiire-label">🔧 ${TEIIRE[r.dn]}</div>`:'';
+      const noteHtml=slot.n?`<div class="day-note">📌 ${slot.n}</div>`:'';
+      bodyHtml=`${teiireLabel}<div class="day-boxes">
+        <div class="day-box"><div class="day-box-label">勤務時間</div><div class="day-box-val ${rcls}">${formatDisplayTime(slot.o)}</div></div>
+        <div class="day-box"><div class="day-box-label">労働時間</div><div class="day-box-val ${rcls}">${formatDisplayLabor(slot.w)}</div></div>
+      </div>${noteHtml}`;
+    }
+
+    html+=`<div class="day-card${longClass}">
+      <div class="day-header">
+        <div class="${dateClass}">${r.m}/${r.d}（${r.dw}）${r.hol?'🎌':''}${longBadge}</div>
+        <div class="${badgeClass}">${badgeText}</div>
+      </div>
+      <div class="day-dial">${r.dn}<span> 番</span></div>
+      ${bodyHtml}
+      ${memoBlockHtml(r.iso,r.dn)}
+    </div>`;
+  });
+
+  // C案: 合計労働時間は自動スクロールが止まる「結果の一番下」に出す
+  if(rows.length>1&&totalMin>0){
+    html+=`<div class="res-total">📊 合計労働時間 ${Math.floor(totalMin/60)}時間${String(totalMin%60).padStart(2,'0')}分<small>勤務${wkCnt}日ぶんの合計です</small></div>`;
+  }
+  html+=`<div class="action-row">
+    <button class="act-btn act-more" onclick="continueSearch()">➕ 続けて検索</button>
+    <button class="act-btn act-cal" onclick="openResultCal()">📅 カレンダーを見る</button>
+  </div>`;
+
+  el.innerHTML=html;
+  window._lastRows=rows;
+
+  if(kyuCnt>0)launchMultipleFireworks(5);
+  setTimeout(()=>{el.scrollIntoView({behavior:'smooth',block:'start'});},100);
+}
+
+/* ==== 検索時の音・バイブのフィードバック ====
+   クイック検索と期間検索を区別できるよう、それぞれ異なるパターンにしている */
+let _audioCtx=null;
+function getAudioCtx(){
+  try{
+    if(!_audioCtx)_audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(_audioCtx.state==='suspended')_audioCtx.resume();
+  }catch(e){}
+  return _audioCtx;
+}
+/* 指定した周波数・長さ・開始タイミング(秒後)で単音を鳴らす */
+function beep(freq,durationMs,delaySec){
+  const ctx=getAudioCtx();
+  if(!ctx)return;
+  const t0=ctx.currentTime+(delaySec||0);
+  const osc=ctx.createOscillator();
+  const gain=ctx.createGain();
+  osc.type='sine';
+  osc.frequency.value=freq;
+  gain.gain.setValueAtTime(0.16,t0);
+  gain.gain.exponentialRampToValueAtTime(0.001,t0+durationMs/1000);
+  osc.connect(gain);gain.connect(ctx.destination);
+  osc.start(t0);osc.stop(t0+durationMs/1000);
+}
+/* 宇宙をイメージしたスペース音（上昇→下降の2音同時） */
+function spaceBeep(){
+  try{
+    const ctx=getAudioCtx();
+    if(!ctx)return;
+    const now=ctx.currentTime;
+    const osc1=ctx.createOscillator(),osc2=ctx.createOscillator(),gain=ctx.createGain();
+    osc1.connect(gain);osc2.connect(gain);gain.connect(ctx.destination);
+    osc1.type='sine';osc2.type='sine';
+    osc1.frequency.setValueAtTime(200,now);
+    osc1.frequency.exponentialRampToValueAtTime(400,now+0.3);
+    osc2.frequency.setValueAtTime(300,now);
+    osc2.frequency.exponentialRampToValueAtTime(150,now+0.3);
+    gain.gain.setValueAtTime(0.2,now);
+    gain.gain.exponentialRampToValueAtTime(0.001,now+0.5);
+    osc1.start(now);osc2.start(now);
+    osc1.stop(now+0.5);osc2.stop(now+0.5);
+  }catch(e){console.log('音声エラー:',e);}
+}
+/* クイック検索用：ロケット花火音＋短いバイブ1回 */
+function feedbackQuick(){
+  rocketFirework();
+  if(navigator.vibrate)navigator.vibrate(40);
+}
+
+/* ==== 全画面カレンダー ====
+   1回目のタップで開始日、2回目で終了日。同じ日を2回タップすればその日だけになる。 */
+let _calView=null;      // 表示中の月
+let _selStart=null;     // 選択した開始日(YYYY-MM-DD)
+let _selEnd=null;       // 選択した終了日(YYYY-MM-DD)
+
+function openCal(){
+  const dial=parseInt(document.getElementById('todayInput').value);
+  if(!dial||dial<1||dial>{{MAX}}){showToast('先に今日のダイヤ番号を入力してください');return;}
+  const t=new Date();t.setHours(0,0,0,0);
+  // デフォルトは今日
+  if(!_selStart){ _selStart=toISO(t); _selEnd=toISO(t); }
+  _calView=new Date(_selStart+'T00:00:00');
+  renderCal();
+  attachCalSwipe(document.getElementById('calGrid'), calMove);   // 横スワイプで月移動
+  document.getElementById('calModal').classList.add('active');
+  document.body.style.overflow='hidden';
+}
+function closeCal(){
+  document.getElementById('calModal').classList.remove('active');
+  document.body.style.overflow='';
+}
+function calMove(n){
+  _calView=addMonths(_calView,n);
+  renderCal();
+}
+function calToday(){
+  const t=new Date();t.setHours(0,0,0,0);
+  _calView=new Date(t);
+  _selStart=toISO(t); _selEnd=toISO(t);
+  renderCal();
+}
+function calClear(){
+  _selStart=null; _selEnd=null;
+  renderCal();
+}
+/* 日付をタップした時 */
+function calTap(iso){
+  if(!_selStart || (_selStart && _selEnd)){
+    _selStart=iso; _selEnd=null;             // 1回目: 開始日
+  }else if(iso < _selStart){
+    _selStart=iso; _selEnd=null;             // 開始日より前を選んだら選び直し
+  }else{
+    _selEnd=iso;                             // 2回目: 終了日(同じ日ならその日だけ)
+  }
+  beep(880,60,0);
+  if(navigator.vibrate)navigator.vibrate(15);
+  renderCal();
+}
+
+function renderCal(){
+  const y=_calView.getFullYear(), m=_calView.getMonth();
+  document.getElementById('calMonth').textContent=`${y}年 ${m+1}月`;
+  const first=new Date(y,m,1);
+  const days=new Date(y,m+1,0).getDate();
+  const t=new Date();t.setHours(0,0,0,0);
+  const todayIso=toISO(t);
+  let html='';
+  for(let i=0;i<first.getDay();i++) html+='<div class="cal-day empty"></div>';
+  for(let d=1;d<=days;d++){
+    const dt=new Date(y,m,d);
+    const iso=toISO(dt);
+    const dw=dt.getDay();
+    let cls='cal-day';
+    if(dw===0)cls+=' sun'; if(dw===6)cls+=' sat';
+    if(iso===todayIso)cls+=' today';
+    if(_selStart&&_selEnd&&iso>_selStart&&iso<_selEnd)cls+=' inrange';
+    if(iso===_selStart||iso===_selEnd)cls+=' edge';
+    html+=`<div class="${cls}" onclick="calTap('${iso}')">${d}</div>`;
+  }
+  document.getElementById('calGrid').innerHTML=html;
+
+  // 選択状況の表示
+  const sel=document.getElementById('calSel');
+  const ok=document.getElementById('calOk');
+  if(!_selStart){
+    sel.textContent='開始日を選んでください'; ok.disabled=true;
+  }else if(!_selEnd){
+    sel.textContent=`${fmtJp(_selStart)} 〜 （終了日を選ぶ）`; ok.disabled=true;
+  }else if(_selStart===_selEnd){
+    sel.textContent=`${fmtJp(_selStart)} の1日だけ`; ok.disabled=false;
+  }else{
+    const n=Math.round((new Date(_selEnd)-new Date(_selStart))/86400000)+1;
+    sel.textContent=`${fmtJp(_selStart)} 〜 ${fmtJp(_selEnd)}（${n}日間）`; ok.disabled=false;
+  }
+}
+function fmtJp(iso){
+  const d=new Date(iso+'T00:00:00');
+  return `${d.getMonth()+1}/${d.getDate()}(${DW[d.getDay()]})`;
+}
+
+/* 「設定」を押した時: カレンダーを閉じて、バーン！と鳴らして検索する */
+function applyCal(){
+  if(!_selStart)return;
+  if(!_selEnd)_selEnd=_selStart;
+  const from=new Date(_selStart+'T00:00:00');
+  const to=new Date(_selEnd+'T00:00:00');
+  if((to-from)/86400000>120){showToast('検索は最大120日間までです');return;}
+  const dial=parseInt(document.getElementById('todayInput').value);
+  if(!dial||dial<1||dial>{{MAX}}){showToast('今日のダイヤ番号を入力してください');return;}
+
+  document.getElementById('dateFrom').value=_selStart;
+  document.getElementById('dateTo').value=_selEnd;
+  updateRangeLabel();
+  closeCal();
+
+  boomSound();                       // バーン！
+  if(navigator.vibrate)navigator.vibrate([60,40,90]);
+  launchMultipleFireworks(4);
+  try{_lastPeriodDays=Math.max(Math.round((to-from)/86400000)+1,1);}catch(e){_lastPeriodDays=null;}
+  buildAndRender(dial,from,to);
+  autoScrollResults();               // 上から下まで自動で流す
+}
+function updateRangeLabel(){
+  const el=document.getElementById('rangeLabel');
+  if(!el)return;
+  if(_selStart&&_selEnd){
+    el.textContent = _selStart===_selEnd
+      ? `期間：${fmtJp(_selStart)} の1日`
+      : `期間：${fmtJp(_selStart)} 〜 ${fmtJp(_selEnd)}`;
+    el.classList.add('set');
+  }else{
+    el.textContent='期間：未指定'; el.classList.remove('set');
+  }
+}
+
+/* 「バーン！」という低い破裂音（余韻を長めに） */
+function boomSound(){
+  try{
+    const ctx=getAudioCtx(); if(!ctx)return;
+    const now=ctx.currentTime;
+    // 低音のドン（ゆっくり下がって長く残る）
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(200,now);
+    o.frequency.exponentialRampToValueAtTime(32,now+1.1);
+    g.gain.setValueAtTime(0.55,now);
+    g.gain.exponentialRampToValueAtTime(0.001,now+1.4);
+    o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now+1.5);
+    // 少し高めの余韻を重ねて厚みを出す
+    const o2=ctx.createOscillator(), g2=ctx.createGain();
+    o2.type='triangle'; o2.frequency.setValueAtTime(90,now);
+    o2.frequency.exponentialRampToValueAtTime(28,now+1.2);
+    g2.gain.setValueAtTime(0.3,now);
+    g2.gain.exponentialRampToValueAtTime(0.001,now+1.3);
+    o2.connect(g2); g2.connect(ctx.destination); o2.start(now); o2.stop(now+1.4);
+    // 破裂のノイズ（じわっと消える）
+    const len=Math.floor(ctx.sampleRate*1.0);
+    const buf=ctx.createBuffer(1,len,ctx.sampleRate);
+    const data=buf.getChannelData(0);
+    for(let i=0;i<len;i++) data[i]=(Math.random()*2-1)*Math.pow(1-i/len,1.6);
+    const src=ctx.createBufferSource(); src.buffer=buf;
+    const ng=ctx.createGain(); ng.gain.setValueAtTime(0.4,now);
+    ng.gain.exponentialRampToValueAtTime(0.001,now+0.9);
+    src.connect(ng); ng.connect(ctx.destination); src.start(now);
+  }catch(e){}
+}
+
+/* 検索結果を上から下まで自動でスクロールし、最後に終了日が見えるようにする */
+function autoScrollResults(){
+  const el=document.getElementById('resultsArea');
+  if(!el)return;
+  const startY=el.getBoundingClientRect().top+window.scrollY-8;
+  window.scrollTo({top:startY,behavior:'auto'});   // まず結果の先頭へ
+  setTimeout(()=>{
+    const endY=el.getBoundingClientRect().bottom+window.scrollY-window.innerHeight+16;
+    const goal=Math.max(endY,startY);
+    if(goal<=startY+4)return;                      // 1画面で収まる時は動かさない
+    const dist=goal-startY;
+    // 長さに応じて時間を変える(短すぎ・長すぎを防ぐ)
+    const dur=Math.min(4000,Math.max(1200,dist*1.1));
+    const t0=performance.now();
+    function step(now){
+      const p=Math.min(1,(now-t0)/dur);
+      const e=p<0.5 ? 2*p*p : 1-Math.pow(-2*p+2,2)/2;   // ゆっくり始まってゆっくり止まる
+      window.scrollTo(0,startY+dist*e);
+      if(p<1)requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  },450);
+}
+
+/* ==== 自分のダイヤ番号を保存して、毎日自動で進める ====
+   一度入力すれば、翌日以降は開くだけで「今日の番号」に自動更新される。
+   保存先はこの端末の中だけなので、同僚の番号と混ざることはない。 */
+const MYDIAL_KEY='{{ID}}-my-dial';
+
+function saveMyDial(){
+  const v=parseInt(document.getElementById('todayInput').value);
+  if(!v||v<1||v>{{MAX}})return;
+  try{
+    localStorage.setItem(MYDIAL_KEY, JSON.stringify({dial:v, iso:toISO(new Date())}));
+  }catch(e){}
+  showMyDialNote(true);
+}
+/* 保存した番号を、今日の日付に合わせて進めた状態で入れ直す */
+function restoreMyDial(){
+  let o=null;
+  try{ const raw=localStorage.getItem(MYDIAL_KEY); if(!raw)return false; o=JSON.parse(raw); }catch(e){ return false; }
+  if(!o||!o.dial||!o.iso)return false;
+  const t=new Date(); t.setHours(0,0,0,0);
+  const base=new Date(o.iso+'T00:00:00');
+  const diff=Math.round((t-base)/86400000);
+  const d=((o.dial-1+diff)%{{MAX}}+{{MAX}})%{{MAX}}+1;   // 1日ごとに1つ進む(1〜10を繰り返す)
+  const el=document.getElementById('todayInput');
+  el.value=d;
+  try{ localStorage.setItem(MYDIAL_KEY, JSON.stringify({dial:d, iso:toISO(t)})); }catch(e){}
+  showMyDialNote(true);
+  return true;
+}
+function forgetMyDial(){
+  try{ localStorage.removeItem(MYDIAL_KEY); }catch(e){}
+  document.getElementById('todayInput').value='';
+  updateTodayPreview();
+  showMyDialNote(false);
+  showToast('保存した番号を消しました');
+}
+function showMyDialNote(on){
+  const el=document.getElementById('myDialNote');
+  if(el)el.style.display = on ? 'block' : 'none';
+}
+
+/* ==== 検索結果をカレンダーで見る ====
+   検索した結果を、月ごとのカレンダーに並べて一目で分かるようにする。
+   マスにはダイヤ番号と出退勤時間だけを出す。 */
+let _rcMonths=[];   // 結果に含まれる月の一覧
+let _rcIdx=0;       // 今表示している月
+
+function openResultCal(){
+  const rows=window._lastRows;
+  if(!rows||!rows.length){showToast('先に検索してください');return;}
+  // 結果に含まれる月を拾い出す
+  const set=new Set(rows.map(r=>r.iso.slice(0,7)));
+  _rcMonths=[...set].sort();
+  _rcIdx=0;
+  renderResultCal();
+  attachCalSwipe(document.getElementById('resCalGrid'), resCalMove);   // 横スワイプで月移動
+  document.getElementById('resCalModal').classList.add('active');
+  document.body.style.overflow='hidden';
+  beep(880,70,0);   // 開いた時の音
+}
+function closeResultCal(){
+  document.getElementById('resCalModal').classList.remove('active');
+  document.body.style.overflow='';
+}
+function resCalMove(n){
+  const i=_rcIdx+n;
+  if(i<0||i>=_rcMonths.length)return;
+  _rcIdx=i; renderResultCal();
+  beep(760,50,0);
+}
+/* カレンダーに横スワイプで月移動を付ける。
+   横に十分動いたら onMove(方向) を呼ぶ。縦スクロールやタップと誤認しないよう、
+   横移動が縦移動より大きい時だけ反応する。 */
+function attachCalSwipe(el, onMove){
+  if(!el || el._swipeBound) return;   // 二重登録を防ぐ
+  el._swipeBound=true;
+  let x0=0, y0=0, t0=0;
+  el.addEventListener('touchstart',function(e){
+    const t=e.changedTouches[0];
+    x0=t.clientX; y0=t.clientY; t0=Date.now();
+  },{passive:true});
+  el.addEventListener('touchend',function(e){
+    const t=e.changedTouches[0];
+    const dx=t.clientX-x0, dy=t.clientY-y0, dt=Date.now()-t0;
+    if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)*1.5 && dt<800){
+      onMove(dx<0 ? 1 : -1);   // 左へ払う=次の月 / 右へ払う=前の月
+    }
+  },{passive:true});
+}
+/* 出退勤時間を狭いマスでも読める形にする（分割勤務は最初と最後だけ出す） */
+function rcTimes(o){
+  if(!o||o==='—')return null;
+  const parts=o.split('〜');
+  if(parts.length<2)return null;
+  const s=parts[0].split('/')[0].trim();                    // 最初の出勤
+  const e=parts[1].split('/').pop().trim();                 // 最後の退勤
+  const split=o.includes('/');
+  return {s,e,split};
+}
+function renderResultCal(){
+  const rows=window._lastRows||[];
+  const ym=_rcMonths[_rcIdx];
+  const [y,m]=ym.split('-').map(Number);
+  document.getElementById('resCalMonth').textContent=`${y}年 ${m}月`;
+  document.getElementById('rcPrev').style.visibility=_rcIdx>0?'visible':'hidden';
+  document.getElementById('rcNext').style.visibility=_rcIdx<_rcMonths.length-1?'visible':'hidden';
+
+  const byIso={}; rows.forEach(r=>byIso[r.iso]=r);
+  const first=new Date(y,m-1,1);
+  const days=new Date(y,m,0).getDate();
+  const t=new Date();t.setHours(0,0,0,0);
+  const todayIso=toISO(t);
+
+  let html='';
+  for(let i=0;i<first.getDay();i++) html+='<div class="cal-day empty"></div>';
+  for(let d=1;d<=days;d++){
+    const dt=new Date(y,m-1,d);
+    const iso=toISO(dt);
+    const r=byIso[iso];
+    const dw=dt.getDay();
+    let cls='cal-day';
+    if(dw===0)cls+=' sun'; if(dw===6)cls+=' sat';
+    if(iso===todayIso)cls+=' today';
+    if(r&&(r.hol||r.obon))cls+=' hol';
+    if(!r)cls+=' nodata';
+
+    let body='';
+    if(r){
+      const off = !r.rec || !r.slot;                        // 公休
+      if(off){
+        body=`<div class="rc-dial">${r.dn}</div><div class="rc-off">公休</div>`;
+      }else{
+        const t2=rcTimes(r.slot.o);
+        body=`<div class="rc-dial">${r.dn}</div>`;
+        if(t2) body+=`<div class="rc-t">${t2.s}</div><div class="rc-t">${t2.e}${t2.split?'※':''}</div>`;
+        else   body+=`<div class="rc-t">要確認</div>`;
+      }
+      // その日にメモ（日付メモ or その日のダイヤ番号のメモ）があれば印を付ける
+      const hasTxt = getDateMemo(iso) || (r.dn && getDialMemo(r.dn));
+      const hasImg = getDateImgs(iso).length || (r.dn && getDialImgs(r.dn).length);
+      if(hasTxt || hasImg){
+        body+=`<div class="rc-memo-mark">${hasTxt?'●メモ':''}${hasImg?'📷':''}</div>`;
+      }
+    }
+    html+=`<div class="${cls}"${r?` onclick="openRcDetail('${iso}')"`:''}><div class="rc-date">${d}</div><div class="rc-body">${body}</div></div>`;
+  }
+  document.getElementById('resCalGrid').innerHTML=html;
+}
+
+/* ==== マスをタップした時の詳細（文字を大きくして読めるようにする） ==== */
+function openRcDetail(iso){
+  const rows=window._lastRows||[];
+  const r=rows.find(x=>x.iso===iso);
+  if(!r)return;
+  beep(760,50,0);
+  if(navigator.vibrate)navigator.vibrate(12);
+
+  const dt=new Date(iso+'T00:00:00');
+  const off = !r.rec || !r.slot;
+  // 曜日区分のラベル
+  let badge='', bcls='hei';
+  if(r.obon){ badge='お盆(土曜ダイヤ)'; bcls='bon'; }
+  else if(r.hol){ badge='祝日(日祝ダイヤ)'; bcls='dosun'; }
+  else if(r.dt==='土'){ badge='土曜'; bcls='dosun'; }
+  else if(r.dt==='日祝'){ badge='日祝'; bcls='dosun'; }
+  else { badge='平日'; bcls='hei'; }
+
+  let html=`<div class="rcd-date">${dt.getMonth()+1}/${dt.getDate()}（${DW[dt.getDay()]}）<span class="rcd-badge ${bcls}">${badge}</span></div>`;
+  html+=`<div class="rcd-dial">${r.dn}<span> 番ダイヤ</span></div>`;
+
+  if(off){
+    html+='<div class="rcd-off-big">🎉 公休</div>';
+  }else{
+    html+=`<div class="rcd-row"><span class="lbl">出退勤時間</span><span class="val">${formatDisplayTime(r.slot.o)}</span></div>`;
+    html+=`<div class="rcd-row"><span class="lbl">労働時間</span><span class="val">${formatDisplayLabor(r.slot.w)}</span></div>`;
+    if(r.slot.n) html+=`<div class="rcd-note">📌 ${escapeHtml(r.slot.n)}</div>`;
+  }
+  // メモがあれば見せる
+  const dm=getDateMemo(iso), dlm=getDialMemo(r.dn);
+  if(dm) html+=`<div class="rcd-note">📝 ${escapeHtml(dm)}</div>`;
+  if(getDateImgs(iso).length) html+=`<div class="mimg-view rcd-imgs">${getDateImgs(iso).map((s,i)=>`<img src="${s}" onclick="openImgViewerSrc('${iso}','date',${i})">`).join('')}</div>`;
+  if(dlm) html+=`<div class="rcd-note">🔖 ${r.dn}番: ${escapeHtml(dlm)}</div>`;
+  if(getDialImgs(r.dn).length) html+=`<div class="mimg-view rcd-imgs">${getDialImgs(r.dn).map((s,i)=>`<img src="${s}" onclick="openImgViewerSrc('${r.dn}','dial',${i})">`).join('')}</div>`;
+
+  html+='<button class="rcd-close" onclick="closeRcDetail()">閉じる</button>';
+  document.getElementById('rcDetailBox').innerHTML=html;
+  document.getElementById('rcDetail').classList.add('active');
+}
+function closeRcDetail(){
+  document.getElementById('rcDetail').classList.remove('active');
+}
+
+/* ==== 期間・クイック検索 ==== */
+function buildAndRender(dial,from,to){
+  const rows=[];
+  let cur=new Date(from);
+  while(cur<=to){
+    const dn=calcDial(cur,dial);
+    const dt=dayType(cur);
+    const hol=isHol(cur);
+    const obon=isObon(cur);
+    const rec=DB[dn];
+    rows.push({iso:toISO(cur),m:cur.getMonth()+1,d:cur.getDate(),dw:DW[cur.getDay()],dt,hol,obon,dn,rec,slot:rec?rec[dt]:null});
+    cur.setDate(cur.getDate()+1);
+  }
+  render(rows);
+}
+function quickSearch(type){
+  const dial=parseInt(document.getElementById('todayInput').value);
+  if(!dial||dial<1||dial>{{MAX}}){showToast('今日のダイヤ番号を入力してください');return;}
+  feedbackQuick(); // クイック検索用のフィードバック
+  const t=new Date();t.setHours(0,0,0,0);
+  let from,to;
+  if(type==='today'){from=to=t;}
+  else if(type==='week1'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+6);}   // 今日から7日間
+  else if(type==='tomorrow'){from=new Date(t);from.setDate(t.getDate()+1);to=new Date(from);}  // 明日1日だけ
+  else if(type==='week2'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+13);}  // 今日から14日間
+  else if(type==='month1'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+29);}  // 今日から30日間(1ヶ月)
+  document.getElementById('dateFrom').value=toISO(from);
+  document.getElementById('dateTo').value=toISO(to);
+  _selStart=toISO(from); _selEnd=toISO(to); // カレンダー側にも反映
+  _lastPeriodDays=Math.max(Math.round((to-from)/86400000)+1,1);   // 続けて検索はこの幅ずつ伸ばす
+  updateRangeLabel();
+  buildAndRender(dial,from,to);
+  autoScrollResults();   // 結果の一番下(ボタン)まで自動で流す
+}
+
+/* 続けて検索で伸ばす幅(日数) */
+let _lastPeriodDays=null;
+/* 表示中の期間を、同じ幅だけ後ろに伸ばして検索し直す */
+function continueSearch(){
+  const dial=parseInt(document.getElementById('todayInput').value);
+  if(!dial||dial<1||dial>{{MAX}}){showToast('今日のダイヤ番号を入力してください');return;}
+  const s=document.getElementById('dateFrom').value, e=document.getElementById('dateTo').value;
+  if(!s||!e){showToast('先に検索してください');return;}
+  const sd=new Date(s+'T00:00:00'), ed=new Date(e+'T00:00:00');
+  const span=Math.round((ed-sd)/86400000)+1;
+  const unit=_lastPeriodDays||span;              // 最初に検索した幅を引き継ぐ
+  const ne=new Date(ed); ne.setDate(ed.getDate()+unit);
+  document.getElementById('dateTo').value=toISO(ne);
+  _selEnd=toISO(ne); _lastPeriodDays=unit;
+  updateRangeLabel();
+  buildAndRender(dial,sd,ne);
+  autoScrollResults();
+  showToast('📅 '+unit+'日分を追加しました');
+}
+
+/* ==== コピー機能 ==== */
+function copyResults(){
+  const rows=window._lastRows;
+  if(!rows||!rows.length){showToast('先に検索してください');return;}
+  const lines=rows.map(r=>{
+    const d=`${r.m}/${r.d}(${r.dw})`;
+    const allKyu=!r.rec||(r.rec&&r.slot===null);
+    if(allKyu)return `${d} ${r.dn}番 公休`;
+    const t=r.slot;
+    if(!t||t.o==='—')return `${d} ${r.dn}番 要確認`;
+    return `${d} ${r.dn}番 ${t.o} 労${t.w}h`;
+  });
+  const text=lines.join('\n');
+  navigator.clipboard.writeText(text).then(()=>{showToast('📋 コピーしました！');}).catch(()=>{
+    const ta=document.createElement('textarea');
+    ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('📋 コピーしました！');
+  });
+}
+
+/* ==== トースト通知 ==== */
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>{t.classList.remove('show');},2500);
+}
+
+/* ==== ダーク/ライトモード切替 ==== */
+function toggleMode(){document.body.classList.toggle('light');}
+
+/* ==== アプリ共有: ページ遷移せずその場で共有シートを呼び出す ==== */
+async function shareApp(){
+  const shareUrl='https://silvaoo.github.io/{{REPO}}/';
+  const shareText='{{ABBR}}(出退勤検索くん) {{DIA_NAME}}';
+  if(navigator.share){
+    try{ await navigator.share({title:shareText,text:shareText,url:shareUrl}); }catch(e){}
+  }else{
+    try{
+      await navigator.clipboard.writeText(shareUrl);
+      showToast('📋 リンクをコピーしました');
+    }catch(e){ showToast(shareUrl); }
+  }
+}
+
+/* ==== 更新のお知らせ（端末の通知） ====
+   画面上の帯は、アプリを開いていないと気づけない。
+   そこで「開いた時に新しい版だったら端末の通知でも知らせる」仕組みを足してある。
+   受け取るかどうかは各自がボタンで切り替える。 */
+const NOTIFY_KEY   = '{{ID}}-notify-enabled';
+const NOTIFIED_KEY = '{{ID}}-last-notified';
+/* お知らせの識別子は版番号から自動で作る。
+   版を上げれば自動で新しいお知らせになるので、手で書き換える必要はない。 */
+const RELEASE = {
+  id: '{{ID}}-' + APP_VERSION,
+  notify: true,              // 細かい修正だけの時は false にすれば通知は出ない
+  message: '更新しました！詳しくは更新履歴をご覧下さい。'
+};
+function isNotifyOn(){ try{ return localStorage.getItem(NOTIFY_KEY)==='on'; }catch(e){ return false; } }
+function updateNotifyUI(){
+  const b=document.getElementById('notifyBtn');
+  if(!b)return;
+  const on=isNotifyOn();
+  b.textContent = on ? '🔔 更新のお知らせ：オン' : '🔕 更新のお知らせ：オフ';
+  b.classList.toggle('on',on);
+}
+function toggleNotify(){
+  if(isNotifyOn()){
+    try{ localStorage.setItem(NOTIFY_KEY,'off'); }catch(e){}
+    updateNotifyUI(); showToast('🔕 更新のお知らせをオフにしました'); return;
+  }
+  if(!('Notification' in window)){ showToast('この端末は通知に対応していません'); return; }
+  Notification.requestPermission().then(function(p){
+    if(p==='granted'){
+      try{ localStorage.setItem(NOTIFY_KEY,'on'); }catch(e){}
+      updateNotifyUI(); showToast('🔔 更新のお知らせをオンにしました');
+    }else{
+      showToast('通知が許可されていません。端末の設定から許可してください');
+    }
+  }).catch(function(){ showToast('通知の設定に失敗しました'); });
+}
+async function announceRelease(){
+  if(!RELEASE.notify)return;
+  if(!isNotifyOn())return;
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  let seen=null;
+  try{ seen=localStorage.getItem(NOTIFIED_KEY); }catch(e){ return; }
+  // 初めて使う人に「更新しました」と出さないようにする
+  if(seen===null){ try{ localStorage.setItem(NOTIFIED_KEY,RELEASE.id); }catch(e){} return; }
+  if(seen===RELEASE.id)return;   // 同じお知らせは一度だけ
+  try{
+    const reg=await navigator.serviceWorker.getRegistration();
+    // スマホのChromeでは new Notification() が使えないため、Service Worker経由で出す
+    if(reg&&reg.showNotification){
+      await reg.showNotification('出退勤検索くん ({{DIA_NAME}})',{
+        body:RELEASE.message, icon:'icons/icon-192.png',
+        badge:'icons/icon-192.png', tag:'app-update'
+      });
+      try{ localStorage.setItem(NOTIFIED_KEY,RELEASE.id); }catch(e){}
+    }
+  }catch(e){ console.warn('通知の表示に失敗',e); }
+}
+
+/* ==== 更新履歴 ====
+   履歴は logs.html に分けてある。masterを触らずにアプリごとへ追記できる。
+   ファイルが無いときは、その旨だけ出して黙って閉じる。 */
+function loadChangeLog(){
+  const box=document.getElementById('paneLog');
+  if(!box || box._loaded) return;
+  box._loaded=true;
+  fetch('logs.html',{cache:'no-cache'}).then(function(r){
+    if(!r.ok) throw new Error('なし');
+    return r.text();
+  }).then(function(html){
+    box.innerHTML=html;
+  }).catch(function(){
+    box.innerHTML='<div class="log-loading">更新履歴はまだありません。</div>';
+  });
+}
+
+/* ==== 出退勤表の画像とPDF ====
+   画像は images/genpage-1.jpg から順に。枚数は {{PAGES}} 枚（アプリごとに違う）。
+   PDFは pdf/ に固定名で置く決まり。実際に有る時だけボタンを出すので、
+   ダイヤ改正のときは同じ名前で上書きするだけでよい。 */
+const SRC_PAGES = {{PAGES}};
+function buildSourceImages(){
+  const box=document.getElementById('srcScroll');
+  if(!box || box._built) return;
+  box._built=true;
+  let html='';
+  for(let i=1;i<=SRC_PAGES;i++){
+    html += '<img class="src-page" id="srcImg'+i+'" src="images/genpage-'+i+'.jpg"'
+          + ' alt="{{DIA_FULL}}ダイヤ 出退勤表 '+i+'枚目">';
+  }
+  box.innerHTML=html;
+  // 1枚目だけは従来どおり srcImg でも掴めるようにしておく
+  const first=document.getElementById('srcImg1');
+  if(first) first.id='srcImg';
+}
+/* PDFが実在するか確かめて、有る時だけボタンを見せる */
+function showPdfIfExists(id, url){
+  fetch(url,{method:'HEAD'}).then(function(r){
+    if(r.ok){ const el=document.getElementById(id); if(el) el.style.display='block'; }
+  }).catch(function(){});
+}
+function initSourceView(){
+  buildSourceImages();
+  showPdfIfExists('pdfShift','pdf/shift-table.pdf');
+  showPdfIfExists('pdfKeitou','pdf/kinmu-keitou.pdf');
+}
+
+/* ==== 花火アニメーション（公休の日があったときのお楽しみ） ==== */
+const fwc=document.getElementById('fw');
+const fwx=fwc.getContext('2d');
+let particles=[];
+window.addEventListener('resize',()=>{fwc.width=window.innerWidth;fwc.height=window.innerHeight;});
+
+/* 花火を1発打ち上げる（ダイヤ番号入力時に使用） */
+function launchFireworks(){
+  fwc.width=window.innerWidth;fwc.height=window.innerHeight;
+  particles=[];
+  burst();
+  requestAnimationFrame(drawFw);
+}
+/* 複数の花火を連続で打ち上げる（公休判定時などに使用） */
+function launchMultipleFireworks(count){
+  fwc.width=window.innerWidth;fwc.height=window.innerHeight;
+  particles=[];
+  for(let i=0;i<count;i++)setTimeout(burst,i*300);
+  requestAnimationFrame(drawFw);
+}
+function burst(){
+  const x=Math.random()*fwc.width,y=Math.random()*fwc.height*0.5;
+  const cols=['#ff0080','#00f5ff','#ffe600','#00ff88','#bf00ff','#ff8c00'];
+  const c=cols[Math.floor(Math.random()*cols.length)];
+  for(let i=0;i<45;i++){
+    const a=(Math.PI*2/45)*i,sp=2+Math.random()*4;
+    particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,c,life:75});
+  }
+}
+/* ロケット花火風の音：ぴゅーーーん（打ち上げ）→ドカン（爆発） */
+/* 軽快な「ひゅーーーん」音：高音から始まり、だんだん小さくなりながら減衰していく */
+function rocketFirework(){
+  try{
+    const ctx=getAudioCtx();
+    if(!ctx)return;
+    const now=ctx.currentTime;
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.type='sine';
+    osc.frequency.setValueAtTime(1400,now);
+    osc.frequency.exponentialRampToValueAtTime(500,now+0.9);
+    gain.gain.setValueAtTime(0.18,now);
+    gain.gain.exponentialRampToValueAtTime(0.001,now+0.9);
+    osc.start(now);osc.stop(now+0.9);
+  }catch(e){console.log('効果音エラー:',e);}
+}
+function drawFw(){
+  fwx.clearRect(0,0,fwc.width,fwc.height);
+  particles=particles.filter(p=>p.life>0);
+  particles.forEach(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.06;p.life--;
+    fwx.globalAlpha=p.life/75;fwx.fillStyle=p.c;
+    fwx.beginPath();fwx.arc(p.x,p.y,3,0,Math.PI*2);fwx.fill();
+  });
+  fwx.globalAlpha=1;
+  if(particles.length>0)requestAnimationFrame(drawFw);
+  else fwx.clearRect(0,0,fwc.width,fwc.height);
+}
+
+/* ==== 初期化 ==== */
+/* 元データ画像モーダルの開閉 */
+function openSourceModal(){
+  initSourceView();   // 画像を並べ、PDFが有ればボタンを出す
+  document.getElementById('sourceModal').classList.add('active');
+  const sc = document.getElementById('srcScroll');
+  if(sc){ sc.scrollTop = 0; sc.scrollLeft = 0; }   // 開くたび先頭から
+}
+function closeSourceModal(){
+  document.getElementById('sourceModal').classList.remove('active');
+}
+
+window.onload=async function(){
+  await loadDiaData();   // 先にダイヤのデータを読み込む
+  initSW(); // オフライン対応を開始
+  renderPushBox();      // フッターの通知ボタンを表示
+  updateNotifyUI();     // 更新のお知らせボタンの状態を戻す
+  announceRelease();    // 新しい版なら端末の通知でも知らせる
+  renderAppInfo();      // 版と端末の様子をフッターに出す
+  renderPushBar();      // 通知を受け取っていない人にだけ、上に帯を出す
+  cleanupStaleWorkers();// 使われなくなった古い登録を片付ける
+  resyncPushToken();    // 宛先が変わっていたら預け直す
+  updateClock(); setInterval(updateClock,1000); // 時計を開始
+  // 注意: このツールは同僚とも共有するため、特定の個人のダイヤ番号を
+  // 「値」として自動入力してはいけない。あくまで「プレースホルダー(薄いヒント)」
+  // として見せるだけにし、実際の値は各自が必ず自分で入力する形にする。
+  const autoDialNum=((BASE_DIAL-1+Math.floor((new Date()-BASE_DATE)/86400000))%{{MAX}}+{{MAX}})%{{MAX}}+1;
+  document.getElementById('todayInput').placeholder=autoDialNum;
+  restoreMyDial();   // 前に入れた番号があれば、今日の番号に進めて自動で入れる
+  document.getElementById('todayInput').addEventListener('input',()=>{ updateTodayPreview(); saveMyDial(); });
+  updateTodayPreview(); // 未入力状態のヒント表示（グレー）
+  const t=new Date();t.setHours(0,0,0,0);
+  // カレンダーの初期値は「今日」
+  _selStart=toISO(t); _selEnd=toISO(t);
+  document.getElementById('dateFrom').value=_selStart;
+  document.getElementById('dateTo').value=_selEnd;
+  updateRangeLabel();
+};
+</script>
+
+<script>
+/* 起動スプラッシュ：短時間表示してフェードアウト（タップでも消える） */
+function hideLaunchSplash(){var s=document.getElementById('launch-splash');if(!s||s.classList.contains('hide'))return;s.classList.add('hide');setTimeout(function(){s.style.display='none';},450);}
+(function(){window.addEventListener('load',function(){setTimeout(hideLaunchSplash,1000);loadNews();});setTimeout(hideLaunchSplash,3000);})();
+</script>
+<script>
+/* 引っ張って更新：iPhoneのホーム画面アプリ(PWA)でも指を下に引くとリロード。
+   モーダル表示中・スプラッシュ中・最上部でない時は発火しない。 */
+(function(){
+  var TH=70, el, txt, startY=0, pulling=false, refreshing=false, armed=false;
+  function scTop(){ return window.pageYOffset || (document.scrollingElement||document.documentElement).scrollTop || 0; }
+  function atTop(){ return scTop()<=0; }
+  function modalOpen(){ return document.body.style.overflow==='hidden'; }
+  function splashOn(){ var s=document.getElementById('launch-splash'); return !!(s && s.style.display!=='none' && !s.classList.contains('hide')); }
+  function setY(y,anim){ el.style.transition = anim?'transform .25s ease':'none'; el.style.transform='translate(-50%,'+y+'px)'; }
+  function onStart(e){
+    if(refreshing||!atTop()||modalOpen()||splashOn()){ pulling=false; return; }
+    startY=e.touches[0].clientY; pulling=true; armed=false;
+  }
+  function onMove(e){
+    if(!pulling||refreshing) return;
+    var dy=e.touches[0].clientY-startY;
+    if(dy<=0||!atTop()){ if(dy<=0){ pulling=false; setY(-70,true);} return; }
+    e.preventDefault();                 // ネイティブのバウンドを抑え指に追従
+    var dist=Math.min(dy*0.5,90);
+    setY(dist-70,false);
+    armed = dy>=TH;
+    txt.textContent = armed ? '離して更新' : '引っ張って更新';
+  }
+  function onEnd(){
+    if(!pulling||refreshing){ pulling=false; return; }
+    pulling=false;
+    if(armed) doRefresh(); else setY(-70,true);
+  }
+  function doRefresh(){
+    refreshing=true; armed=false; txt.textContent='更新中…'; el.classList.add('spin'); setY(14,true);
+    var go=function(){ try{location.reload();}catch(e){} };
+    try{
+      if(navigator.serviceWorker && navigator.serviceWorker.getRegistration){
+        navigator.serviceWorker.getRegistration().then(function(reg){
+          if(reg&&reg.update){ try{reg.update();}catch(e){} }
+          setTimeout(go,500);
+        }).catch(function(){ setTimeout(go,500); });
+      } else setTimeout(go,400);
+    }catch(e){ go(); }
+  }
+  function init(){
+    el=document.getElementById('ptr-indicator'); if(!el) return; txt=el.querySelector('.ptr-text');
+    document.addEventListener('touchstart',onStart,{passive:true});
+    document.addEventListener('touchmove',onMove,{passive:false});
+    document.addEventListener('touchend',onEnd,{passive:true});
+    document.addEventListener('touchcancel',onEnd,{passive:true});
+  }
+  if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+<!-- プッシュ通知用のFirebase読み込み(CDN。npmは不要) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+</body>
+</html>
