@@ -2382,7 +2382,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.35';
+const APP_LABEL = 'バージョン 2.36';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3177,6 +3177,17 @@ function render(rows){
 /* ==== 検索時の音・バイブのフィードバック ====
    クイック検索と期間検索を区別できるよう、それぞれ異なるパターンにしている */
 let _audioCtx=null;
+/* 「引っ張って更新」で音を鳴らしてからリロードした直後は、
+   読み込み時の音を1回だけ飛ばす（Androidで二重に鳴るのを防ぐため）。
+   3秒以内の最初の1回だけが対象。番号が入っていなくて鳴らなかった場合は、
+   3秒たてば自然に無効になるので、次の操作音が消えることはない。 */
+let _skipRocketAt=0;
+try{
+  if(sessionStorage.getItem('ptr-sound')==='1'){
+    _skipRocketAt=Date.now();
+    sessionStorage.removeItem('ptr-sound');
+  }
+}catch(e){}
 function getAudioCtx(){
   try{
     if(!_audioCtx)_audioCtx=new (window.AudioContext||window.webkitAudioContext)();
@@ -3833,7 +3844,12 @@ function burst(){
 }
 /* ロケット花火風の音：ぴゅーーーん（打ち上げ）→ドカン（爆発） */
 /* 軽快な「ひゅーーーん」音：高音から始まり、だんだん小さくなりながら減衰していく */
-function rocketFirework(){
+function rocketFirework(sec){
+  // 「引っ張って更新」で既に鳴らした直後なら、1回だけ見送る
+  if(_skipRocketAt && Date.now()-_skipRocketAt < 3000){ _skipRocketAt=0; return; }
+  // 長さ(秒)。指定しなければ従来通り0.9秒。
+  // 引っ張って更新のときだけ、すぐリロードするので短く鳴らす。
+  const DUR = sec || 0.9;
   try{
     const ctx=getAudioCtx();
     if(!ctx)return;
@@ -3843,10 +3859,10 @@ function rocketFirework(){
     osc.connect(gain);gain.connect(ctx.destination);
     osc.type='sine';
     osc.frequency.setValueAtTime(1400,now);
-    osc.frequency.exponentialRampToValueAtTime(500,now+0.9);
+    osc.frequency.exponentialRampToValueAtTime(500,now+DUR);
     gain.gain.setValueAtTime(0.18,now);
-    gain.gain.exponentialRampToValueAtTime(0.001,now+0.9);
-    osc.start(now);osc.stop(now+0.9);
+    gain.gain.exponentialRampToValueAtTime(0.001,now+DUR);
+    osc.start(now);osc.stop(now+DUR);
   }catch(e){console.log('効果音エラー:',e);}
 }
 function drawFw(){
@@ -3938,14 +3954,23 @@ function hideLaunchSplash(){var s=document.getElementById('launch-splash');if(!s
   }
   function doRefresh(){
     refreshing=true; armed=false; txt.textContent='更新中…'; el.classList.add('spin'); setY(14,true);
+
+    /* ここは指を離した瞬間（touchend）から直接呼ばれている。
+       iPhoneは「指の操作から直接呼ばれた音」しか鳴らせないため、
+       リロードしてから鳴らすのでは間に合わない。この場所で先に鳴らす。 */
+    try{ rocketFirework(0.45); }catch(e){}
+    try{ sessionStorage.setItem('ptr-sound','1'); }catch(e){}   // 読み込み後の二重再生を防ぐ印
+
+    // 音を0.45秒にしてあるので、待ち時間は従来通り0.5秒のままでよい
+    var WAIT=500;
     var go=function(){ try{location.reload();}catch(e){} };
     try{
       if(navigator.serviceWorker && navigator.serviceWorker.getRegistration){
         navigator.serviceWorker.getRegistration().then(function(reg){
           if(reg&&reg.update){ try{reg.update();}catch(e){} }
-          setTimeout(go,500);
-        }).catch(function(){ setTimeout(go,500); });
-      } else setTimeout(go,400);
+          setTimeout(go,WAIT);
+        }).catch(function(){ setTimeout(go,WAIT); });
+      } else setTimeout(go,WAIT);
     }catch(e){ go(); }
   }
   function init(){

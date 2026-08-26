@@ -19,7 +19,10 @@
 import io, json, re, sys, os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-WORK = "/home/claude/work"        # cloneしたリポジトリの置き場
+# 5つのリポジトリが並んでいる場所。
+# このファイルは <どこか>/shukkin-search/master/build.py にあるので、
+# 2つ上へ戻れば <どこか>/ = 各リポジトリが並ぶ場所になる。
+WORK = os.path.abspath(os.path.join(HERE, "..", ".."))
 
 # 生成するファイル（雛形 → 出来上がりの名前）
 TEMPLATES = [
