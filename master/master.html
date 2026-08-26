@@ -2415,7 +2415,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.40';
+const APP_LABEL = 'バージョン 2.41';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3269,9 +3269,19 @@ function spaceBeep(){
    短い雑音を鋭く減衰させると、板が1枚めくれる打撃音になる。
    それを一定の間隔で並べて、めくれ続ける音にしている。
    値は実機で聴き比べて決めたもの：枚数22 ／ 間隔79ms ／ 高さ0.95（全体で約1.74秒） */
-const FLAP_COUNT = 22;
 const FLAP_GAP   = 79;    // 1枚あたりの間隔(ミリ秒)
 const FLAP_PITCH = 0.95;  // 高いほど板が薄く、低いほど厚く聞こえる
+/* めくる枚数。検索する日数が長いほど長く鳴らす。 */
+const FLAP_SHORT = 8;     // 明日     約0.69秒
+const FLAP_MID   = 22;    // 1週間    約1.71秒
+const FLAP_LONG  = 30;    // 1ヶ月    約2.34秒
+/* 日数から枚数を決める。「続けて検索」も追加する日数で同じ判定をするので、
+   1週間ずつ足していけば毎回1週間のときと同じ長さで鳴る。 */
+function flapCountForDays(days){
+  if(days<=1) return FLAP_SHORT;
+  if(days<=7) return FLAP_MID;
+  return FLAP_LONG;
+}
 
 let _flapBuf=null, _flapBufCtx=null;
 /* 打撃音のもとになる雑音。1回作れば使い回せる。 */
@@ -3298,19 +3308,21 @@ function flapOnce(ctx,at,pitch){
   src.connect(bp);bp.connect(g);g.connect(ctx.destination);
   src.start(at);
 }
-function katakataSound(){
+function katakataSound(count){
   try{
     const ctx=getAudioCtx();
     if(!ctx)return;
+    const n=count||FLAP_MID;
     const now=ctx.currentTime;
-    for(let i=0;i<FLAP_COUNT;i++) flapOnce(ctx, now+i*FLAP_GAP/1000, FLAP_PITCH);
+    for(let i=0;i<n;i++) flapOnce(ctx, now+i*FLAP_GAP/1000, FLAP_PITCH);
   }catch(e){console.log('効果音エラー:',e);}
 }
 
-/* クイック検索用：花火＋カタカタ音＋短いバイブ1回 */
-function feedbackQuick(){
+/* クイック検索・続けて検索用：花火＋カタカタ音＋短いバイブ1回
+   days は検索する日数。これで音の長さが決まる。 */
+function feedbackQuick(days){
   launchFireworks();   // 統一のときに落ちていたので戻した（2026-08-26）
-  katakataSound();     // 「ひゅーーん」から差し替え（2026-08-26）
+  katakataSound(flapCountForDays(days||7));
   if(navigator.vibrate)navigator.vibrate(40);
 }
 
@@ -3704,7 +3716,6 @@ function buildAndRender(dial,from,to){
 function quickSearch(type){
   const dial=parseInt(document.getElementById('todayInput').value);
   if(!dial||dial<1||dial>{{MAX}}){showToast('今日のダイヤ番号を入力してください');return;}
-  feedbackQuick(); // クイック検索用のフィードバック
   const t=new Date();t.setHours(0,0,0,0);
   let from,to;
   if(type==='today'){from=to=t;}
@@ -3716,6 +3727,7 @@ function quickSearch(type){
   document.getElementById('dateTo').value=toISO(to);
   _selStart=toISO(from); _selEnd=toISO(to); // カレンダー側にも反映
   _lastPeriodDays=Math.max(Math.round((to-from)/86400000)+1,1);   // 続けて検索はこの幅ずつ伸ばす
+  feedbackQuick(_lastPeriodDays); // 検索する日数に合わせた長さで鳴らす
   updateRangeLabel();
   buildAndRender(dial,from,to);
   autoScrollResults();   // 結果の一番下(ボタン)まで自動で流す
@@ -3735,6 +3747,7 @@ function continueSearch(){
   const ne=new Date(ed); ne.setDate(ed.getDate()+unit);
   document.getElementById('dateTo').value=toISO(ne);
   _selEnd=toISO(ne); _lastPeriodDays=unit;
+  feedbackQuick(unit);   // 追加する日数に合わせた長さで鳴らす
   updateRangeLabel();
   buildAndRender(dial,sd,ne);
   autoScrollResults();
