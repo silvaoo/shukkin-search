@@ -15,14 +15,33 @@
 | `master.html` | **画面の本体。修正はここだけ。** アプリごとに違う値は `{{ }}` で書いてある |
 | `master-manifest.json` | ホーム画面への追加の設定（アイコン・名前・色）の雛形 |
 | `master-sw.js` | Service Worker（キャッシュ・更新検知）の雛形 |
-| `master-share.html` | 共有ページの雛形 |
+| `master-share.html` | 共有ページの雛形（本体へ橋渡しするだけの小さなページ） |
+| `master-qr.js` | QRコードの部品（qrcode-generator, MIT）。値の差し込みは無く、そのまま配られる |
 | `apps.json` | 5アプリの違いを書いた表（色・番号の上限・ダイヤ名など） |
 | `build.py` | 上の雛形に apps.json を差し込んで、アプリごとに4ファイルを作る |
 | `README.md` | このファイル |
 
 **アプリのリポジトリ側で直接編集してよいのは `logs.html` とデータ・画像・PDFだけです。**
-`index.html` `manifest.json` `sw.js` `share.html` の4つは生成物なので、
+`index.html` `manifest.json` `sw.js` `share.html` `qr.js` の5つは生成物なので、
 直接編集しても次の生成で消えます。
+
+### 保存キーには必ずアプリの接頭辞を付けること
+
+5アプリは同じ住所（`silvaoo.github.io`）にあります。部屋番号（`/shukkin-search/` など）が
+違っても、ブラウザは保存領域を**住所ごと**に分けるため、5アプリは同じ引き出しを共有します。
+
+```js
+localStorage.setItem('{{ID}}-my-dial', v);   // 正しい
+localStorage.setItem('my-dial', v);          // 5アプリで混ざる
+```
+
+`localStorage` も `sessionStorage` も同じです。接頭辞を付け忘れると、
+**別のアプリが書いた値をこのアプリが読んでしまい、原因の分かりにくい不具合になります。**
+
+実例：2026-08-26、「引っ張って更新」の音を1回見送る印を `'ptr-sound'` という
+接頭辞なしのキーで置いたところ、生駒で立てた印を学園前Aが食べてしまい、
+「アプリによって鳴ったり鳴らなかったり」する症状が出ました。
+Android通知が不安定なのも、根っこは同じ「住所の共有」です。
 
 ---
 

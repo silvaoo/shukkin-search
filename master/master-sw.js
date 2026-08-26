@@ -18,7 +18,8 @@ const CACHE_FILES = [
     './dia-{{ID}}.json',        // ダイヤのデータ。圏外でも使えるよう控えておく
     './mascot.png',
     './icons/icon-192.png',
-    './manifest.json'
+    './manifest.json',
+    './qr.js'           // QRコードの部品。圏外でも共有画面が出せるように
 ];
 
 // インストール時: 主要ファイルをキャッシュに保存

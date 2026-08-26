@@ -746,6 +746,28 @@ input[type="date"] {
   white-space: pre-wrap; word-break: break-word;
 }
 .memo-line.memo-dial-line { border-left-color: var(--orange); }
+/* ==== iPhone用の共有画面 ==== */
+.share-sheet{ display:none; position:fixed; inset:0; z-index:9000;
+  background:rgba(0,0,0,.6); align-items:flex-end; justify-content:center; }
+.share-sheet.active{ display:flex; }
+.share-card{ width:100%; max-width:480px; background:#0a0e27;
+  border:1px solid rgba(0,245,255,0.2); border-bottom:none;
+  border-radius:18px 18px 0 0; padding:18px 16px calc(18px + env(safe-area-inset-bottom));
+  box-shadow:0 -6px 24px rgba(0,0,0,.45); }
+.share-title{ text-align:center; font-size:15px; font-weight:bold;
+  color:#dde0ff; margin-bottom:14px; }
+.share-opt{ width:100%; padding:15px; margin-bottom:10px; border:none; border-radius:12px;
+  font-size:16px; font-weight:bold; cursor:pointer; }
+.share-line{ background:#06C755; color:#fff; }            /* LINEの緑 */
+.share-qr{ background:linear-gradient(135deg,#ff8c00,#ff6a00); color:#fff; }
+.share-copy{ background:#4a4a55; color:#fff; }
+.share-qr-box{ display:none; text-align:center; padding:14px 0 4px; }
+.share-qr-box.show{ display:block; }
+.share-qr-box svg{ width:min(60vw,240px); height:auto; background:#fff;
+  padding:10px; border-radius:10px; }
+.share-qr-cap{ font-size:12px; color:#dde0ff; margin-top:8px; }
+.share-close{ width:100%; padding:13px; margin-top:4px; border:none; border-radius:12px;
+  background:transparent; color:#dde0ff; font-size:15px; cursor:pointer; }
 .memo-btn {
   width: 100%; padding: 8px; font-size: 12px; font-weight: 700;
   background: transparent; color: var(--dim);
@@ -1023,6 +1045,17 @@ a.source-link:visited {
 
 <div class="header">
   <a href="#" class="share-btn" onclick="shareApp(); return false;" aria-label="アプリを共有">📤</a>
+<!-- iPhone用の共有画面。iPhoneの共有シートにはLINEが出ないため、こちらを使う -->
+<div id="shareSheet" class="share-sheet" onclick="if(event.target===this)closeShareSheet()">
+  <div class="share-card">
+    <div class="share-title">アプリを共有</div>
+    <button class="share-opt share-line" onclick="shareViaLine()">💬 LINEで送る</button>
+    <button class="share-opt share-qr" onclick="toggleShareQr()">⬛ QRコードを表示</button>
+    <button class="share-opt share-copy" onclick="shareCopyLink()">🔗 リンクをコピー</button>
+    <div id="shareQrBox" class="share-qr-box"></div>
+    <button class="share-close" onclick="closeShareSheet()">閉じる</button>
+  </div>
+</div>
   <h1><img class="mascot-icon" src="mascot.png" alt="出退勤検索くん">出退勤検索くん</h1>
   <p>2026年3月14日改正 ／ 1〜92番</p>
   <button class="mode-btn" onclick="toggleMode()">🌙/☀️</button>
@@ -2160,7 +2193,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v115';
+const APP_VERSION   = 'v116';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -2382,7 +2415,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.37';
+const APP_LABEL = 'バージョン 2.38';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3697,17 +3730,83 @@ function showToast(msg){
 /* ==== ダーク/ライトモード切替 ==== */
 function toggleMode(){document.body.classList.toggle('light');}
 
-/* ==== アプリ共有: ページ遷移せずその場で共有シートを呼び出す ==== */
+/* ==== アプリ共有 ====
+   Androidの共有シートにはLINEが並ぶのでそのまま使う。
+   iPhoneの共有シートにはLINEが出ないため、iPhoneのときだけ自前の画面を出す。 */
+const SHARE_URL  = 'https://silvaoo.github.io/shukkin-search/';
+const SHARE_TEXT = '学A(出退勤検索くん) 北大和・学園前 Aダイヤ';
+
+/* iPhone・iPadの判定。iPadOSはMacintoshを名乗るのでタッチの有無も見る。 */
+function isIOS(){
+  const ua = navigator.userAgent || '';
+  if(/iPhone|iPad|iPod/.test(ua)) return true;
+  return /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+}
+
 async function shareApp(){
-  const shareUrl='https://silvaoo.github.io/shukkin-search/';
-  const shareText='学A(出退勤検索くん) 北大和・学園前 Aダイヤ';
+  if(isIOS()){ openShareSheet(); return; }
   if(navigator.share){
-    try{ await navigator.share({title:shareText,text:shareText,url:shareUrl}); }catch(e){}
+    try{ await navigator.share({title:SHARE_TEXT,text:SHARE_TEXT,url:SHARE_URL}); }catch(e){}
   }else{
-    try{
-      await navigator.clipboard.writeText(shareUrl);
-      showToast('📋 リンクをコピーしました');
-    }catch(e){ showToast(shareUrl); }
+    shareCopyLink();
+  }
+}
+
+function openShareSheet(){
+  const box=document.getElementById('shareQrBox');
+  if(box){ box.classList.remove('show'); box.innerHTML=''; }  // QRは毎回たたんだ状態から
+  document.getElementById('shareSheet').classList.add('active');
+}
+function closeShareSheet(){
+  document.getElementById('shareSheet').classList.remove('active');
+}
+
+/* LINEを直接開く。文面とリンクが入った状態で立ち上がる。 */
+function shareViaLine(){
+  const msg = encodeURIComponent(SHARE_TEXT + '\n' + SHARE_URL);
+  location.href = 'https://line.me/R/msg/text/?' + msg;
+}
+
+function shareCopyLink(){
+  navigator.clipboard.writeText(SHARE_URL).then(function(){
+    showToast('📋 リンクをコピーしました');
+  }).catch(function(){ showToast(SHARE_URL); });
+}
+
+/* QRコードの表示。部品(qr.js)は押された時に初めて読み込む。
+   最初の1回だけ通信するが、Service Workerが控えているので次からは圏外でも出る。 */
+let _qrLoading=false;
+function toggleShareQr(){
+  const box=document.getElementById('shareQrBox');
+  if(!box) return;
+  if(box.classList.contains('show')){ box.classList.remove('show'); return; }
+  box.classList.add('show');
+  if(box.dataset.done==='1') return;
+  if(typeof qrcode==='function'){ drawShareQr(); return; }
+  if(_qrLoading) return;
+  _qrLoading=true;
+  box.innerHTML='<div class="share-qr-cap">QRコードを作っています…</div>';
+  const s=document.createElement('script');
+  s.src='./qr.js';
+  s.onload=function(){ _qrLoading=false; drawShareQr(); };
+  s.onerror=function(){
+    _qrLoading=false;
+    box.innerHTML='<div class="share-qr-cap">QRコードを作れませんでした。'
+                + '一度オンラインで開いてから、もう一度お試しください</div>';
+  };
+  document.head.appendChild(s);
+}
+function drawShareQr(){
+  const box=document.getElementById('shareQrBox');
+  try{
+    const q=qrcode(0,'M');        // 0=文字数に合わせて自動、M=標準の誤り訂正
+    q.addData(SHARE_URL);
+    q.make();
+    box.innerHTML = q.createSvgTag({cellSize:6,margin:0,scalable:true})
+                  + '<div class="share-qr-cap">同僚に読み取ってもらってください</div>';
+    box.dataset.done='1';
+  }catch(e){
+    box.innerHTML='<div class="share-qr-cap">QRコードを作れませんでした</div>';
   }
 }
 
@@ -3914,6 +4013,13 @@ window.onload=async function(){
   document.getElementById('todayInput').addEventListener('input',()=>{ updateTodayPreview(); saveMyDial(); });
   updateTodayPreview(); // 未入力状態のヒント表示（グレー）
   _skipNextRocket=false; // 見送りは起動時の1回まで。ここで必ず解除する
+  // ホーム画面アイコンの長押し→「共有」から来たときは、共有画面を開く
+  try{
+    if(location.search.indexOf('share=1')>=0){
+      setTimeout(function(){ shareApp(); }, 400);
+      history.replaceState(null,'',location.pathname);  // 印はURLから消しておく
+    }
+  }catch(e){}
   const t=new Date();t.setHours(0,0,0,0);
   // カレンダーの初期値は「今日」
   _selStart=toISO(t); _selEnd=toISO(t);
