@@ -2193,7 +2193,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v117';
+const APP_VERSION   = 'v118';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -2415,7 +2415,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.39';
+const APP_LABEL = 'バージョン 2.40';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3265,10 +3265,52 @@ function spaceBeep(){
     osc1.stop(now+0.5);osc2.stop(now+0.5);
   }catch(e){console.log('音声エラー:',e);}
 }
-/* クイック検索用：花火＋ロケット花火音＋短いバイブ1回 */
+/* ==== パタパタ表示器のような「カタカタ」音 ====
+   短い雑音を鋭く減衰させると、板が1枚めくれる打撃音になる。
+   それを一定の間隔で並べて、めくれ続ける音にしている。
+   値は実機で聴き比べて決めたもの：枚数22 ／ 間隔79ms ／ 高さ0.95（全体で約1.74秒） */
+const FLAP_COUNT = 22;
+const FLAP_GAP   = 79;    // 1枚あたりの間隔(ミリ秒)
+const FLAP_PITCH = 0.95;  // 高いほど板が薄く、低いほど厚く聞こえる
+
+let _flapBuf=null, _flapBufCtx=null;
+/* 打撃音のもとになる雑音。1回作れば使い回せる。 */
+function getFlapBuf(ctx){
+  if(_flapBuf && _flapBufCtx===ctx) return _flapBuf;
+  const len=Math.floor(ctx.sampleRate*0.05);
+  const buf=ctx.createBuffer(1,len,ctx.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,9);
+  _flapBuf=buf; _flapBufCtx=ctx;
+  return buf;
+}
+/* 板が1枚めくれる音を、指定した時刻に鳴らす */
+function flapOnce(ctx,at,pitch){
+  const src=ctx.createBufferSource();
+  src.buffer=getFlapBuf(ctx);
+  src.playbackRate.value=pitch;
+  const bp=ctx.createBiquadFilter();   // 板の鳴りに近づけるため中高域だけ通す
+  bp.type='bandpass';
+  bp.frequency.value=1900*pitch;
+  bp.Q.value=1.1;
+  const g=ctx.createGain();
+  g.gain.value=0.32;
+  src.connect(bp);bp.connect(g);g.connect(ctx.destination);
+  src.start(at);
+}
+function katakataSound(){
+  try{
+    const ctx=getAudioCtx();
+    if(!ctx)return;
+    const now=ctx.currentTime;
+    for(let i=0;i<FLAP_COUNT;i++) flapOnce(ctx, now+i*FLAP_GAP/1000, FLAP_PITCH);
+  }catch(e){console.log('効果音エラー:',e);}
+}
+
+/* クイック検索用：花火＋カタカタ音＋短いバイブ1回 */
 function feedbackQuick(){
   launchFireworks();   // 統一のときに落ちていたので戻した（2026-08-26）
-  rocketFirework();
+  katakataSound();     // 「ひゅーーん」から差し替え（2026-08-26）
   if(navigator.vibrate)navigator.vibrate(40);
 }
 
