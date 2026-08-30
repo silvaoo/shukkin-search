@@ -2415,16 +2415,19 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.41';
+const APP_LABEL = 'バージョン 2.42';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
   if(!box) return;
 
   const ua = navigator.userAgent;
+  /* 判定は isIOS() に寄せてある。
+     iPhone・iPadは設定や機種によって Macintosh を名乗ることがあり、
+     ここで独自に判定すると「パソコン」と出てしまう。 */
   let dev = 'パソコン';
-  if(/iPad|iPhone|iPod/.test(ua)) dev = 'iPhone';
-  else if(/Android/.test(ua))     dev = 'Android';
+  if(isIOS())                 dev = 'iPhone';
+  else if(/Android/.test(ua)) dev = 'Android';
 
   const how = isStandaloneApp() ? 'ホーム画面' : 'ブラウザ';
 
