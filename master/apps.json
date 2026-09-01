@@ -26,8 +26,8 @@
     "SOON_SHADOW": "rgba(255,140,0,0.35)",
     "THEME_COLOR": "#0a0e27",
     "MULTI": "0",
-    "QUICK2_LABEL": "1週間",
-    "QUICK2_DAYS": "7",
+    "QUICK2_LABEL": "9日後",
+    "QUICK2_DAYS": "10",
     "SW_DIA_LINE": "    './dia-a.json',        // ダイヤのデータ。圏外でも使えるよう控えておく"
   },
   "shukkin-search-c": {
@@ -57,8 +57,8 @@
     "SOON_SHADOW": "rgba(29,233,182,0.3)",
     "THEME_COLOR": "#0a2620",
     "MULTI": "0",
-    "QUICK2_LABEL": "1週間",
-    "QUICK2_DAYS": "7",
+    "QUICK2_LABEL": "9日後",
+    "QUICK2_DAYS": "10",
     "SW_DIA_LINE": "    './dia-c.json',        // ダイヤのデータ。圏外でも使えるよう控えておく"
   },
   "shukkin-search-yobi": {
@@ -88,8 +88,8 @@
     "SOON_SHADOW": "rgba(255,45,85,0.35)",
     "THEME_COLOR": "#1a0e2e",
     "MULTI": "0",
-    "QUICK2_LABEL": "1週間",
-    "QUICK2_DAYS": "7",
+    "QUICK2_LABEL": "9日後",
+    "QUICK2_DAYS": "10",
     "SW_DIA_LINE": "    './dia-yobi.json',        // ダイヤのデータ。圏外でも使えるよう控えておく"
   },
   "shukkin-search-ba": {
@@ -119,8 +119,8 @@
     "SOON_SHADOW": "rgba(255,159,67,0.35)",
     "THEME_COLOR": "#121214",
     "MULTI": "0",
-    "QUICK2_LABEL": "1週間",
-    "QUICK2_DAYS": "7",
+    "QUICK2_LABEL": "9日後",
+    "QUICK2_DAYS": "10",
     "SW_DIA_LINE": "    './dia-ba.json',        // ダイヤのデータ。圏外でも使えるよう控えておく"
   },
   "shukkin-search-ikoma": {
@@ -150,8 +150,8 @@
     "SOON_SHADOW": "rgba(255,212,59,0.35)",
     "THEME_COLOR": "#121214",
     "MULTI": "0",
-    "QUICK2_LABEL": "1週間",
-    "QUICK2_DAYS": "7",
+    "QUICK2_LABEL": "9日後",
+    "QUICK2_DAYS": "10",
     "SW_DIA_LINE": "    './dia-ikoma.json',        // ダイヤのデータ。圏外でも使えるよう控えておく"
   },
   "shukkin-search-all": {
@@ -182,7 +182,7 @@
     "THEME_COLOR": "#12121c",
     "MULTI": "1",
     "QUICK2_LABEL": "9日後",
-    "QUICK2_DAYS": "9",
+    "QUICK2_DAYS": "10",
     "SW_DIA_LINE": "    '../shukkin-search/dia-a.json',\n    '../shukkin-search-ikoma/dia-ikoma.json',\n    '../shukkin-search-ba/dia-ba.json',\n    '../shukkin-search-c/dia-c.json',\n    '../shukkin-search-yobi/dia-yobi.json',"
   }
 }

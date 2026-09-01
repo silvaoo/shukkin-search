@@ -2522,7 +2522,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.45';
+const APP_LABEL = 'バージョン 2.46';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3388,8 +3388,8 @@ const FLAP_LONG  = 30;    // 1ヶ月    約2.34秒
 /* 日数から枚数を決める。「続けて検索」も追加する日数で同じ判定をするので、
    1週間ずつ足していけば毎回1週間のときと同じ長さで鳴る。 */
 function flapCountForDays(days){
-  if(days<=1) return FLAP_SHORT;
-  if(days<=7) return FLAP_MID;
+  if(days<=1)  return FLAP_SHORT;
+  if(days<=10) return FLAP_MID;   // 真ん中のボタン(10日分)まではこの長さ
   return FLAP_LONG;
 }
 
