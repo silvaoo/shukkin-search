@@ -746,6 +746,21 @@ input[type="date"] {
   white-space: pre-wrap; word-break: break-word;
 }
 .memo-line.memo-dial-line { border-left-color: var(--orange); }
+/* 全ダイヤ版では、ダイヤ番号に紐づく機能（メモ）と、
+   1つのダイヤを前提にした通知を隠す。 */
+body.multi .only-single{ display:none !important; }
+
+/* ==== ダイヤを選ぶ（スペシャル検索くん専用） ==== */
+.dia-pick{ margin-bottom:12px; }
+.dia-pick-ttl{ font-size:12px; color:var(--dim); margin-bottom:6px; letter-spacing:.08em; }
+.dia-pick-row{ display:flex; flex-wrap:wrap; gap:6px; }
+.dia-btn{ flex:1 1 auto; min-width:88px; padding:11px 8px; border-radius:10px;
+  border:1px solid var(--border); background:var(--bg-card); color:var(--txt);
+  font-size:14px; font-weight:bold; cursor:pointer; }
+.dia-btn.on{ background:linear-gradient(135deg,#ff8c00,#ff6a00);
+  color:#fff; border-color:transparent; }
+.dia-btn.ng{ opacity:.4; }
+
 /* ==== iPhone用の共有画面 ==== */
 .share-sheet{ display:none; position:fixed; inset:0; z-index:9000;
   background:rgba(0,0,0,.6); align-items:flex-end; justify-content:center; }
@@ -1067,7 +1082,10 @@ a.source-link:visited {
 </button>
 
 <!-- ダイヤ名（独立した行・中央表示） -->
-<div class="dia-name-line"><span class="dia-name">北大和・学園前 Aダイヤ</span></div>
+<div class="dia-name-line"><span class="dia-name" id="diaNameNow">北大和・学園前 Aダイヤ</span></div>
+
+<!-- ダイヤを選ぶ（スペシャル検索くんだけ表示される） -->
+<div id="diaPick" class="dia-pick" style="display:none;"></div>
 
 <!-- 今日のダイヤ入力 -->
 <div class="today-card">
@@ -1098,7 +1116,7 @@ a.source-link:visited {
   <div class="card-title">クイック検索</div>
   <div class="quick-grid">
     <button class="qbtn" onclick="quickSearch('tomorrow')">明日</button>
-    <button class="qbtn" onclick="quickSearch('week1')">1週間</button>
+    <button class="qbtn" onclick="quickSearch('mid')">1週間</button>
     <button class="qbtn" onclick="quickSearch('month1')">1ヶ月</button>
   </div>
 </div>
@@ -1163,7 +1181,7 @@ a.source-link:visited {
       上段＝ダイヤ番号 ／ 下段＝出退勤時間<br>
       <span class="rc-legend-off">緑は公休</span>・薄い日は検索範囲外です
     </div>
-    <button class="rc-save-btn" onclick="saveCurrentCal()">⭐ メモ一覧に保存</button>
+    <button class="rc-save-btn only-single" onclick="saveCurrentCal()">⭐ メモ一覧に保存</button>
   </div>
 </div>
 
@@ -1183,9 +1201,9 @@ a.source-link:visited {
 <div class="footer">
   <div>⚠ あくまでも目安としてお使いください。</div>
   <div>出退勤時間に誤りがあっても当方は責任を負いかねます。</div>
-  <div style="margin-top:8px;"><span class="source-link" onclick="openMemoList()">📝 保存したメモの一覧</span></div>
+  <div style="margin-top:8px;" class="only-single"><span class="source-link" onclick="openMemoList()">📝 保存したメモの一覧</span></div>
   <div style="margin-top:8px;"><span class="source-link" onclick="openGuide()">📖 使い方・アプリの入れ方・更新履歴</span></div>
-  <div id="pushBox" style="margin-top:12px;"></div>
+  <div id="pushBox" class="only-single" style="margin-top:12px;"></div>
   <div style="margin-top:10px;">
     <button class="notify-btn" id="notifyBtn" onclick="toggleNotify()">🔕 更新のお知らせ：オフ</button>
   </div>
@@ -1479,10 +1497,89 @@ async function loadDiaData(){
   return Object.keys(DB).length > 0;   // 控えがあればそれで動かす
 }
 
+/* ==== ここから下は「スペシャル検索くん」(全ダイヤ対応)だけで動く ====
+   5アプリは同じ住所(silvaoo.github.io)にあるので、
+   それぞれの dia-*.json をそのまま読みに行ける。
+   データの写しは持たない。ダイヤ改正で5アプリを更新すれば、こちらも自動で最新になる。 */
+const IS_MULTI = ('0' === '1');
+const ALL_DIAS = [
+  { code:'a',     name:'学園前Ａ', url:'../shukkin-search/dia-a.json' },
+  { code:'ikoma', name:'生駒',     url:'../shukkin-search-ikoma/dia-ikoma.json' },
+  { code:'ba',    name:'北大和Ｂ', url:'../shukkin-search-ba/dia-ba.json' },
+  { code:'c',     name:'北大和Ｃ', url:'../shukkin-search-c/dia-c.json' },
+  { code:'yobi',  name:'予備',     url:'../shukkin-search-yobi/dia-yobi.json' }
+];
+const ALL_SEL_KEY = 'a-sel-dia';   // 最後に選んだダイヤ
+let ALL_DB = {};                        // code をキーに、読み込んだJSONを丸ごと持つ
+let CUR_DIA = null;                     // いま選ばれているダイヤ
+
+/* 5本まとめて読み込む。1本ずつ控えも取るので、次からは圏外でも開ける。 */
+async function loadAllDias(){
+  for(const d of ALL_DIAS){
+    const key = 'a-dia-' + d.code;
+    try{
+      const c = localStorage.getItem(key);
+      if(c) ALL_DB[d.code] = JSON.parse(c);
+    }catch(e){}
+    try{
+      const res = await fetch(d.url + '?v=' + Date.now());
+      if(res.ok){
+        const j = await res.json();
+        ALL_DB[d.code] = j;
+        try{ localStorage.setItem(key, JSON.stringify(j)); }catch(e){}
+      }
+    }catch(e){}
+  }
+  return Object.keys(ALL_DB).length > 0;
+}
+
+/* ダイヤを選ぶボタンを並べる */
+function renderDiaPicker(){
+  const box = document.getElementById('diaPick');
+  if(!box || !IS_MULTI) return;
+  box.style.display = 'block';
+  box.innerHTML = '<div class="dia-pick-ttl">ダイヤを選ぶ</div><div class="dia-pick-row">'
+    + ALL_DIAS.map(function(d){
+        const on = (CUR_DIA===d.code) ? ' on' : '';
+        const ok = ALL_DB[d.code] ? '' : ' ng';
+        return '<button class="dia-btn'+on+ok+'" onclick="selectDia(\''+d.code+'\')">'+d.name+'</button>';
+      }).join('')
+    + '</div>';
+}
+
+/* ダイヤを切り替える。番号の上限もここで入れ替わる。 */
+function selectDia(code){
+  const j = ALL_DB[code];
+  if(!j){ showToast('このダイヤのデータを読み込めていません'); return; }
+  CUR_DIA = code;
+  try{ localStorage.setItem(ALL_SEL_KEY, code); }catch(e){}
+  applyDiaData(j);
+  CUR_MAX = (j.meta && j.meta.cycle) ? j.meta.cycle : CUR_MAX;
+
+  // 入力欄の上限と案内を、選んだダイヤに合わせる
+  const inp = document.getElementById('todayInput');
+  if(inp){
+    inp.max = CUR_MAX;
+    inp.placeholder = '1〜' + CUR_MAX;
+    const v = parseInt(inp.value);
+    if(v > CUR_MAX) inp.value = '';   // 前のダイヤの番号が上限を超えていたら消す
+  }
+  const nm = document.getElementById('diaNameNow');
+  if(nm) nm.textContent = (j.meta && j.meta.name) ? j.meta.name + 'ダイヤ' : '';
+
+  renderDiaPicker();
+  clearRangeResults();     // 前のダイヤの検索結果は消す
+  updateTodayPreview();
+}
+
 /* 曜日の日本語表記 */
 const DW=['日','月','火','水','木','金','土'];
 
 /* ダイヤ番号「初期値」計算にのみ使う基準日・基準ダイヤ */
+/* 番号の上限。ふつうのアプリでは一生変わらないが、
+   スペシャル検索くん（全ダイヤ対応）ではダイヤを切り替えるたびに入れ替わる。 */
+let CUR_MAX = 92;
+
 let BASE_DATE=new Date();   // 中身は dia-a.json から入れる
 let BASE_DIAL=1;
 
@@ -1515,7 +1612,7 @@ function dayType(d){const w=d.getDay();if(isObon(d))return '土';if(w===0||isHol
 function calcDial(target,todayDial){
   const today=new Date();today.setHours(0,0,0,0);
   const diff=Math.round((target-today)/86400000);
-  return ((todayDial-1+diff)%92+92)%92+1;
+  return ((todayDial-1+diff)%CUR_MAX+CUR_MAX)%CUR_MAX+1;
 }
 
 /* 分割勤務の労働時間文字列（例:'3:01/6:25'）を合計時間（数値・h）に変換する */
@@ -1609,7 +1706,7 @@ function getShiftType(o){
 function updateTodayPreview(){
   const v=parseInt(document.getElementById('todayInput').value);
   const box=document.getElementById('todayPreviewBox');
-  if(!v||v<1||v>92){
+  if(!v||v<1||v>CUR_MAX){
     box.classList.add('empty'); // ヒント文章の間は枠を消す
     box.innerHTML='↑ 1〜92の番号を入力してください';
     return;
@@ -1645,7 +1742,7 @@ function updateTodayPreview(){
 /* ==== 今日の勤務を読み上げ ==== */
 function handleSpeakToday(){
   const v=parseInt(document.getElementById('todayInput').value);
-  if(!v||v<1||v>92){speakText('ダイヤ番号を入力してください','speakTodayBtn');return;}
+  if(!v||v<1||v>CUR_MAX){speakText('ダイヤ番号を入力してください','speakTodayBtn');return;}
   const today=new Date();
   const m=today.getMonth()+1,d=today.getDate();
   const dw=DW[today.getDay()];
@@ -2027,7 +2124,7 @@ function updateCountdown(){
   const el=document.getElementById('todayCountdown');
   if(!el)return;
   const v=parseInt(document.getElementById('todayInput').value);
-  const pairs=(v>=1&&v<=92)?todayShiftPairs(v):null;
+  const pairs=(v>=1&&v<=CUR_MAX)?todayShiftPairs(v):null;
   if(!pairs){el.style.display='none';return;}
   const n=new Date();
   const nowMin=n.getHours()*60+n.getMinutes();
@@ -2193,7 +2290,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v120';
+const APP_VERSION   = 'v121';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -2415,7 +2512,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.42';
+const APP_LABEL = 'バージョン 2.43';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -2898,7 +2995,7 @@ function exportCalendarICS(rows){
   rows.forEach(r=>{
     const slot=r.slot;
     // 公休の日も番号入りで終日予定として登録する(このダイヤ番号は公休=DBに勤務が無い)
-    if((!slot || !slot.o) && r.dn>=1 && r.dn<=92){
+    if((!slot || !slot.o) && r.dn>=1 && r.dn<=CUR_MAX){
       const d0=new Date(r.iso+'T00:00:00'), d1=new Date(r.iso+'T00:00:00'); d1.setDate(d1.getDate()+1);
       const p=n=>String(n).padStart(2,'0');
       const ymd=(d)=>`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}`;
@@ -3337,7 +3434,7 @@ let _selEnd=null;       // 選択した終了日(YYYY-MM-DD)
 
 function openCal(){
   const dial=parseInt(document.getElementById('todayInput').value);
-  if(!dial||dial<1||dial>92){showToast('先に今日のダイヤ番号を入力してください');return;}
+  if(!dial||dial<1||dial>CUR_MAX){showToast('先に今日のダイヤ番号を入力してください');return;}
   const t=new Date();t.setHours(0,0,0,0);
   // デフォルトは今日
   if(!_selStart){ _selStart=toISO(t); _selEnd=toISO(t); }
@@ -3428,7 +3525,7 @@ function applyCal(){
   const to=new Date(_selEnd+'T00:00:00');
   if((to-from)/86400000>120){showToast('検索は最大120日間までです');return;}
   const dial=parseInt(document.getElementById('todayInput').value);
-  if(!dial||dial<1||dial>92){showToast('今日のダイヤ番号を入力してください');return;}
+  if(!dial||dial<1||dial>CUR_MAX){showToast('今日のダイヤ番号を入力してください');return;}
 
   document.getElementById('dateFrom').value=_selStart;
   document.getElementById('dateTo').value=_selEnd;
@@ -3517,7 +3614,7 @@ const MYDIAL_KEY='a-my-dial';
 
 function saveMyDial(){
   const v=parseInt(document.getElementById('todayInput').value);
-  if(!v||v<1||v>92)return;
+  if(!v||v<1||v>CUR_MAX)return;
   try{
     localStorage.setItem(MYDIAL_KEY, JSON.stringify({dial:v, iso:toISO(new Date())}));
   }catch(e){}
@@ -3531,7 +3628,7 @@ function restoreMyDial(){
   const t=new Date(); t.setHours(0,0,0,0);
   const base=new Date(o.iso+'T00:00:00');
   const diff=Math.round((t-base)/86400000);
-  const d=((o.dial-1+diff)%92+92)%92+1;   // 1日ごとに1つ進む(1〜10を繰り返す)
+  const d=((o.dial-1+diff)%CUR_MAX+CUR_MAX)%CUR_MAX+1;   // 1日ごとに1つ進む(1〜10を繰り返す)
   const el=document.getElementById('todayInput');
   el.value=d;
   try{ localStorage.setItem(MYDIAL_KEY, JSON.stringify({dial:d, iso:toISO(t)})); }catch(e){}
@@ -3718,10 +3815,11 @@ function buildAndRender(dial,from,to){
 }
 function quickSearch(type){
   const dial=parseInt(document.getElementById('todayInput').value);
-  if(!dial||dial<1||dial>92){showToast('今日のダイヤ番号を入力してください');return;}
+  if(!dial||dial<1||dial>CUR_MAX){showToast('今日のダイヤ番号を入力してください');return;}
   const t=new Date();t.setHours(0,0,0,0);
   let from,to;
   if(type==='today'){from=to=t;}
+  else if(type==='mid'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+7-1);}   // 真ん中のボタン。日数は apps.json で決める
   else if(type==='week1'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+6);}   // 今日から7日間
   else if(type==='tomorrow'){from=new Date(t);from.setDate(t.getDate()+1);to=new Date(from);}  // 明日1日だけ
   else if(type==='week2'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+13);}  // 今日から14日間
@@ -3741,7 +3839,7 @@ let _lastPeriodDays=null;
 /* 表示中の期間を、同じ幅だけ後ろに伸ばして検索し直す */
 function continueSearch(){
   const dial=parseInt(document.getElementById('todayInput').value);
-  if(!dial||dial<1||dial>92){showToast('今日のダイヤ番号を入力してください');return;}
+  if(!dial||dial<1||dial>CUR_MAX){showToast('今日のダイヤ番号を入力してください');return;}
   const s=document.getElementById('dateFrom').value, e=document.getElementById('dateTo').value;
   if(!s||!e){showToast('先に検索してください');return;}
   const sd=new Date(s+'T00:00:00'), ed=new Date(e+'T00:00:00');
@@ -4053,7 +4151,18 @@ function closeSourceModal(){
 }
 
 window.onload=async function(){
-  await loadDiaData();   // 先にダイヤのデータを読み込む
+  if(IS_MULTI){
+    // 全ダイヤ版：5本まとめて読み、前に選んだダイヤ（無ければ先頭）を開く
+    document.body.classList.add('multi');
+    await loadAllDias();
+    let sel = null;
+    try{ sel = localStorage.getItem(ALL_SEL_KEY); }catch(e){}
+    if(!sel || !ALL_DB[sel]) sel = (ALL_DIAS.find(d=>ALL_DB[d.code])||{}).code;
+    renderDiaPicker();
+    if(sel) selectDia(sel);
+  }else{
+    await loadDiaData();   // 先にダイヤのデータを読み込む
+  }
   initSW(); // オフライン対応を開始
   renderPushBox();      // フッターの通知ボタンを表示
   updateNotifyUI();     // 更新のお知らせボタンの状態を戻す
@@ -4066,9 +4175,11 @@ window.onload=async function(){
   // 注意: このツールは同僚とも共有するため、特定の個人のダイヤ番号を
   // 「値」として自動入力してはいけない。あくまで「プレースホルダー(薄いヒント)」
   // として見せるだけにし、実際の値は各自が必ず自分で入力する形にする。
-  const autoDialNum=((BASE_DIAL-1+Math.floor((new Date()-BASE_DATE)/86400000))%92+92)%92+1;
-  document.getElementById('todayInput').placeholder=autoDialNum;
-  restoreMyDial();   // 前に入れた番号があれば、今日の番号に進めて自動で入れる
+  if(!IS_MULTI){
+    const autoDialNum=((BASE_DIAL-1+Math.floor((new Date()-BASE_DATE)/86400000))%CUR_MAX+CUR_MAX)%CUR_MAX+1;
+    document.getElementById('todayInput').placeholder=autoDialNum;
+    restoreMyDial();   // 前に入れた番号があれば、今日の番号に進めて自動で入れる
+  }
   document.getElementById('todayInput').addEventListener('input',()=>{ updateTodayPreview(); saveMyDial(); });
   updateTodayPreview(); // 未入力状態のヒント表示（グレー）
   _skipNextRocket=false; // 見送りは起動時の1回まで。ここで必ず解除する

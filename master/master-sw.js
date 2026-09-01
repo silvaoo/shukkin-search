@@ -15,7 +15,7 @@ const CACHE_FILES = [
     './',
     './index.html',
     './logs.html',      // 更新履歴。別ファイルに分けてある
-    './dia-{{ID}}.json',        // ダイヤのデータ。圏外でも使えるよう控えておく
+{{SW_DIA_LINE}}
     './mascot.png',
     './icons/icon-192.png',
     './manifest.json',
@@ -25,7 +25,11 @@ const CACHE_FILES = [
 // インストール時: 主要ファイルをキャッシュに保存
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_VERSION).then((cache) => cache.addAll(CACHE_FILES))
+        caches.open(CACHE_VERSION).then((cache) =>
+            // addAll は1つでも取れないと全部が入らない。
+            // アプリによって置いていないファイルがあるので、1つずつ入れて失敗は見送る。
+            Promise.all(CACHE_FILES.map((f) => cache.add(f).catch(() => null)))
+        )
     );
     // ここでは skipWaiting() を呼ばない。
     // 呼ぶと新しい版が即座に切り替わってしまい、更新バナーや通知を出す間がなくなるため。

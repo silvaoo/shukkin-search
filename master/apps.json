@@ -24,7 +24,11 @@
     "SOON_B": "#ff6a00",
     "SOON_TX": "#fff",
     "SOON_SHADOW": "rgba(255,140,0,0.35)",
-    "THEME_COLOR": "#0a0e27"
+    "THEME_COLOR": "#0a0e27",
+    "MULTI": "0",
+    "QUICK2_LABEL": "1週間",
+    "QUICK2_DAYS": "7",
+    "SW_DIA_LINE": "    './dia-a.json',        // ダイヤのデータ。圏外でも使えるよう控えておく"
   },
   "shukkin-search-c": {
     "ID": "c",
@@ -51,7 +55,11 @@
     "SOON_B": "#00897b",
     "SOON_TX": "#06251f",
     "SOON_SHADOW": "rgba(29,233,182,0.3)",
-    "THEME_COLOR": "#0a2620"
+    "THEME_COLOR": "#0a2620",
+    "MULTI": "0",
+    "QUICK2_LABEL": "1週間",
+    "QUICK2_DAYS": "7",
+    "SW_DIA_LINE": "    './dia-c.json',        // ダイヤのデータ。圏外でも使えるよう控えておく"
   },
   "shukkin-search-yobi": {
     "ID": "yobi",
@@ -78,7 +86,11 @@
     "SOON_B": "#d81b45",
     "SOON_TX": "#fff",
     "SOON_SHADOW": "rgba(255,45,85,0.35)",
-    "THEME_COLOR": "#1a0e2e"
+    "THEME_COLOR": "#1a0e2e",
+    "MULTI": "0",
+    "QUICK2_LABEL": "1週間",
+    "QUICK2_DAYS": "7",
+    "SW_DIA_LINE": "    './dia-yobi.json',        // ダイヤのデータ。圏外でも使えるよう控えておく"
   },
   "shukkin-search-ba": {
     "ID": "ba",
@@ -105,7 +117,11 @@
     "SOON_B": "#e08a2e",
     "SOON_TX": "#3a2400",
     "SOON_SHADOW": "rgba(255,159,67,0.35)",
-    "THEME_COLOR": "#121214"
+    "THEME_COLOR": "#121214",
+    "MULTI": "0",
+    "QUICK2_LABEL": "1週間",
+    "QUICK2_DAYS": "7",
+    "SW_DIA_LINE": "    './dia-ba.json',        // ダイヤのデータ。圏外でも使えるよう控えておく"
   },
   "shukkin-search-ikoma": {
     "ID": "ikoma",
@@ -132,6 +148,41 @@
     "SOON_B": "#d1a300",
     "SOON_TX": "#2a2200",
     "SOON_SHADOW": "rgba(255,212,59,0.35)",
-    "THEME_COLOR": "#121214"
+    "THEME_COLOR": "#121214",
+    "MULTI": "0",
+    "QUICK2_LABEL": "1週間",
+    "QUICK2_DAYS": "7",
+    "SW_DIA_LINE": "    './dia-ikoma.json',        // ダイヤのデータ。圏外でも使えるよう控えておく"
+  },
+  "shukkin-search-all": {
+    "ID": "all",
+    "ABBR": "全",
+    "DIA_NAME": "全ダイヤ",
+    "DIA_FULL": "スペシャル検索くん（全ダイヤ）",
+    "MAX": "92",
+    "COLOR_DARK": "#00f5ff",
+    "GREEN_D": "#00ff88",
+    "ORANGE_D": "#ff8c00",
+    "TEXT_D": "#dde0ff",
+    "BORDER_D": "rgba(0,245,255,0.2)",
+    "COLOR_LIGHT": "#0077bb",
+    "GREEN_L": "#007744",
+    "ORANGE_L": "#cc6600",
+    "TEXT_L": "#111133",
+    "BORDER_L": "rgba(0,119,187,0.3)",
+    "ON_CYAN": "#04202a",
+    "BAND_BG": "#ff8c00",
+    "BAND_TX": "#3a2400",
+    "PAGES": "0",
+    "SPLASH_BG": "#12121c",
+    "SOON_A": "#ff3b30",
+    "SOON_B": "#af52de",
+    "SOON_TX": "#ffffff",
+    "SOON_SHADOW": "rgba(255,140,0,0.35)",
+    "THEME_COLOR": "#12121c",
+    "MULTI": "1",
+    "QUICK2_LABEL": "9日後",
+    "QUICK2_DAYS": "9",
+    "SW_DIA_LINE": "    '../shukkin-search/dia-a.json',\n    '../shukkin-search-ikoma/dia-ikoma.json',\n    '../shukkin-search-ba/dia-ba.json',\n    '../shukkin-search-c/dia-c.json',\n    '../shukkin-search-yobi/dia-yobi.json',"
   }
 }
