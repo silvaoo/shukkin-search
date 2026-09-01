@@ -746,6 +746,9 @@ input[type="date"] {
   white-space: pre-wrap; word-break: break-word;
 }
 .memo-line.memo-dial-line { border-left-color: var(--orange); }
+.src-dia-name{ font-size:14px; font-weight:bold; color:#dde0ff;
+  text-align:center; margin-bottom:10px; }
+
 /* 全ダイヤ版では、ダイヤ番号に紐づく機能（メモ）と、
    1つのダイヤを前提にした通知を隠す。 */
 body.multi .only-single{ display:none !important; }
@@ -1428,6 +1431,7 @@ a.source-link:visited {
 
 <div id="sourceModal" class="source-modal" onclick="closeSourceModal()">
   <div class="source-modal-content" onclick="event.stopPropagation()">
+    <div class="src-dia-name" id="srcDiaName" style="display:none;"></div>
     <!-- PDFは pdf/ に固定名で置く。無ければ自動で隠れる（ダイヤ改正時は上書きするだけ） -->
     <a class="source-pdf-btn" id="pdfShift" href="pdf/shift-table.pdf" target="_blank" rel="noopener" style="display:none;">
       📄 出退勤表（PDF版）を開く
@@ -1503,11 +1507,11 @@ async function loadDiaData(){
    データの写しは持たない。ダイヤ改正で5アプリを更新すれば、こちらも自動で最新になる。 */
 const IS_MULTI = ('0' === '1');
 const ALL_DIAS = [
-  { code:'a',     name:'学園前Ａ', url:'../shukkin-search/dia-a.json' },
-  { code:'ikoma', name:'生駒',     url:'../shukkin-search-ikoma/dia-ikoma.json' },
-  { code:'ba',    name:'北大和Ｂ', url:'../shukkin-search-ba/dia-ba.json' },
-  { code:'c',     name:'北大和Ｃ', url:'../shukkin-search-c/dia-c.json' },
-  { code:'yobi',  name:'予備',     url:'../shukkin-search-yobi/dia-yobi.json' }
+  { code:'a',     name:'学園前Ａ', repo:'shukkin-search',       url:'../shukkin-search/dia-a.json' },
+  { code:'ikoma', name:'生駒',     repo:'shukkin-search-ikoma', url:'../shukkin-search-ikoma/dia-ikoma.json' },
+  { code:'ba',    name:'北大和Ｂ', repo:'shukkin-search-ba',    url:'../shukkin-search-ba/dia-ba.json' },
+  { code:'c',     name:'北大和Ｃ', repo:'shukkin-search-c',     url:'../shukkin-search-c/dia-c.json' },
+  { code:'yobi',  name:'予備',     repo:'shukkin-search-yobi',  url:'../shukkin-search-yobi/dia-yobi.json' }
 ];
 const ALL_SEL_KEY = 'a-sel-dia';   // 最後に選んだダイヤ
 let ALL_DB = {};                        // code をキーに、読み込んだJSONを丸ごと持つ
@@ -1566,6 +1570,12 @@ function selectDia(code){
   }
   const nm = document.getElementById('diaNameNow');
   if(nm) nm.textContent = (j.meta && j.meta.name) ? j.meta.name + 'ダイヤ' : '';
+
+  // 覚えた番号はダイヤごとに分けて持つ
+  MYDIAL_KEY = 'a-my-dial-' + code;
+  const inp2 = document.getElementById('todayInput');
+  if(inp2) inp2.value = '';
+  restoreMyDial();         // このダイヤで前に入れた番号があれば戻す
 
   renderDiaPicker();
   clearRangeResults();     // 前のダイヤの検索結果は消す
@@ -2290,7 +2300,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v121';
+const APP_VERSION   = 'v122';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -2512,7 +2522,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.43';
+const APP_LABEL = 'バージョン 2.44';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3610,7 +3620,9 @@ function autoScrollResults(){
 /* ==== 自分のダイヤ番号を保存して、毎日自動で進める ====
    一度入力すれば、翌日以降は開くだけで「今日の番号」に自動更新される。
    保存先はこの端末の中だけなので、同僚の番号と混ざることはない。 */
-const MYDIAL_KEY='a-my-dial';
+/* 覚えた番号のキー。全ダイヤ版ではダイヤごとに分けるため、
+   selectDia() の中で 'a-my-dial-ikoma' のように差し替わる。 */
+let MYDIAL_KEY='a-my-dial';
 
 function saveMyDial(){
   const v=parseInt(document.getElementById('todayInput').value);
@@ -4063,14 +4075,32 @@ function buildSourceImages(){
 }
 /* PDFが実在するか確かめて、有る時だけボタンを見せる */
 function showPdfIfExists(id, url){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.style.display='none';        // ダイヤを切り替えたとき、前の表示を必ず消す
   fetch(url,{method:'HEAD'}).then(function(r){
-    if(r.ok){ const el=document.getElementById(id); if(el) el.style.display='block'; }
+    if(r.ok){ el.href = url; el.style.display='block'; }
   }).catch(function(){});
+}
+/* PDFの置き場所。ふつうのアプリは自分の pdf/ を見る。
+   全ダイヤ版は、選んでいるダイヤのアプリの pdf/ を見に行く。 */
+function pdfBase(){
+  if(!IS_MULTI) return '';
+  const d = ALL_DIAS.find(x=>x.code===CUR_DIA);
+  return d ? ('../' + d.repo + '/') : '';
 }
 function initSourceView(){
   buildSourceImages();
-  showPdfIfExists('pdfShift','pdf/shift-table.pdf');
-  showPdfIfExists('pdfKeitou','pdf/kinmu-keitou.pdf');
+  const b = pdfBase();
+  showPdfIfExists('pdfShift',  b+'pdf/shift-table.pdf');
+  showPdfIfExists('pdfKeitou', b+'pdf/kinmu-keitou.pdf');
+  // どのダイヤの資料かを見出しに出す（全ダイヤ版だけ）
+  const t = document.getElementById('srcDiaName');
+  if(t){
+    const d = ALL_DIAS.find(x=>x.code===CUR_DIA);
+    t.textContent = (IS_MULTI && d) ? (d.name + 'ダイヤの資料') : '';
+    t.style.display = (IS_MULTI && d) ? 'block' : 'none';
+  }
 }
 
 /* ==== 花火アニメーション（公休の日があったときのお楽しみ） ==== */
