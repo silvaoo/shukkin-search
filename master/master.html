@@ -2522,7 +2522,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.44';
+const APP_LABEL = 'バージョン 2.45';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -4074,13 +4074,20 @@ function buildSourceImages(){
   if(first) first.id='srcImg';
 }
 /* PDFが実在するか確かめて、有る時だけボタンを見せる */
-function showPdfIfExists(id, url){
+/* 候補を順に試して、最初に見つかったものをボタンの行き先にする。
+   全ダイヤ版では、元のアプリにPDFが無いダイヤのために
+   自分の pdf/ に控えを置いてあり、それが2番目の候補になる。 */
+async function showPdfIfExists(id, urls){
   const el=document.getElementById(id);
   if(!el) return;
   el.style.display='none';        // ダイヤを切り替えたとき、前の表示を必ず消す
-  fetch(url,{method:'HEAD'}).then(function(r){
-    if(r.ok){ el.href = url; el.style.display='block'; }
-  }).catch(function(){});
+  const list = Array.isArray(urls) ? urls : [urls];
+  for(const u of list){
+    try{
+      const r = await fetch(u,{method:'HEAD'});
+      if(r.ok){ el.href = u; el.style.display='block'; return; }
+    }catch(e){}
+  }
 }
 /* PDFの置き場所。ふつうのアプリは自分の pdf/ を見る。
    全ダイヤ版は、選んでいるダイヤのアプリの pdf/ を見に行く。 */
@@ -4092,8 +4099,11 @@ function pdfBase(){
 function initSourceView(){
   buildSourceImages();
   const b = pdfBase();
-  showPdfIfExists('pdfShift',  b+'pdf/shift-table.pdf');
-  showPdfIfExists('pdfKeitou', b+'pdf/kinmu-keitou.pdf');
+  // 全ダイヤ版のときだけ、自分が持っている控えを2番目の候補にする
+  const spare = IS_MULTI ? ['./pdf/shift-table-'+CUR_DIA+'.pdf'] : [];
+  const spare2= IS_MULTI ? ['./pdf/kinmu-keitou-'+CUR_DIA+'.pdf'] : [];
+  showPdfIfExists('pdfShift',  [b+'pdf/shift-table.pdf'].concat(spare));
+  showPdfIfExists('pdfKeitou', [b+'pdf/kinmu-keitou.pdf'].concat(spare2));
   // どのダイヤの資料かを見出しに出す（全ダイヤ版だけ）
   const t = document.getElementById('srcDiaName');
   if(t){
