@@ -36,8 +36,8 @@
   --green: #00ff88;
   --orange: #ff8c00;
   --text: #dde0ff;
-  --label: #BA68C8;
-  --note: #CE93D8;
+  --label: #e8c98a;   /* 小見出し。紫は読みにくいという声があり金系に変更（2026-09-02） */
+  --note: #ffd479;    /* 備考。同上 */
   --dim: var(--label);
   --border: rgba(0,245,255,0.2);
 }
@@ -54,8 +54,8 @@ body.light {
   --green: #007744;
   --orange: #cc6600;
   --text: #111133;
-  --label: #8E24AA;
-  --note: #6A1B9A;
+  --label: #6b4a10;   /* 小見出し。金は明るい背景に弱いので濃くしてある */
+  --note: #5c3b00;    /* 備考。同上 */
   --dim: var(--label);
   --border: rgba(0,119,187,0.3);
 }
@@ -725,8 +725,9 @@ input[type="date"] {
 .day-box-val.is-split { font-size: 15px; line-height: 1.5; font-weight: 700; }
 .today-head { margin-bottom: 8px; color: var(--text); font-size: 13px; }
 .today-head b { color: var(--orange); font-size: 20px; }
-.today-note { margin-top: 8px; font-size: 12px; color: var(--note); line-height: 1.5; }
-.day-note { font-size: 12px; color: var(--note); margin-top: 8px; font-style: italic; line-height: 1.6; }
+.today-note { margin-top: 8px; font-size: 13px; color: var(--note); line-height: 1.5; }
+/* 日本語の斜体は文字を機械的に傾けるだけで読みにくくなるため使わない */
+.day-note { font-size: 13px; color: var(--note); margin-top: 8px; line-height: 1.6; }
 .teiire-label {
   display: inline-block; margin-bottom: 8px; padding: 4px 10px;
   background: rgba(255,230,0,0.1); border: 1px solid rgba(255,230,0,0.3);
@@ -2302,7 +2303,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v125';
+const APP_VERSION   = 'v126';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -2524,7 +2525,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.47';
+const APP_LABEL = 'バージョン 2.48';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
