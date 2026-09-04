@@ -1350,7 +1350,7 @@ a.source-link:visited {
   <div class="ml-box">
     <div class="ml-head">
       <h2>⏱ 時間外を追加</h2>
-      <button class="guide-close" onclick="closeOt()">✕ 閉じる</button>
+      <button class="guide-close" onclick="closeOt()" id="otBackBtn">✕ 閉じる</button>
     </div>
     <div class="ot-form">
       <label class="ot-lb">日付</label>
@@ -2946,7 +2946,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.58';
+const APP_LABEL = 'バージョン 2.59';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3572,6 +3572,7 @@ function otPeriodLabel(startIso){
 }
 
 /* ==== 時間外の画面まわり ==== */
+let otFromMyPage=false;   // マイページから開いたか（閉じたらそこへ戻す）
 let otKyu=false;          // この日は公休だったか（指定公休を含む）
 let otBaseSel='all';      // 本来のダイヤをどう乗ったか
 let otAdds=[{dial:'',part:'all'}];   // 付いたものの一覧
@@ -3586,12 +3587,19 @@ function openOt(iso){
   document.getElementById('otH').value=''; document.getElementById('otM').value='';
   otSetBase('all');
   otRenderAdds();
+  const bb=document.getElementById('otBackBtn');
+  if(bb) bb.textContent = otFromMyPage ? '← マイページに戻る' : '✕ 閉じる';
   document.getElementById('otModal').classList.add('active');
   document.body.style.overflow='hidden';
 }
 function closeOt(){
   document.getElementById('otModal').classList.remove('active');
   document.body.style.overflow='';
+  if(otFromMyPage){          // マイページから来たなら、そこへ戻す
+    otFromMyPage=false;
+    openMemoList();
+    switchMemoList('ot');
+  }
 }
 function otSetKyu(v){
   otKyu=v;
@@ -3716,10 +3724,10 @@ function otStore(){
   };
   if(!otSave(all)){ showToast('保存できませんでした'); return; }
   showToast('⏱ 時間外を保存しました');
-  closeOt();
-  renderOtPane();
+  renderOtPane();          // 先に中身を作り直してから戻す
   refreshOtButtons();
   updateTodayPreview();
+  closeOt();
 }
 
 function otDelete(iso){
@@ -4624,8 +4632,10 @@ function refreshOtButtons(){
 
 /* 検索結果の日付から、そのまま時間外の入力を開く */
 function otFromDetail(iso){
+  const ml=document.getElementById('memoListModal');
+  otFromMyPage = !!(ml && ml.classList.contains('active'));
   closeRcDetail();
-  closeMemoList();     // マイページから開いたときは、いったん閉じる
+  closeMemoList();     // 重ならないよう、いったん閉じる
   openOt(iso);
   const rec=otLoad()[iso];
   if(rec){   // すでに登録があれば、その中身を出しておく
