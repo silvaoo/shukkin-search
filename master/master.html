@@ -1608,6 +1608,11 @@ function applyDiaData(d){
   if(d.meta && d.meta.baseDial) BASE_DIAL = d.meta.baseDial;
 }
 
+/* キャッシュ避けに付ける値。開くたびに変えると、同じ日に何度開いても
+   毎回ダウンロードし直しになる。日付が変わったときだけ取り直せば十分なので
+   「2026-09-04」のような日付を使う。ダイヤ改正の翌日には必ず新しくなる。 */
+function cacheDay(){ return toISO(new Date()); }
+
 async function loadDiaData(){
   // まず端末に控えてあるものを使う（通信できなくても動くように）
   try{
@@ -1616,7 +1621,7 @@ async function loadDiaData(){
   }catch(e){}
 
   try{
-    const res = await fetch(DIA_JSON + '?v=' + Date.now());
+    const res = await fetch(DIA_JSON + '?v=' + cacheDay());
     if(res.ok){
       const d = await res.json();
       applyDiaData(d);
@@ -1652,7 +1657,7 @@ async function loadAllDias(){
       if(c) ALL_DB[d.code] = JSON.parse(c);
     }catch(e){}
     try{
-      const res = await fetch(d.url + '?v=' + Date.now());
+      const res = await fetch(d.url + '?v=' + cacheDay());
       if(res.ok){
         const j = await res.json();
         ALL_DB[d.code] = j;
@@ -2890,7 +2895,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.52';
+const APP_LABEL = 'バージョン 2.53';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3234,7 +3239,7 @@ let NEWS_ITEMS = [];
 /* ドライブの画像URLは2種類あり、時期によって使える方が変わる。
    まず lh3 を試し、だめなら thumbnail に切り替える(onerrorで自動フォールバック)。 */
 function newsImgTags(){
-  const t=Date.now();   // 開くたびに違う値を付け、ブラウザに必ず取り直させる
+  const t=cacheDay();   // 日付が変わったときだけ取り直す（毎回だと通信量が増えるため）
   return NEWS_ITEMS.map((it,i)=>{
     const id=it.fileId;
     const primary=`https://lh3.googleusercontent.com/d/${id}=w1200&_=${t}`;
