@@ -977,6 +977,8 @@ a.source-link:visited {
   box-sizing: border-box;
 }
 .source-modal.active { display: flex; flex-direction: column; }
+.news-err{ color:#fff; font-size:14px; line-height:1.9; text-align:center;
+  padding:40px 16px; }
 .source-modal-content {
   flex: 1;
   min-height: 0;
@@ -2946,7 +2948,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.59';
+const APP_LABEL = 'バージョン 2.60';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3290,14 +3292,31 @@ let NEWS_ITEMS = [];
 /* ドライブの画像URLは2種類あり、時期によって使える方が変わる。
    まず lh3 を試し、だめなら thumbnail に切り替える(onerrorで自動フォールバック)。 */
 function newsImgTags(){
-  const t=cacheDay();   // 日付が変わったときだけ取り直す（毎回だと通信量が増えるため）
+  /* 日付が変わったときだけ取り直す。
+     注意: Googleの画像URLは /d/ID=w1200 の「=」の後ろを
+     ハイフン区切りのオプションとして読む。日付をそのまま足すと
+     「-09-04」がオプション扱いになり画像が出なくなる。
+     数字だけにして、しかも「?」を付けた本物のクエリにしてある。 */
+  const t=cacheDay().replace(/-/g,'');
   return NEWS_ITEMS.map((it,i)=>{
     const id=it.fileId;
-    const primary=`https://lh3.googleusercontent.com/d/${id}=w1200&_=${t}`;
+    const primary=`https://lh3.googleusercontent.com/d/${id}=w1200?_=${t}`;
     const backup=`https://drive.google.com/thumbnail?id=${id}&sz=w1200&_=${t}`;
-    return `<img src="${primary}" alt="お知らせ${i+1}" loading="lazy"
-      onerror="if(!this._retried){this._retried=1;this.src='${backup}';}else{this.style.display='none';}">`;
+    return `<img src="${primary}" alt="お知らせ${i+1}"
+      onerror="newsImgFail(this,'${backup}')">`;
   }).join('');
+}
+/* 画像が出せなかったときの逃げ道。真っ黒な画面で固まったように見えないよう、
+   文言を出してから隠す。 */
+function newsImgFail(el, backup){
+  if(!el._retried){ el._retried=1; el.src=backup; return; }
+  el.style.display='none';
+  const wrap=document.getElementById('newsImgWrap');
+  if(wrap && !wrap.querySelector('.news-err')){
+    wrap.insertAdjacentHTML('beforeend',
+      '<div class="news-err">画像を読み込めませんでした。<br>'
+      +'通信の状態を確かめて、もう一度お試しください。</div>');
+  }
 }
 
 /* 起動時に一覧を読み込み、1件以上あればバナーを出す。
@@ -3336,7 +3355,13 @@ function closeNewsBanner(){
 }
 function openNewsModal(){
   const wrap=document.getElementById('newsImgWrap');
-  if(wrap)wrap.innerHTML=newsImgTags();
+  if(wrap){
+    if(NEWS_ITEMS.length===0){
+      wrap.innerHTML='<div class="news-err">お知らせの画像がありません。</div>';
+    }else{
+      wrap.innerHTML=newsImgTags();
+    }
+  }
   document.getElementById('newsModal').classList.add('active');
   document.body.style.overflow='hidden';
 }
