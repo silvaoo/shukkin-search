@@ -2010,7 +2010,7 @@ function buildRoster(){
 function otForDate(date){
   const all=otLoad();
   const r=all[toISO(date)];
-  return (r && r.adds && r.adds.length) ? r : null;
+  return (r && ((r.adds && r.adds.length) || otIsKyu(r))) ? r : null;
 }
 /* 登録した内容を、今日の表示に足して出す */
 function otTodayHtml(v,m,d,dtLabel,r){
@@ -2946,7 +2946,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.57';
+const APP_LABEL = 'バージョン 2.58';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3512,7 +3512,15 @@ function otCalc(date, base, adds, forceKyu){
     addHeld  += otHeldPart(slot.o, a.part);
     rows.push({dial:a.dial, part:a.part, o:slot.o, w:slot.w});
   }
-  if(rows.length===0) return {ok:false, msg:'付いたダイヤ番号を入れてください'};
+  // 公休の日は、番号が分からなくても（他営業所のダイヤなど）公出として扱える
+  if(rows.length===0){
+    if(!baseSlot){
+      return {ok:true, kind:'公休出勤', baseDial:baseDial, baseLabel:'公休',
+              rows:[], ot:null,
+              how:'ダイヤ番号が無いので、時間は手で入れてください'};
+    }
+    return {ok:false, msg:'付いたダイヤ番号を入れてください'};
+  }
 
   // --- 公休の日に出た ---
   if(!baseSlot){
@@ -3586,7 +3594,10 @@ function closeOt(){
   document.body.style.overflow='';
 }
 function otSetKyu(v){
-  otKyu=v; otEdited=false;
+  otKyu=v;
+  /* otEdited はここでは戻さない。
+     手で入れた時間（他営業所のダイヤなど）を、公出に切り替えただけで
+     消してしまわないようにするため。 */
   /* 指定公休は「その日の自分のダイヤに出た」場合がほとんど。
      付いたダイヤが空なら、その日の番号を入れておく。 */
   if(v){
@@ -3680,10 +3691,10 @@ function otPreview(){
         return '<div class="ot-sub">＋ '+x.dial+'番 '+partLb[x.part]+' '+x.o+'（労働 '+x.w+'）</div>';
       }).join('')
     +'<div class="ot-sub">'+r.how+'</div>'
-    +'<div class="ot-big">時間外 '+otFmt(r.ot)+'</div>'
+    +'<div class="ot-big">時間外 '+(r.ot===null?'（手で入れてください）':otFmt(r.ot))+'</div>'
     +kaime;
 
-  if(!otEdited){
+  if(!otEdited && r.ot!==null){
     document.getElementById('otH').value=Math.floor(r.ot/60);
     document.getElementById('otM').value=r.ot%60;
   }
@@ -3696,6 +3707,7 @@ function otStore(){
   const mi=parseInt(document.getElementById('otM').value)||0;
   const adds=otAdds.filter(function(r){ const n=parseInt(r.dial); return n>=1&&n<=CUR_MAX; })
                    .map(function(r){ return {dial:parseInt(r.dial), part:r.part}; });
+  if(adds.length===0 && !otKyu){ showToast('付いたダイヤ番号を入れてください'); return; }
   const all=otLoad();
   all[iso]={
     base: otBaseSel, adds: adds, min:h*60+mi, kyu: !!otKyu,
