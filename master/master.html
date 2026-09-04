@@ -800,6 +800,10 @@ body.multi .only-single{ display:none !important; }
 .ot-del{ background:none; border:none; color:var(--dim); font-size:16px; cursor:pointer; padding:2px 6px; }
 .ot-empty{ padding:18px 4px; font-size:13px; color:var(--dim); line-height:1.8; }
 
+.memo-btn-row{ display:flex; gap:6px; }
+.memo-btn-row .memo-btn{ flex:1; }
+.ot-btn{ color:var(--note) !important; border-color:var(--note) !important; }
+
 .rcd-ot{ width:100%; padding:12px; margin-top:12px; border:none; border-radius:10px;
   background:linear-gradient(135deg,{{SOON_A}},{{SOON_B}}); color:{{SOON_TX}};
   font-size:15px; font-weight:bold; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
@@ -2425,7 +2429,10 @@ function getDialMemo(dn){ return loadMemos(MEMO_DIAL_KEY)[dn]||''; }
 function memoBlockHtml(iso,dn){
   return `<div class="memo-area" data-iso="${iso}" data-dial="${dn}">
     <div class="memo-view">${memoViewHtml(iso,dn)}</div>
-    <button class="memo-btn" onclick="toggleMemo('${iso}',${dn})">${memoBtnLabel(iso,dn)}</button>
+    <div class="memo-btn-row">
+      <button class="memo-btn" onclick="toggleMemo('${iso}',${dn})">${memoBtnLabel(iso,dn)}</button>
+      <button class="memo-btn ot-btn only-single" onclick="otFromDetail('${iso}')">${otBtnLabel(iso)}</button>
+    </div>
     <div class="memo-edit" style="display:none"></div>
   </div>`;
 }
@@ -2437,6 +2444,11 @@ function memoViewHtml(iso,dn){
   if(getDateImgs(iso).length) h+=`<div class="mimg-view">${getDateImgs(iso).map((s,i)=>`<img src="${s}" onclick="openImgViewer('date','${iso}',${dn},${i})">`).join('')}</div>`;
   if(getDialImgs(dn).length) h+=`<div class="mimg-view">${getDialImgs(dn).map((s,i)=>`<img src="${s}" onclick="openImgViewer('dial','${iso}',${dn},${i})">`).join('')}</div>`;
   return h;
+}
+/* 時間外ボタンの文字。登録済みならその時間を見せる。 */
+function otBtnLabel(iso){
+  const r=otLoad()[iso];
+  return r ? ('⏱ '+otFmt(r.min)) : '⏱ 時間外';
 }
 function memoBtnLabel(iso,dn){
   return (getDateMemo(iso)||getDialMemo(dn)||getDateImgs(iso).length||getDialImgs(dn).length)?'✏️ メモを編集':'📝 メモを追加';
@@ -2503,6 +2515,7 @@ function refreshMemoViews(){
     const iso=area.dataset.iso, dn=area.dataset.dial;
     area.querySelector('.memo-view').innerHTML=memoViewHtml(iso,dn);
     area.querySelector('.memo-btn').textContent=memoBtnLabel(iso,dn);
+    const ob=area.querySelector('.ot-btn'); if(ob) ob.textContent=otBtnLabel(iso);
   });
 }
 
@@ -2918,7 +2931,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.54';
+const APP_LABEL = 'バージョン 2.55';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3642,13 +3655,14 @@ function otStore(){
   showToast('⏱ 時間外を保存しました');
   closeOt();
   renderOtPane();
+  refreshOtButtons();
   updateTodayPreview();
 }
 
 function otDelete(iso){
   if(!confirm(iso+' の時間外を消しますか？')) return;
   const all=otLoad(); delete all[iso]; otSave(all);
-  renderOtPane(); updateTodayPreview();
+  renderOtPane(); refreshOtButtons(); updateTodayPreview();
 }
 
 /* マイページの「時間外」の中身 */
@@ -4531,6 +4545,15 @@ function openRcDetail(iso){
 function closeRcDetail(){
   document.getElementById('rcDetail').classList.remove('active');
 }
+/* 検索結果に並んでいる時間外ボタンの文字を、今の中身に合わせ直す */
+function refreshOtButtons(){
+  document.querySelectorAll('.memo-area').forEach(function(area){
+    const iso=area.getAttribute('data-iso');
+    const b=area.querySelector('.ot-btn');
+    if(iso && b) b.textContent=otBtnLabel(iso);
+  });
+}
+
 /* 検索結果の日付から、そのまま時間外の入力を開く */
 function otFromDetail(iso){
   closeRcDetail();
