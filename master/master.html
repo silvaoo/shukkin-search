@@ -2,6 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<!-- 検索結果に出さない。robots.txt と合わせて二重に指定してある -->
+<meta name="robots" content="noindex, nofollow, noarchive">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ABBR}}</title>
 
@@ -2522,7 +2524,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.46';
+const APP_LABEL = 'バージョン 2.47';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
