@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>お知らせ画像の確認</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+  body{background:#0a0e27;color:#dde0ff;padding:18px 14px 60px;
+       max-width:560px;margin:0 auto;}
+  h1{font-size:18px;margin-bottom:6px;}
+  .lead{font-size:13px;color:#8b90b5;line-height:1.8;margin-bottom:18px;}
+  .sum{background:#12183a;border:1px solid #ffd479;border-radius:12px;
+       padding:14px;margin-bottom:20px;font-size:14px;line-height:1.9;}
+  .sum b{color:#ffd479;}
+  .item{background:#12183a;border:1px solid #2a3260;border-radius:12px;
+        padding:12px;margin-bottom:14px;}
+  .name{font-size:14px;font-weight:bold;margin-bottom:6px;}
+  .state{font-size:13px;font-weight:bold;margin-bottom:8px;}
+  .ok{color:#00ff88;} .ng{color:#ff5c72;} .wait{color:#ffd479;}
+  img{display:block;width:100%;height:auto;border-radius:8px;
+      background:rgba(255,255,255,.06);}
+</style>
+</head>
+<body>
+
+<h1>お知らせ画像の確認</h1>
+<p class="lead">
+  同じ画像を6通りの呼び出し方で出します。<br>
+  一番上のまとめを、そのまま伝えてください。
+</p>
+
+<div class="sum" id="sum">確認中…</div>
+<div id="list"></div>
+
+<script>
+const ID = '130l_008sEvoh1NgwA4JnFjBsdWfSCwJ3';
+
+const CASES = [
+  ['\u2460 thumbnail w1600', 'https://drive.google.com/thumbnail?id=' + ID + '&sz=w1600'],
+  ['\u2461 thumbnail w800',  'https://drive.google.com/thumbnail?id=' + ID + '&sz=w800'],
+  ['\u2462 thumbnail 指定なし', 'https://drive.google.com/thumbnail?id=' + ID],
+  ['\u2463 lh3 幅指定',      'https://lh3.googleusercontent.com/d/' + ID + '=w1600'],
+  ['\u2464 lh3 指定なし',    'https://lh3.googleusercontent.com/d/' + ID],
+  ['\u2465 uc 旧いやり方',   'https://drive.google.com/uc?export=view&id=' + ID]
+];
+
+var done = 0, okList = [], ngList = [];
+
+document.getElementById('list').innerHTML = CASES.map(function(c, i){
+  return '<div class="item">'
+    + '<div class="name">' + c[0] + '</div>'
+    + '<div class="state wait" id="st' + i + '">読み込み中…</div>'
+    + '<img id="im' + i + '" src="' + c[1] + '" referrerpolicy="no-referrer">'
+    + '</div>';
+}).join('');
+
+CASES.forEach(function(c, i){
+  var im = document.getElementById('im' + i);
+  var st = document.getElementById('st' + i);
+  im.onload = function(){
+    st.textContent = '\u2705 出ました（' + im.naturalWidth + '\u00d7' + im.naturalHeight + '）';
+    st.className = 'state ok';
+    okList.push(c[0]); finish();
+  };
+  im.onerror = function(){
+    st.textContent = '\u274c 出ません';
+    st.className = 'state ng';
+    im.style.display = 'none';
+    ngList.push(c[0]); finish();
+  };
+});
+
+function finish(){
+  done++;
+  if(done < CASES.length) return;
+  var s = document.getElementById('sum');
+  s.innerHTML = okList.length
+    ? '<b>出たもの：</b>' + okList.join('、') + '<br><b>出ないもの：</b>' + (ngList.join('、') || 'なし')
+    : '<b>6通りとも出ませんでした。</b><br>ドライブに頼らない方式に変えます。';
+}
+
+setTimeout(function(){
+  CASES.forEach(function(c, i){
+    var st = document.getElementById('st' + i);
+    if(st.className.indexOf('wait') >= 0){
+      st.textContent = '\u23f3 20秒待っても出ません';
+      st.className = 'state ng';
+      ngList.push(c[0]); done++;
+    }
+  });
+  if(done >= CASES.length) finish();
+}, 20000);
+</script>
+</body>
+</html>
