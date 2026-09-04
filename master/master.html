@@ -984,6 +984,9 @@ a.source-link:visited {
   background: rgba(255,255,255,.92); color: #111;
   font-size: 20px; font-weight: bold; line-height: 44px; cursor: pointer;
 }
+.news-open{ display:inline-block; margin-top:6px; padding:10px 18px;
+  border-radius:20px; background:#fff; color:#111; font-weight:bold;
+  text-decoration:none; font-size:14px; }
 .news-err{ color:#fff; font-size:14px; line-height:1.9; text-align:center;
   padding:40px 16px; }
 .source-modal-content {
@@ -2957,7 +2960,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.61';
+const APP_LABEL = 'バージョン 2.62';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3306,26 +3309,34 @@ function newsImgTags(){
      ハイフン区切りのオプションとして読む。日付をそのまま足すと
      「-09-04」がオプション扱いになり画像が出なくなる。
      数字だけにして、しかも「?」を付けた本物のクエリにしてある。 */
+  /* Googleの画像URLには、余計なものを付けない。
+     lh3 の /d/ID=w1200 は「=」の後ろを画像の指定として読むため、
+     日付などを足すと画像が出なくなる（2026-09-04 にこれで壊した）。
+     お知らせを差し替えるときはファイルIDごと変わるので、
+     キャッシュ避けの値はそもそも要らない。 */
   const t=cacheDay().replace(/-/g,'');
   return NEWS_ITEMS.map((it,i)=>{
     const id=it.fileId;
-    const primary=`https://lh3.googleusercontent.com/d/${id}=w1200?_=${t}`;
+    const primary=`https://lh3.googleusercontent.com/d/${id}=w1200`;
     const backup=`https://drive.google.com/thumbnail?id=${id}&sz=w1200&_=${t}`;
+    const open=`https://drive.google.com/file/d/${id}/view`;
     return `<img src="${primary}" alt="お知らせ${i+1}"
-      onerror="newsImgFail(this,'${backup}')">`;
+      onerror="newsImgFail(this,'${backup}','${open}')">`;
   }).join('');
 }
 /* 画像が出せなかったときの逃げ道。真っ黒な画面で固まったように見えないよう、
    文言を出してから隠す。 */
-function newsImgFail(el, backup){
+function newsImgFail(el, backup, open){
   if(!el._retried){ el._retried=1; el.src=backup; return; }
-  console.log('お知らせ画像を読み込めませんでした:', el.src);
   el.style.display='none';
   const wrap=document.getElementById('newsImgWrap');
   if(wrap && !wrap.querySelector('.news-err')){
     wrap.insertAdjacentHTML('beforeend',
       '<div class="news-err">画像を読み込めませんでした。<br>'
-      +'通信の状態を確かめて、もう一度お試しください。</div>');
+      +'Googleドライブで「リンクを知っている全員が閲覧可」に<br>'
+      +'なっているか確かめてください。<br><br>'
+      +'<a class="news-open" href="'+open+'" target="_blank" rel="noopener">'
+      +'ドライブで直接ひらく</a></div>');
   }
 }
 
