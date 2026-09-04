@@ -2724,7 +2724,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v134';
+const APP_VERSION   = 'v135';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -2946,7 +2946,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.56';
+const APP_LABEL = 'バージョン 2.57';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3587,6 +3587,17 @@ function closeOt(){
 }
 function otSetKyu(v){
   otKyu=v; otEdited=false;
+  /* 指定公休は「その日の自分のダイヤに出た」場合がほとんど。
+     付いたダイヤが空なら、その日の番号を入れておく。 */
+  if(v){
+    const iso=document.getElementById('otDate').value;
+    if(iso && otAdds.length===1 && !otAdds[0].dial){
+      const p=iso.split('-').map(Number);
+      const d=new Date(p[0],p[1]-1,p[2]); d.setHours(0,0,0,0);
+      const bd=otBaseDial(d);
+      if(bd){ otAdds[0].dial=String(bd); otRenderAdds(); }
+    }
+  }
   otPreview();
 }
 function otSetBase(v){
@@ -3639,7 +3650,7 @@ function otPreview(){
   if(hint){
     hint.textContent = !dataSlot
       ? 'この日はダイヤ上も公休です。'
-      : (otKyu ? '指定公休として、拘束時間×0.8で計算します。'
+      : (otKyu ? '指定公休として扱います。出たダイヤの拘束時間×0.8で計算します。'
                : 'ダイヤ上は '+(bd?bd+'番 ':'')+dataSlot.o+' の勤務日です。');
   }
   const info=document.getElementById('otBaseInfo');
