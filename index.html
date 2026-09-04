@@ -1227,7 +1227,7 @@ a.source-link:visited {
       上段＝ダイヤ番号 ／ 下段＝出退勤時間<br>
       <span class="rc-legend-off">緑は公休</span>・薄い日は検索範囲外です
     </div>
-    <button class="rc-save-btn only-single" onclick="saveCurrentCal()">⭐ メモ一覧に保存</button>
+    <button class="rc-save-btn only-single" onclick="saveCurrentCal()">⭐ マイページに保存</button>
   </div>
 </div>
 
@@ -1247,7 +1247,7 @@ a.source-link:visited {
 <div class="footer">
   <div>⚠ あくまでも目安としてお使いください。</div>
   <div>出退勤時間に誤りがあっても当方は責任を負いかねます。</div>
-  <div style="margin-top:8px;" class="only-single"><span class="source-link" onclick="openMemoList()">📝 保存したメモの一覧</span></div>
+  <div style="margin-top:8px;" class="only-single"><span class="source-link" onclick="openMemoList()">📝 マイページ</span></div>
   <div style="margin-top:8px;"><span class="source-link" onclick="openGuide()">📖 使い方・アプリの入れ方・更新履歴</span></div>
   <div id="pushBox" class="only-single" style="margin-top:12px;"></div>
   <div style="margin-top:10px;">
@@ -1263,7 +1263,7 @@ a.source-link:visited {
 <div id="memoListModal" class="memolist-modal" onclick="if(event.target===this)closeMemoList()">
   <div class="ml-box">
     <div class="ml-head">
-      <h2>📝 メモ一覧</h2>
+      <h2>📝 マイページ</h2>
       <button class="guide-close" onclick="closeMemoList()">✕ 閉じる</button>
     </div>
     <div class="ml-tabs">
@@ -1355,7 +1355,7 @@ a.source-link:visited {
         <p>結果の一番下の「📅 カレンダーを見る」を押すと、<b>1ヶ月分が一目で分かります</b>。マスをタップすると大きく表示され、分割勤務の詳しい時間も読めます。土曜は青、日曜・祝日は赤で色分けされます。</p>
         <img src="images/guide-rescal.jpg" alt="検索結果をカレンダーで一覧">
         <div class="guide-note">
-          この画面の<b>「⭐ メモ一覧に保存」</b>で検索結果を保存でき、あとで<b>「📝 保存したメモの一覧」→「保存したカレンダー」</b>からいつでも開けます。<br>
+          この画面の<b>「⭐ マイページに保存」</b>で検索結果を保存でき、あとで<b>「📝 マイページ」→「保存したカレンダー」</b>からいつでも開けます。<br>
           さらに<b>「📅 カレンダーアプリに一括保存」</b>を押すと、勤務を<b>スマホのカレンダーにまとめて登録</b>できます（出勤1時間前のお知らせ付き。公休の日も番号入りで入ります）。<br>
           ※ 押すとファイル（勤務カレンダー.ics）がダウンロードされるので、それを開いてカレンダーに追加してください。<b>追加した後のファイルは削除して大丈夫です</b>（ダウンロードフォルダに溜まっていくので、ときどき消してください）。
         </div>
@@ -1368,14 +1368,14 @@ a.source-link:visited {
         <div class="guide-note">
           <b>日付のメモ</b>…その日だけに出ます（例：年休申請済み）<br>
           <b>ダイヤ番号のメモ</b>…その番号の日すべてに出ます（例：さつき最終便に注意）<br><br>
-          <b>📷 メモには画像も貼れます。</b>「📷 画像を追加」から、写真を何枚でも貼れます（ダイヤ表の写真、連絡票、駐車位置のメモなど）。貼った画像はメモ一覧やカレンダーからも見られ、<b>タップすると大きく表示</b>されます。画像は自動で小さくしてから保存されますが、貼りすぎると端末の容量を使うのでほどほどに。<br><br>
+          <b>📷 メモには画像も貼れます。</b>「📷 画像を追加」から、写真を何枚でも貼れます（ダイヤ表の写真、連絡票、駐車位置のメモなど）。貼った画像はマイページやカレンダーからも見られ、<b>タップすると大きく表示</b>されます。画像は自動で小さくしてから保存されますが、貼りすぎると端末の容量を使うのでほどほどに。<br><br>
           ⚠ メモと画像はこの端末の中だけに保存されます。同僚には見えません。機種変更やブラウザのデータ削除で消えるのでご注意ください。
         </div>
       </div>
 
       <div class="guide-step">
         <h3>⑦ 書いたメモをまとめて見る</h3>
-        <p>下の「📝 保存したメモの一覧」を押すと、<b>これまでのメモを全部まとめて見られます</b>。その場で編集・削除もできます。</p>
+        <p>下の「📝 マイページ」を押すと、<b>これまでのメモを全部まとめて見られます</b>。その場で編集・削除もできます。</p>
         <img src="images/guide-memolist.jpg" alt="メモ一覧">
         <div class="guide-note">
           「日付のメモ」と「ダイヤ番号のメモ」がタブで分かれています。過ぎた日には印が付き、<b>🧹 過ぎた日のメモをまとめて削除</b>で一度に片付けられます。
@@ -1888,9 +1888,22 @@ const CARD_WD=['日','月','火','水','木','金','土'];
 function cardDiaName(){
   if(IS_MULTI){
     const d=ALL_DIAS.find(x=>x.code===CUR_DIA);
-    return d ? d.name : '北大和・学園前 Aダイヤ';
+    return d ? (d.name+'ダイヤ') : '学園前Ａダイヤ';
   }
-  return '北大和・学園前 Aダイヤ';
+  return '学園前Ａダイヤ';   // 画面上の正式名より短い、カード用の名前
+}
+
+/* 枠内に必ず収まるように、はみ出す場合だけ文字を小さくして描く。
+   ダイヤ名や備考の長さはアプリによって違うので、決め打ちにしない。 */
+function fitText(g, text, x, y, maxW, startPx, minPx){
+  let px = startPx;
+  g.font = '700 ' + px + 'px sans-serif';
+  while(g.measureText(text).width > maxW && px > minPx){
+    px -= 2;
+    g.font = '700 ' + px + 'px sans-serif';
+  }
+  g.fillText(text, x, y);
+  return px;
 }
 /* 出勤が12時より前なら早番、以降なら遅番 */
 function cardKind(slot){
@@ -1940,8 +1953,8 @@ function buildCard(){
   const extra=isObon(today)?'・お盆':isHol(today)?'・祝':'';
   g.fillStyle='rgba(255,255,255,.82)'; g.font='500 46px sans-serif';
   g.fillText(`${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日（${dw}${extra}）`,80,150);
-  g.fillStyle='#fff'; g.font='700 118px sans-serif';
-  g.fillText(`${cardDiaName()} ${v}番`,80,300);
+  g.fillStyle='#fff';
+  fitText(g, `${cardDiaName()} ${v}番`, 80, 300, W-160, 118, 56);
 
   if(undecided){
     g.font='700 150px sans-serif'; g.fillStyle='#fff';
@@ -1955,12 +1968,12 @@ function buildCard(){
     g.fillText('ゆっくり休んでください',80,650);
   }else{
     const parts=String(slot.o).split('〜');
-    g.fillStyle='#fff'; g.font='700 108px sans-serif';
-    g.fillText(parts[0]||'',80,500);
+    g.fillStyle='#fff';
+    fitText(g, parts[0]||'', 80, 500, W-160, 108, 54);   // 分割勤務は長いので縮む
     g.fillStyle='rgba(255,255,255,.6)'; g.font='500 58px sans-serif';
     g.fillText('▼',80,585);
-    g.fillStyle='#fff'; g.font='700 108px sans-serif';
-    g.fillText(parts[1]||'',80,690);
+    g.fillStyle='#fff';
+    fitText(g, parts[1]||'', 80, 690, W-160, 108, 54);
     g.fillStyle='rgba(255,255,255,.9)'; g.font='500 50px sans-serif';
     g.fillText('労働時間 '+(slot.w||'-'),80,800);
     if(slot.n){
@@ -2544,7 +2557,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v127';
+const APP_VERSION   = 'v128';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -2766,7 +2779,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.49';
+const APP_LABEL = 'バージョン 2.50';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3295,7 +3308,7 @@ function saveCurrentCal(){
   const list=loadCalList();
   list.push({ id:'c'+Date.now(), savedAt:Date.now(), rows });
   saveCalList(list);
-  showToast('⭐ カレンダー保存しました！メモ一覧からご覧下さい');
+  showToast('⭐ カレンダー保存しました！マイページからご覧下さい');
 }
 function openSavedCal(id){
   const item=loadCalList().find(c=>c.id===id);
