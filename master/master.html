@@ -2962,7 +2962,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.66';
+const APP_LABEL = 'バージョン 2.67';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3306,35 +3306,25 @@ let NEWS_ITEMS = [];
 /* ドライブの画像URLは2種類あり、時期によって使える方が変わる。
    まず lh3 を試し、だめなら thumbnail に切り替える(onerrorで自動フォールバック)。 */
 function newsImgTags(){
-  /* 日付が変わったときだけ取り直す。
-     注意: Googleの画像URLは /d/ID=w1200 の「=」の後ろを
-     ハイフン区切りのオプションとして読む。日付をそのまま足すと
-     「-09-04」がオプション扱いになり画像が出なくなる。
-     数字だけにして、しかも「?」を付けた本物のクエリにしてある。 */
-  /* Googleの画像URLには、余計なものを付けない。
-     lh3 の /d/ID=w1200 は「=」の後ろを画像の指定として読むため、
-     日付などを足すと画像が出なくなる（2026-09-04 にこれで壊した）。
-     お知らせを差し替えるときはファイルIDごと変わるので、
-     キャッシュ避けの値はそもそも要らない。 */
-  const t=cacheDay().replace(/-/g,'');
+  /* お知らせ画像は、キャッシュ避けの値を付けない。
+     付けないほうが端末に残るので通信が減るし、
+     差し替えるときはファイルIDごと変わるのでURLも変わる。付ける意味がない。
+
+     覚えておくこと（2026-09-04〜05に遠回りした点）:
+     ・lh3 の /d/ID=w1200 は「=」の後ろを画像の指定として読む。
+       日付などを足すと画像が出なくなる。
+     ・referrerpolicy="no-referrer" が要る。無いとGoogleに
+       呼び出し元が伝わり、画像を返してもらえないことがある。 */
   return NEWS_ITEMS.map((it,i)=>{
     const id=it.fileId;
-    /* drive.google.com/thumbnail を先に使う。
-       lh3.googleusercontent.com/d/ は使えなくなることがあり、
-       2026-09-04 時点で画像が出せなかった。 */
     const primary=`https://drive.google.com/thumbnail?id=${id}&sz=w1600`;
     const backup=`https://lh3.googleusercontent.com/d/${id}=w1600`;
     const open=`https://drive.google.com/file/d/${id}/view`;
-    /* referrerpolicy="no-referrer" が要る。
-       これが無いとGoogleに「どのサイトから呼ばれたか」が伝わり、
-       画像を返してもらえないことがある。
-       2026-09-05、これだけの違いで表示されていなかった。 */
     return `<img src="${primary}" alt="お知らせ${i+1}" referrerpolicy="no-referrer"
       onerror="newsImgFail(this,'${backup}','${open}')">`;
   }).join('');
 }
-/* 画像が出せなかったときの逃げ道。真っ黒な画面で固まったように見えないよう、
-   文言を出してから隠す。 */
+
 function newsImgFail(el, backup, open){
   if(!el._retried){ el._retried=1; el.src=backup; return; }
   el.style.display='none';
