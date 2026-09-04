@@ -797,6 +797,14 @@ body.multi .only-single{ display:none !important; }
 .ot-row-d{ font-size:12px; color:var(--dim); }
 .ot-row-t{ font-size:16px; font-weight:bold; color:var(--note); white-space:nowrap; }
 .ot-row-n{ font-size:12px; color:var(--dim); margin-top:2px; }
+.ot-row.is-kyu{ background:rgba(255,159,74,.10);
+  border-left:3px solid #ff9f4a; padding-left:8px; border-radius:6px; }
+.ot-kyu-tag{ display:inline-block; padding:1px 7px; border-radius:5px;
+  background:#ff9f4a; color:#231402; font-size:11px; font-weight:bold; }
+.ot-row-main{ cursor:pointer; }
+.ot-row-edit{ font-size:10.5px; color:var(--dim); margin-top:3px; }
+.ot-hint{ font-size:11.5px; color:var(--dim); margin-top:6px; line-height:1.7; }
+
 .ot-del{ background:none; border:none; color:var(--dim); font-size:16px; cursor:pointer; padding:2px 6px; }
 .ot-empty{ padding:18px 4px; font-size:13px; color:var(--dim); line-height:1.8; }
 
@@ -1347,6 +1355,13 @@ a.source-link:visited {
     <div class="ot-form">
       <label class="ot-lb">日付</label>
       <input type="date" id="otDate" class="ot-in" onchange="otPreview()">
+
+      <label class="ot-lb">この日は公休でしたか？</label>
+      <div class="ot-parts">
+        <button class="ot-part" id="otKyuNo"  onclick="otSetKyu(false)">勤務の日</button>
+        <button class="ot-part" id="otKyuYes" onclick="otSetKyu(true)">公休（指定公休も）</button>
+      </div>
+      <p class="ot-hint" id="otKyuHint"></p>
 
       <div id="otBaseWrap">
         <label class="ot-lb">本来のダイヤ（<span id="otBaseInfo">—</span>）は？</label>
@@ -2709,7 +2724,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v133';
+const APP_VERSION   = 'v134';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -2931,7 +2946,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.55';
+const APP_LABEL = 'バージョン 2.56';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3406,6 +3421,12 @@ function closeMemoList(){
    ================================================================== */
 const OT_KEY = 'a-overtime';
 
+/* 公休出勤かどうか。kyu を付ける前に保存した記録は kind で判断する。 */
+function otIsKyu(r){
+  if(!r) return false;
+  if(typeof r.kyu==='boolean') return r.kyu;
+  return r.kind==='公休出勤';
+}
 function otLoad(){ try{ return JSON.parse(localStorage.getItem(OT_KEY)||'{}'); }catch(e){ return {}; } }
 function otSave(o){ try{ localStorage.setItem(OT_KEY,JSON.stringify(o)); return true; }catch(e){ return false; } }
 
@@ -3473,9 +3494,10 @@ function otBaseDial(date){
    時間外 = (本来のうち乗った分の労働 + 付いた分の労働の合計) − 本来の労働の合計
    公休の日は労働時間が無いので、付いた分の拘束時間 × 0.8。
    0を下回るときは0。 */
-function otCalc(date, base, adds){
+function otCalc(date, base, adds, forceKyu){
   const dt=dayType(date);
-  const baseSlot=otBaseSlot(date);
+  // 指定公休の日はデータ上ふつうの勤務日なので、利用者が「公休」と言えばそちらを優先する
+  const baseSlot=forceKyu ? null : otBaseSlot(date);
   const baseDial=otBaseDial(date);
   const rows=[];
   let addLabor=0, addHeld=0;
@@ -3542,13 +3564,14 @@ function otPeriodLabel(startIso){
 }
 
 /* ==== 時間外の画面まわり ==== */
+let otKyu=false;          // この日は公休だったか（指定公休を含む）
 let otBaseSel='all';      // 本来のダイヤをどう乗ったか
 let otAdds=[{dial:'',part:'all'}];   // 付いたものの一覧
 let otEdited=false;
 let otLast=null;
 
 function openOt(iso){
-  otBaseSel='all'; otEdited=false; otLast=null;
+  otBaseSel='all'; otEdited=false; otLast=null; otKyu=null;   // null = まだ選んでいない
   otAdds=[{dial:'',part:'all'}];
   document.getElementById('otDate').value = iso || toISO(new Date());
   document.getElementById('otNote').value = '';
@@ -3561,6 +3584,10 @@ function openOt(iso){
 function closeOt(){
   document.getElementById('otModal').classList.remove('active');
   document.body.style.overflow='';
+}
+function otSetKyu(v){
+  otKyu=v; otEdited=false;
+  otPreview();
 }
 function otSetBase(v){
   otBaseSel=v; otEdited=false;
@@ -3600,10 +3627,23 @@ function otPreview(){
   const p=iso.split('-').map(Number);
   const date=new Date(p[0],p[1]-1,p[2]); date.setHours(0,0,0,0);
 
-  // 本来のダイヤの案内と、公休なら選択肢を隠す
-  const bs=otBaseSlot(date), bd=otBaseDial(date);
+  // データ上の本来の勤務
+  const dataSlot=otBaseSlot(date), bd=otBaseDial(date);
+  // 何も選んでいなければ、データに合わせて初期値を決める
+  if(otKyu===null) otKyu = !dataSlot;
+  const bs = otKyu ? null : dataSlot;
+
+  document.getElementById('otKyuNo').classList.toggle('on', !otKyu);
+  document.getElementById('otKyuYes').classList.toggle('on', otKyu);
+  const hint=document.getElementById('otKyuHint');
+  if(hint){
+    hint.textContent = !dataSlot
+      ? 'この日はダイヤ上も公休です。'
+      : (otKyu ? '指定公休として、拘束時間×0.8で計算します。'
+               : 'ダイヤ上は '+(bd?bd+'番 ':'')+dataSlot.o+' の勤務日です。');
+  }
   const info=document.getElementById('otBaseInfo');
-  if(info) info.textContent = bs ? ((bd?bd+'番 ':'')+bs.o) : (bd?bd+'番 公休':'公休');
+  if(info) info.textContent = bs ? ((bd?bd+'番 ':'')+bs.o) : '公休';
   const wrap=document.getElementById('otBaseWrap');
   if(wrap) wrap.style.display = bs ? 'block' : 'none';
 
@@ -3611,7 +3651,7 @@ function otPreview(){
                    .map(function(r){ return {dial:parseInt(r.dial), part:r.part}; });
   if(adds.length===0){ box.innerHTML='付いたダイヤ番号を入れてください'; otLast=null; return; }
 
-  const r=otCalc(date, bs?otBaseSel:'none', adds);
+  const r=otCalc(date, bs?otBaseSel:'none', adds, otKyu);
   if(!r.ok){ box.innerHTML='⚠ '+r.msg; otLast=null; return; }
   otLast=r;
 
@@ -3619,7 +3659,7 @@ function otPreview(){
   if(r.kind==='公休出勤'){
     const all=otLoad(), ps=otPeriodStart(iso);
     let n=1;
-    for(const k in all){ if(all[k].kind==='公休出勤' && otPeriodStart(k)===ps && k<iso) n++; }
+    for(const k in all){ if(otIsKyu(all[k]) && otPeriodStart(k)===ps && k<iso) n++; }
     kaime='<div class="ot-sub">この期間 '+n+'回目の公休出勤</div>';
   }
   const partLb={all:'まるごと',first:'前半だけ',second:'後半だけ'};
@@ -3647,7 +3687,7 @@ function otStore(){
                    .map(function(r){ return {dial:parseInt(r.dial), part:r.part}; });
   const all=otLoad();
   all[iso]={
-    base: otBaseSel, adds: adds, min:h*60+mi,
+    base: otBaseSel, adds: adds, min:h*60+mi, kyu: !!otKyu,
     kind: otLast?otLast.kind:'手入力',
     note: document.getElementById('otNote').value.trim()
   };
@@ -3689,7 +3729,7 @@ function renderOtPane(){
   Object.keys(byPeriod).sort().reverse().forEach(function(ps){
     const list=byPeriod[ps];
     const sum=list.reduce(function(a,k){ return a+(all[k].min||0); },0);
-    const kyu=list.filter(function(k){ return all[k].kind==='公休出勤'; }).length;
+    const kyu=list.filter(function(k){ return otIsKyu(all[k]); }).length;
     h+='<div class="ot-period"><div class="ot-period-ttl">'+otPeriodLabel(ps)+'</div>'
       +'<div class="ot-period-val">'+otFmt(sum)+'</div>'
       +'<div class="ot-sub">'+list.length+'件'+(kyu?('／公休出勤 '+kyu+'回'):'')+'</div></div>';
@@ -3697,12 +3737,17 @@ function renderOtPane(){
       const r=all[k];
       const p=k.split('-').map(Number);
       const dw=DW[new Date(p[0],p[1]-1,p[2]).getDay()];
-      h+='<div class="ot-row"><div class="ot-row-main">'
-        +'<div class="ot-row-d">'+p[1]+'/'+p[2]+'（'+dw+'）　'+(r.kind||'')+'　'
+      const isKyu=otIsKyu(r);
+      h+='<div class="ot-row'+(isKyu?' is-kyu':'')+'">'
+        +'<div class="ot-row-main" onclick="otFromDetail(\''+k+'\')">'
+        +'<div class="ot-row-d">'+p[1]+'/'+p[2]+'（'+dw+'）　'
+        +(isKyu?'<span class="ot-kyu-tag">公出</span>　':'')
+        +(isKyu?'':(r.kind||'')+'　')
         +((r.adds||[]).map(function(x){
             return x.dial+'番'+(x.part==='first'?'前半':x.part==='second'?'後半':'');
           }).join('＋')||'')+'</div>'
         +(r.note?'<div class="ot-row-n">'+escapeHtml(r.note)+'</div>':'')
+        +'<div class="ot-row-edit">タップで直す</div>'
         +'</div>'
         +'<div class="ot-row-t">'+otFmt(r.min)+'</div>'
         +'<button class="ot-del" onclick="otDelete(\''+k+'\')">🗑</button></div>';
@@ -4557,10 +4602,12 @@ function refreshOtButtons(){
 /* 検索結果の日付から、そのまま時間外の入力を開く */
 function otFromDetail(iso){
   closeRcDetail();
+  closeMemoList();     // マイページから開いたときは、いったん閉じる
   openOt(iso);
   const rec=otLoad()[iso];
   if(rec){   // すでに登録があれば、その中身を出しておく
     otBaseSel=rec.base||'all';
+    otKyu=otIsKyu(rec);
     otAdds=(rec.adds&&rec.adds.length)?rec.adds.map(x=>({dial:String(x.dial),part:x.part})):[{dial:'',part:'all'}];
     document.getElementById('otNote').value=rec.note||'';
     otSetBase(otBaseSel);
