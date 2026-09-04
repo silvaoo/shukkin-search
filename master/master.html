@@ -616,6 +616,9 @@ body.light #todayInput { background: #fff; }
   font-family: 'Noto Sans JP', sans-serif; transition: all 0.15s;
 }
 .speak-today-btn:active { background: rgba(0,255,136,0.25); }
+/* 勤務をカード画像にして送るボタン。読み上げと同じ形にそろえてある */
+.card-btn { margin-top: 8px; color: var(--note); border-color: var(--note); }
+.card-btn:active { background: rgba(255,212,121,0.22); }
 .speak-today-btn.speaking { background: rgba(255,0,128,0.12); color: var(--pink); border-color: rgba(255,0,128,0.3); }
 
 /* ==== カード共通 ==== */
@@ -755,6 +758,36 @@ input[type="date"] {
 /* 全ダイヤ版では、ダイヤ番号に紐づく機能（メモ）と、
    1つのダイヤを前提にした通知を隠す。 */
 body.multi .only-single{ display:none !important; }
+
+/* ==== 全ダイヤ早見表（スペシャル検索くん専用） ==== */
+.roster-wrap{ margin-bottom:12px; }
+.roster-open{ width:100%; padding:12px; border-radius:10px;
+  border:1px solid var(--note); background:transparent; color:var(--note);
+  font-size:14px; font-weight:bold; cursor:pointer;
+  font-family:'Noto Sans JP',sans-serif; }
+.roster-open:active{ background:rgba(255,212,121,.15); }
+.roster-box{ margin-top:10px; background:var(--bg-card);
+  border:1px solid var(--border); border-radius:12px; padding:12px; }
+.roster-sum{ font-size:12px; color:var(--dim); margin-bottom:8px; }
+.roster-tabs{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; }
+.roster-tab{ flex:1 1 auto; min-width:70px; padding:8px 5px; border-radius:8px;
+  border:1px solid var(--border); background:var(--bg-card2); color:var(--text);
+  font-size:12px; font-weight:bold; cursor:pointer; }
+.roster-tab.on{ background:linear-gradient(135deg,{{SOON_A}},{{SOON_B}});
+  color:{{SOON_TX}}; border-color:transparent; }
+.roster-tbl{ width:100%; border-collapse:collapse; font-size:13px; }
+.roster-tbl th{ font-size:11px; color:var(--dim); text-align:left;
+  padding:6px 3px; border-bottom:1px solid var(--border);
+  cursor:pointer; white-space:nowrap; }
+.roster-tbl th.on{ color:var(--note); }
+.roster-tbl td{ padding:7px 3px; border-bottom:1px solid rgba(128,128,160,.15);
+  vertical-align:top; }
+.roster-bar{ display:inline-block; width:4px; height:14px; border-radius:2px;
+  vertical-align:-2px; margin-right:5px; }
+.roster-dia{ font-size:11px; color:var(--dim); white-space:nowrap; }
+.roster-tm{ font-variant-numeric:tabular-nums; }
+.roster-nt{ font-size:11px; color:var(--note); margin-top:2px; }
+.roster-leg{ font-size:11px; color:var(--dim); margin-top:10px; line-height:1.8; }
 
 /* ==== ダイヤを選ぶ（スペシャル検索くん専用） ==== */
 .dia-pick{ margin-bottom:12px; }
@@ -1093,6 +1126,12 @@ a.source-link:visited {
 <!-- ダイヤを選ぶ（スペシャル検索くんだけ表示される） -->
 <div id="diaPick" class="dia-pick" style="display:none;"></div>
 
+<!-- 全ダイヤ早見表（スペシャル検索くんだけ） -->
+<div id="rosterWrap" class="roster-wrap" style="display:none;">
+  <button class="roster-open" onclick="toggleRoster()">📋 今日の全ダイヤ早見表</button>
+  <div id="rosterBox" class="roster-box" style="display:none;"></div>
+</div>
+
 <!-- 今日のダイヤ入力 -->
 <div class="today-card">
   <div class="today-clock" id="todayClock">本日は—</div>
@@ -1108,6 +1147,7 @@ a.source-link:visited {
     <span class="mydial-forget" onclick="forgetMyDial()">保存を消す</span>
   </div>
   <button class="speak-today-btn" id="speakTodayBtn" onclick="handleSpeakToday()">🔊 今日の勤務を読み上げ</button>
+  <button class="speak-today-btn card-btn" onclick="shareTodayCard()">🖼 今日の勤務を画像で送る</button>
 </div>
 
 <!-- お知らせバナー(タップで破裂→中身を表示。×で閉じる)
@@ -1750,6 +1790,207 @@ function updateTodayPreview(){
       <div class="day-box"><div class="day-box-label">勤務時間</div><div class="day-box-val ${tcls}">${formatDisplayTime(slot.o)}</div></div>
       <div class="day-box"><div class="day-box-label">労働時間</div><div class="day-box-val ${tcls}">${formatDisplayLabor(slot.w)}</div></div>
     </div>${noteHtml}`;
+}
+
+/* ==== 全ダイヤ早見表（スペシャル検索くんだけ） ====
+   その日の211番すべてを1画面に並べる。出退勤時刻で並べ替えると
+   全営業所が朝から順に一列になり、紙の表では見られない眺めになる。 */
+const R_COLOR={early:'#ff9e4a', late:'#5b8dff', off:'#4a4f66'};
+let rOpen=false, rFilter='all', rSort='time', rAsc=true;
+
+function toggleRoster(){
+  rOpen=!rOpen;
+  document.getElementById('rosterBox').style.display = rOpen?'block':'none';
+  if(rOpen) buildRoster();
+}
+function rSetFilter(v){ rFilter=v; buildRoster(); }
+function rSetSort(k){ if(rSort===k) rAsc=!rAsc; else { rSort=k; rAsc=true; } buildRoster(); }
+
+/* 並べ替え用に出勤時刻を分に直す。取れないものは末尾へ。 */
+function rSortKey(slot){
+  if(!slot) return 99999;
+  const m=String(slot.o).match(/(\d{1,2}):(\d{2})/);
+  return m ? parseInt(m[1],10)*60+parseInt(m[2],10) : 99999;
+}
+function rKind(slot){
+  const k=rSortKey(slot);
+  if(k===99999) return 'off';
+  return k < 12*60 ? 'early' : 'late';
+}
+
+function buildRoster(){
+  const box=document.getElementById('rosterBox');
+  if(!box) return;
+  const today=new Date();
+  const dt=dayType(today);
+  let rows=[];
+  for(const d of ALL_DIAS){
+    if(rFilter!=='all' && rFilter!==d.code) continue;
+    const j=ALL_DB[d.code];
+    if(!j) continue;
+    const max=j.meta.cycle;
+    for(let n=1;n<=max;n++){
+      const rec=j.dials[String(n)];
+      let slot=(rec&&rec[dt])?rec[dt]:null;
+      if(slot && String(slot.o)==='—') slot=null;   // 当日決まるものは時刻なし扱い
+      rows.push({name:d.name, code:d.code, num:n, slot:slot,
+                 note:(rec&&rec[dt])?rec[dt].n:'', key:rSortKey(slot)});
+    }
+  }
+  rows.sort(function(a,b){
+    let v;
+    if(rSort==='time') v=a.key-b.key;
+    else if(rSort==='num') v=a.num-b.num;
+    else v=ALL_DIAS.findIndex(x=>x.code===a.code)-ALL_DIAS.findIndex(x=>x.code===b.code) || a.num-b.num;
+    return rAsc?v:-v;
+  });
+
+  const work=rows.filter(r=>r.slot).length;
+  const dw=DW[today.getDay()];
+  const extra=isObon(today)?'・お盆':isHol(today)?'・祝':'';
+  const tabs=[['all','すべて']].concat(ALL_DIAS.filter(d=>ALL_DB[d.code]).map(d=>[d.code,d.name]));
+
+  box.innerHTML =
+    '<div class="roster-sum">'+(today.getMonth()+1)+'月'+today.getDate()+'日（'+dw+extra+'）　'
+      +rows.length+'番中 '+work+'番が乗務、'+(rows.length-work)+'番が公休</div>'
+    +'<div class="roster-tabs">'
+      +tabs.map(function(t){
+          return '<button class="roster-tab'+(rFilter===t[0]?' on':'')
+               +'" onclick="rSetFilter(\''+t[0]+'\')">'+t[1]+'</button>';
+        }).join('')
+    +'</div>'
+    +'<table class="roster-tbl"><thead><tr>'
+      +'<th class="'+(rSort==='dia'?'on':'')+'" onclick="rSetSort(\'dia\')">ダイヤ</th>'
+      +'<th class="'+(rSort==='num'?'on':'')+'" onclick="rSetSort(\'num\')">番号</th>'
+      +'<th class="'+(rSort==='time'?'on':'')+'" onclick="rSetSort(\'time\')">出退勤 ▲▼</th>'
+      +'<th>労働</th></tr></thead><tbody>'
+      +rows.map(function(r){
+          return '<tr><td class="roster-dia">'+r.name+'</td>'
+            +'<td><span class="roster-bar" style="background:'+R_COLOR[rKind(r.slot)]+'"></span>'+r.num+'</td>'
+            +'<td class="roster-tm">'+(r.slot?formatDisplayTime(r.slot.o):(r.note?'要確認':'公休'))
+            +(r.note?'<div class="roster-nt">📌 '+escapeHtml(r.note)+'</div>':'')+'</td>'
+            +'<td class="roster-tm">'+(r.slot?formatDisplayLabor(r.slot.w):'-')+'</td></tr>';
+        }).join('')
+    +'</tbody></table>'
+    +'<div class="roster-leg">'
+      +'<span class="roster-bar" style="background:'+R_COLOR.early+'"></span>早番（12時前に出勤）　'
+      +'<span class="roster-bar" style="background:'+R_COLOR.late+'"></span>遅番（12時以降）　'
+      +'<span class="roster-bar" style="background:'+R_COLOR.off+'"></span>公休<br>'
+      +'見出しを押すと並べ替わります。</div>';
+}
+
+/* ==== 今日の勤務をカード画像にする ====
+   端末の中だけで絵を描く。どこにも送らない。
+   早番・遅番・公休で背景を変えるので、パッと見て区別が付く。 */
+const CARD_WD=['日','月','火','水','木','金','土'];
+
+/* いま画面に出ているダイヤの名前。全ダイヤ版では選んでいるダイヤ名になる。 */
+function cardDiaName(){
+  if(IS_MULTI){
+    const d=ALL_DIAS.find(x=>x.code===CUR_DIA);
+    return d ? d.name : '{{DIA_NAME}}';
+  }
+  return '{{DIA_NAME}}';
+}
+/* 出勤が12時より前なら早番、以降なら遅番 */
+function cardKind(slot){
+  if(!slot || !slot.o) return 'off';
+  const m=String(slot.o).match(/(\d{1,2}):(\d{2})/);
+  if(!m) return 'off';
+  return parseInt(m[1],10)<12 ? 'early' : 'late';
+}
+/* 長い備考を折り返して描く */
+function cardWrap(g,text,x,y,maxW,lh,maxLines){
+  let line='', n=0;
+  for(const ch of text){
+    if(g.measureText(line+ch).width>maxW){
+      g.fillText(line,x,y); y+=lh; line=ch; n++;
+      if(n>=maxLines){ return; }
+    }else line+=ch;
+  }
+  if(line) g.fillText(line,x,y);
+}
+
+function buildCard(){
+  const v=parseInt(document.getElementById('todayInput').value);
+  if(!v||v<1||v>CUR_MAX){ showToast('先に今日のダイヤ番号を入力してください'); return null; }
+  const today=new Date();
+  const dt=dayType(today);
+  const rec=DB[v];
+  let slot=(rec&&rec[dt])?rec[dt]:null;
+  if(slot && String(slot.o)==='—') slot=null;   // 奈良学園のように当日決まるものは公休扱いにしない
+  const undecided = !!(rec&&rec[dt]&&String(rec[dt].o)==='—');
+
+  const cv=document.createElement('canvas');
+  cv.width=1080; cv.height=1080;
+  const g=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  const kind=undecided?'off':cardKind(slot);
+
+  const grad=g.createLinearGradient(0,0,W,H);
+  if(kind==='early'){ grad.addColorStop(0,'#2b1a3d'); grad.addColorStop(.55,'#7a3b2e'); grad.addColorStop(1,'#ffa652'); }
+  else if(kind==='late'){ grad.addColorStop(0,'#050a1f'); grad.addColorStop(.55,'#132a5e'); grad.addColorStop(1,'#4b7fd6'); }
+  else { grad.addColorStop(0,'#141625'); grad.addColorStop(1,'#3a3f57'); }
+  g.fillStyle=grad; g.fillRect(0,0,W,H);
+  g.strokeStyle='rgba(255,255,255,.14)'; g.lineWidth=2;
+  g.beginPath(); g.moveTo(0,H*0.70); g.lineTo(W,H*0.70); g.stroke();
+
+  g.textAlign='left';
+  const dw=CARD_WD[today.getDay()];
+  const extra=isObon(today)?'・お盆':isHol(today)?'・祝':'';
+  g.fillStyle='rgba(255,255,255,.82)'; g.font='500 46px sans-serif';
+  g.fillText(`${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日（${dw}${extra}）`,80,150);
+  g.fillStyle='#fff'; g.font='700 118px sans-serif';
+  g.fillText(`${cardDiaName()} ${v}番`,80,300);
+
+  if(undecided){
+    g.font='700 150px sans-serif'; g.fillStyle='#fff';
+    g.fillText('要確認',80,520);
+    g.fillStyle='#ffd479'; g.font='700 42px sans-serif';
+    cardWrap(g, '📌 '+(rec[dt].n||''), 80, 640, W-160, 54, 5);
+  }else if(!slot){
+    g.font='700 180px sans-serif'; g.fillStyle='#fff';
+    g.fillText('公 休',80,560);
+    g.font='500 44px sans-serif'; g.fillStyle='rgba(255,255,255,.75)';
+    g.fillText('ゆっくり休んでください',80,650);
+  }else{
+    const parts=String(slot.o).split('〜');
+    g.fillStyle='#fff'; g.font='700 108px sans-serif';
+    g.fillText(parts[0]||'',80,500);
+    g.fillStyle='rgba(255,255,255,.6)'; g.font='500 58px sans-serif';
+    g.fillText('▼',80,585);
+    g.fillStyle='#fff'; g.font='700 108px sans-serif';
+    g.fillText(parts[1]||'',80,690);
+    g.fillStyle='rgba(255,255,255,.9)'; g.font='500 50px sans-serif';
+    g.fillText('労働時間 '+(slot.w||'-'),80,800);
+    if(slot.n){
+      g.fillStyle='#ffd479'; g.font='700 42px sans-serif';
+      cardWrap(g,'📌 '+slot.n,80,880,W-160,54,3);
+    }
+  }
+  g.textAlign='right';
+  g.fillStyle='rgba(255,255,255,.45)'; g.font='500 34px sans-serif';
+  g.fillText('出退勤検索くん',W-70,H-60);
+
+  const t=new Date();
+  const name=`${cardDiaName()}${v}番_${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}.png`;
+  return {canvas:cv, name:name};
+}
+
+/* 画像そのものを共有する。対応していない端末には保存を促す。 */
+function shareTodayCard(){
+  const c=buildCard();
+  if(!c) return;
+  c.canvas.toBlob(function(blob){
+    const file=new File([blob],c.name,{type:'image/png'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      navigator.share({files:[file]}).catch(function(){});
+    }else{
+      const a=document.createElement('a');
+      a.download=c.name; a.href=c.canvas.toDataURL('image/png'); a.click();
+      showToast('画像を保存しました。ここから送ってください');
+    }
+  },'image/png');
 }
 
 /* ==== 今日の勤務を読み上げ ==== */
@@ -2525,7 +2766,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.48';
+const APP_LABEL = 'バージョン 2.49';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -4202,6 +4443,8 @@ window.onload=async function(){
     try{ sel = localStorage.getItem(ALL_SEL_KEY); }catch(e){}
     if(!sel || !ALL_DB[sel]) sel = (ALL_DIAS.find(d=>ALL_DB[d.code])||{}).code;
     renderDiaPicker();
+    const rw=document.getElementById('rosterWrap');
+    if(rw) rw.style.display='block';
     if(sel) selectDia(sel);
   }else{
     await loadDiaData();   // 先にダイヤのデータを読み込む
