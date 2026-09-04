@@ -984,6 +984,9 @@ a.source-link:visited {
   background: rgba(255,255,255,.92); color: #111;
   font-size: 20px; font-weight: bold; line-height: 44px; cursor: pointer;
 }
+.news-diag{ color:#ffd479; font-size:13px; line-height:1.8; padding:10px;
+  background:rgba(0,0,0,.5); border-radius:8px; margin-bottom:10px;
+  word-break:break-all; }
 .news-open{ display:inline-block; margin-top:6px; padding:10px 18px;
   border-radius:20px; background:#fff; color:#111; font-weight:bold;
   text-decoration:none; font-size:14px; }
@@ -2738,7 +2741,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v142';
+const APP_VERSION   = 'v143';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -2960,7 +2963,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.64';
+const APP_LABEL = 'バージョン 2.65';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3328,13 +3331,24 @@ function newsImgTags(){
        画像を返してもらえないことがある。
        2026-09-05、これだけの違いで表示されていなかった。 */
     return `<img src="${primary}" alt="お知らせ${i+1}" referrerpolicy="no-referrer"
+      onload="newsDiagSay('③ 画像が出ました（'+this.naturalWidth+'×'+this.naturalHeight+'）')"
       onerror="newsImgFail(this,'${backup}','${open}')">`;
   }).join('');
 }
 /* 画像が出せなかったときの逃げ道。真っ黒な画面で固まったように見えないよう、
    文言を出してから隠す。 */
+/* 調べるための表示。原因が分かったら消す。 */
+function newsDiagSay(t){
+  const d=document.getElementById('newsDiag');
+  if(d) d.textContent=t;
+}
 function newsImgFail(el, backup, open){
-  if(!el._retried){ el._retried=1; el.src=backup; return; }
+  if(!el._retried){
+    el._retried=1;
+    newsDiagSay('③ 1つ目が失敗。控えを試します');
+    el.src=backup; return;
+  }
+  newsDiagSay('③ 2つとも失敗しました');
   el.style.display='none';
   const wrap=document.getElementById('newsImgWrap');
   if(wrap && !wrap.querySelector('.news-err')){
@@ -3369,11 +3383,12 @@ function handleNewsClick(){
   const b=document.getElementById('news-banner');
   if(!b||b._bursting)return;
   b._bursting=true;
-  playUpdateBurst(b);                       // 更新バナーと同じ「パシュッ＋煙」
+  showToast('① バナーを押しました');
+  try{ playUpdateBurst(b); }catch(e){ showToast('⚠ 演出でエラー: '+e.message); }
   setTimeout(()=>{
     b.style.display='none';                 // 帯は消して、中身を出す
     b._bursting=false;
-    openNewsModal();
+    try{ openNewsModal(); }catch(e){ showToast('⚠ 画面を開けません: '+e.message); }
   },900);
 }
 /* 右上の×: 中身は見ずにバナーだけ閉じる(次に開いた時はまた出る) */
@@ -3387,7 +3402,8 @@ function openNewsModal(){
     if(NEWS_ITEMS.length===0){
       wrap.innerHTML='<div class="news-err">お知らせの画像がありません。</div>';
     }else{
-      wrap.innerHTML=newsImgTags();
+      wrap.innerHTML='<div class="news-diag" id="newsDiag">② 画面を開きました。画像を読み込んでいます…</div>'
+                    + newsImgTags();
     }
   }
   document.getElementById('newsModal').classList.add('active');
