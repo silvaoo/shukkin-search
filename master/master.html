@@ -2960,7 +2960,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.62';
+const APP_LABEL = 'バージョン 2.63';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3317,8 +3317,11 @@ function newsImgTags(){
   const t=cacheDay().replace(/-/g,'');
   return NEWS_ITEMS.map((it,i)=>{
     const id=it.fileId;
-    const primary=`https://lh3.googleusercontent.com/d/${id}=w1200`;
-    const backup=`https://drive.google.com/thumbnail?id=${id}&sz=w1200&_=${t}`;
+    /* drive.google.com/thumbnail を先に使う。
+       lh3.googleusercontent.com/d/ は使えなくなることがあり、
+       2026-09-04 時点で画像が出せなかった。 */
+    const primary=`https://drive.google.com/thumbnail?id=${id}&sz=w1600`;
+    const backup=`https://lh3.googleusercontent.com/d/${id}=w1600`;
     const open=`https://drive.google.com/file/d/${id}/view`;
     return `<img src="${primary}" alt="お知らせ${i+1}"
       onerror="newsImgFail(this,'${backup}','${open}')">`;
