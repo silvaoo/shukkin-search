@@ -1338,8 +1338,6 @@ a.source-link:visited {
   <div class="credit" style="margin-top:10px;">by AIタケタニ</div>
 </div>
 
-</div>
-
 <!-- メモ一覧 -->
 <div id="memoListModal" class="memolist-modal" onclick="if(event.target===this)closeMemoList()">
   <div class="ml-box">
@@ -1409,6 +1407,7 @@ a.source-link:visited {
       </p>
     </div>
   </div>
+</div>
 
 <!-- 使い方と更新履歴 -->
 <div id="guideModal" class="guide-modal" onclick="if(event.target===this)closeGuide()">
@@ -2741,7 +2740,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v143';
+const APP_VERSION   = 'v144';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -2963,7 +2962,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.65';
+const APP_LABEL = 'バージョン 2.66';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3331,24 +3330,13 @@ function newsImgTags(){
        画像を返してもらえないことがある。
        2026-09-05、これだけの違いで表示されていなかった。 */
     return `<img src="${primary}" alt="お知らせ${i+1}" referrerpolicy="no-referrer"
-      onload="newsDiagSay('③ 画像が出ました（'+this.naturalWidth+'×'+this.naturalHeight+'）')"
       onerror="newsImgFail(this,'${backup}','${open}')">`;
   }).join('');
 }
 /* 画像が出せなかったときの逃げ道。真っ黒な画面で固まったように見えないよう、
    文言を出してから隠す。 */
-/* 調べるための表示。原因が分かったら消す。 */
-function newsDiagSay(t){
-  const d=document.getElementById('newsDiag');
-  if(d) d.textContent=t;
-}
 function newsImgFail(el, backup, open){
-  if(!el._retried){
-    el._retried=1;
-    newsDiagSay('③ 1つ目が失敗。控えを試します');
-    el.src=backup; return;
-  }
-  newsDiagSay('③ 2つとも失敗しました');
+  if(!el._retried){ el._retried=1; el.src=backup; return; }
   el.style.display='none';
   const wrap=document.getElementById('newsImgWrap');
   if(wrap && !wrap.querySelector('.news-err')){
@@ -3383,8 +3371,7 @@ function handleNewsClick(){
   const b=document.getElementById('news-banner');
   if(!b||b._bursting)return;
   b._bursting=true;
-  showToast('① バナーを押しました');
-  try{ playUpdateBurst(b); }catch(e){ showToast('⚠ 演出でエラー: '+e.message); }
+  try{ playUpdateBurst(b); }catch(e){}      // 演出で止まらないようにしておく
   setTimeout(()=>{
     b.style.display='none';                 // 帯は消して、中身を出す
     b._bursting=false;
@@ -3402,8 +3389,7 @@ function openNewsModal(){
     if(NEWS_ITEMS.length===0){
       wrap.innerHTML='<div class="news-err">お知らせの画像がありません。</div>';
     }else{
-      wrap.innerHTML='<div class="news-diag" id="newsDiag">② 画面を開きました。画像を読み込んでいます…</div>'
-                    + newsImgTags();
+      wrap.innerHTML=newsImgTags();
     }
   }
   document.getElementById('newsModal').classList.add('active');
