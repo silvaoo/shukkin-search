@@ -1350,12 +1350,11 @@ a.source-link:visited {
       </div>
 
       <label class="ot-lb">ひとこと（任意）</label>
-      <input type="text" id="otNote" class="ot-in" placeholder="渋滞で30分居残り など">
+      <input type="text" id="otNote" class="ot-in" placeholder="遅出前に／上がりの後に　など">
 
       <button class="ot-save" onclick="otStore()">保存する</button>
       <p class="ot-warn">
-        ⚠ この計算は<b>目安</b>です。渋滞や居残りで実際とずれます。
-        時間外の決まりは変わることがあるので、最後は給与明細で確かめてください。
+        ⚠ <b>おおよその計算</b>です。多少のズレがあることはご了承ください。
       </p>
     </div>
   </div>
@@ -2891,7 +2890,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.51';
+const APP_LABEL = 'バージョン 2.52';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3599,7 +3598,7 @@ function renderOtPane(){
   if(keys.length===0){
     h+='<div class="ot-empty">まだ登録がありません。<br>'
       +'上のボタンから、公休出勤や振替が付いた日を足してください。<br><br>'
-      +'⚠ 計算は<b>目安</b>です。最後は給与明細で確かめてください。</div>';
+      +'⚠ <b>おおよその計算</b>です。多少のズレがあることはご了承ください。</div>';
     pane.innerHTML=h; return;
   }
   Object.keys(byPeriod).sort().reverse().forEach(function(ps){
@@ -3623,8 +3622,8 @@ function renderOtPane(){
         +'<button class="ot-del" onclick="otDelete(\''+k+'\')">🗑</button></div>';
     });
   });
-  h+='<div class="ot-empty">⚠ 計算は<b>目安</b>です。'
-    +'渋滞や居残りで実際とずれます。最後は給与明細で確かめてください。</div>';
+  h+='<div class="ot-empty">⚠ <b>おおよその計算</b>です。'
+    +'多少のズレがあることはご了承ください。</div>';
   pane.innerHTML=h;
 }
 
