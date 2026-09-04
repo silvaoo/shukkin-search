@@ -2960,7 +2960,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.63';
+const APP_LABEL = 'バージョン 2.64';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -3323,7 +3323,11 @@ function newsImgTags(){
     const primary=`https://drive.google.com/thumbnail?id=${id}&sz=w1600`;
     const backup=`https://lh3.googleusercontent.com/d/${id}=w1600`;
     const open=`https://drive.google.com/file/d/${id}/view`;
-    return `<img src="${primary}" alt="お知らせ${i+1}"
+    /* referrerpolicy="no-referrer" が要る。
+       これが無いとGoogleに「どのサイトから呼ばれたか」が伝わり、
+       画像を返してもらえないことがある。
+       2026-09-05、これだけの違いで表示されていなかった。 */
+    return `<img src="${primary}" alt="お知らせ${i+1}" referrerpolicy="no-referrer"
       onerror="newsImgFail(this,'${backup}','${open}')">`;
   }).join('');
 }
