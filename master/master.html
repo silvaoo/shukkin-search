@@ -674,28 +674,38 @@ input[type="date"] {
 
 /* カレンダーのマスに出す小さな印 */
 .rc-stamp{ position:absolute; left:50%; top:52%;
-  transform:translate(-50%,-50%) rotate(-18deg);
-  font-size:11px; font-weight:900; letter-spacing:1px;
-  padding:1px 4px; border-radius:4px; pointer-events:none;
-  opacity:.42; z-index:2; white-space:nowrap; }
-.rc-stamp.kyu  { color:#4aa3ff; border:2px solid #4aa3ff; }
-.rc-stamp.leave{ color:#ff5c72; border:2px solid #ff5c72; }
+  font-size:11px; font-weight:900; pointer-events:none;
+  opacity:.72; z-index:2; white-space:nowrap;
+  display:flex; align-items:center; justify-content:center; }
+.rc-stamp.kyu  { color:#4aa3ff; border:2px solid #4aa3ff;
+  border-radius:4px; padding:1px 4px; letter-spacing:1px; }
+.rc-stamp.leave{ color:#ff5c72; border:2px solid #ff5c72;
+  border-radius:50%; width:38px; height:38px; letter-spacing:0; }
 .rescal-grid .cal-day.has-kyu  { border-color: rgba(74,163,255,.6); }
 .rescal-grid .cal-day.has-leave{ border-color: rgba(255,92,114,.6); }
 
 /* ==== 公出・年休の印鑑 ==== */
 .stamp {
   position: absolute; left: 50%; top: 50%;
-  padding: 6px 22px; border-radius: 10px;
-  font-size: 40px; font-weight: 900; letter-spacing: 8px; text-indent: 8px;
+  font-size: 38px; font-weight: 900;
   font-family: 'Noto Sans JP', sans-serif;
   pointer-events: none;          /* 下のボタンを押せるようにする */
   white-space: nowrap; z-index: 3;
-  opacity: 0.30;                 /* 元の文字が透けて見える濃さ */
+  opacity: 0.62;                 /* 下の文字が透けつつ、はっきり読める濃さ */
+  display: flex; align-items: center; justify-content: center;
 }
-.stamp-kyu   { color:#4aa3ff; border: 5px solid #4aa3ff; }
-.stamp-leave { color:#ff5c72; border: 5px solid #ff5c72; }
-body.light .stamp { opacity: 0.24; }
+/* 公出は角印（四角） */
+.stamp-kyu {
+  color:#4aa3ff; border: 5px solid #4aa3ff; border-radius: 8px;
+  padding: 4px 20px; letter-spacing: 8px; text-indent: 8px;
+}
+/* 年休は丸印 */
+.stamp-leave {
+  color:#ff5c72; border: 5px solid #ff5c72; border-radius: 50%;
+  width: 132px; height: 132px; padding: 0;
+  letter-spacing: 2px; text-indent: 2px;
+}
+body.light .stamp { opacity: 0.55; }
 
 /* ==== C案: 期間の合計労働時間 ==== */
 .res-total {
@@ -2544,6 +2554,14 @@ function getDialMemo(dn){ return loadMemos(MEMO_DIAL_KEY)[dn]||''; }
 
 /* 公出・年休の日に押す印鑑。斜めに、少し傾きを変えて無造作に見せる。
    下の文字が透けるよう薄くしてある。 */
+/* 日付を混ぜて、隣り合う日でも傾きが規則的に並ばないようにする。
+   同じ日はいつ見ても同じ値になる（毎回変わると落ち着かないため）。 */
+function stampHash(n){
+  let x=n;
+  x=(x^61)^(x>>>16); x=x+(x<<3); x=x^(x>>>4);
+  x=x*0x27d4eb2d; x=x^(x>>>15);
+  return Math.abs(x);
+}
 function stampHtml(iso){
   const r=otLoad()[iso];
   if(!r) return '';
@@ -2551,11 +2569,15 @@ function stampHtml(iso){
   if(otIsLeave(r)){ cls='stamp-leave'; txt='年休'; }
   else if(otIsKyu(r)){ cls='stamp-kyu'; txt='公出'; }
   else return '';
-  // 日付から傾きを決める。毎回同じ日は同じ傾きになり、日ごとに少し違う。
+  /* 日付から傾きを決める。同じ日はいつ見ても同じ、隣の日とは違う傾きになる。
+     右にも左にも倒れるようにして、押し方の雑さを出す。 */
   const n=parseInt(iso.replace(/-/g,''),10);
-  const deg=-22 + (n%9);            // -22〜-14度
-  const dx =(n%7)-3;                // 左右に少しずらす
-  return `<div class="stamp ${cls}" style="transform:translate(-50%,-50%) rotate(${deg}deg) translateX(${dx}px)">${txt}</div>`;
+  const h=stampHash(n);                 // 日付をばらけさせる
+  const dir=(h%2===0)?1:-1;             // 右倒し・左倒し
+  const deg=dir*(8+(h%15));             // ±8〜±22度
+  const dx =((h>>3)%17)-8;              // 左右に -8〜+8px
+  const dy =((h>>7)%11)-5;              // 上下に -5〜+5px
+  return `<div class="stamp ${cls}" style="transform:translate(-50%,-50%) translate(${dx}px,${dy}px) rotate(${deg}deg)">${txt}</div>`;
 }
 
 /* 1日分のカードに差し込むメモ欄のHTML */
@@ -3065,7 +3087,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.69';
+const APP_LABEL = 'バージョン 2.70';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -4731,8 +4753,12 @@ function renderResultCal(){
     }
     const stRec=otLoad()[iso];
     const stCls = otIsLeave(stRec) ? ' has-leave' : (otIsKyu(stRec) ? ' has-kyu' : '');
-    const stMark = otIsLeave(stRec) ? '<span class="rc-stamp leave">年休</span>'
-                 : (otIsKyu(stRec) ? '<span class="rc-stamp kyu">公出</span>' : '');
+    const sh=stampHash(parseInt(iso.replace(/-/g,''),10));
+    const sdeg=((sh%2===0)?1:-1)*(7+(sh%13));
+    const stMark = otIsLeave(stRec)
+      ? `<span class="rc-stamp leave" style="transform:translate(-50%,-50%) rotate(${sdeg}deg)">年休</span>`
+      : (otIsKyu(stRec)
+      ? `<span class="rc-stamp kyu" style="transform:translate(-50%,-50%) rotate(${sdeg}deg)">公出</span>` : '');
     html+=`<div class="${cls}${stCls}"${r?` onclick="openRcDetail('${iso}')"`:''}><div class="rc-date">${d}</div>${stMark}<div class="rc-body">${body}</div></div>`;
   }
   document.getElementById('resCalGrid').innerHTML=html;
