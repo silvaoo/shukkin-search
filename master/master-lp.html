@@ -15,6 +15,7 @@
   /* ==== 見出し ==== */
   .hero{padding:44px 20px 34px;text-align:center;
         background:linear-gradient(160deg,{{SOON_A}},{{SOON_B}});color:{{SOON_TX}};}
+  .hero .sub{opacity:.95;}
   .hero img{width:88px;height:88px;border-radius:20px;margin-bottom:14px;}
   .hero h1{font-size:26px;font-weight:900;letter-spacing:.02em;margin-bottom:6px;}
   .hero .dia{font-size:15px;font-weight:700;opacity:.92;}
@@ -25,15 +26,15 @@
   /* ==== ひとこと ==== */
   .lead{font-size:16px;font-weight:700;text-align:center;
         margin:28px 0 6px;color:{{TEXT_D}};}
-  .lead-sub{font-size:13px;color:{{BAND_TX}};text-align:center;margin-bottom:26px;}
+  .lead-sub{font-size:13px;color:#a9b0d6;text-align:center;margin-bottom:26px;}
 
   /* ==== できること ==== */
-  .sec{font-size:12px;letter-spacing:.14em;color:{{SOON_A}};
-       margin:30px 0 12px;padding-bottom:6px;border-bottom:1px solid {{BORDER_D}};}
-  .card{background:{{BAND_BG}};border:1px solid {{BORDER_D}};border-radius:14px;
+  .sec{font-size:12px;letter-spacing:.14em;color:#ffb35c;
+       margin:30px 0 12px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.14);}
+  .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:14px;
         padding:14px 16px;margin-bottom:10px;}
   .card h3{font-size:15px;font-weight:800;margin-bottom:4px;}
-  .card p{font-size:13px;color:{{BAND_TX}};}
+  .card p{font-size:13px;color:#a9b0d6;}
 
   /* ==== 入れ方 ==== */
   .step{display:flex;gap:12px;margin-bottom:16px;}
@@ -42,14 +43,32 @@
           font-size:14px;font-weight:800;text-align:center;line-height:28px;}
   .step-b{flex:1;}
   .step-b h4{font-size:14.5px;font-weight:800;margin-bottom:2px;}
-  .step-b p{font-size:13px;color:{{BAND_TX}};}
+  .step-b p{font-size:13px;color:#a9b0d6;}
 
   .tabs{display:flex;gap:8px;margin-bottom:14px;}
-  .tab{flex:1;padding:11px;border-radius:10px;border:1px solid {{BORDER_D}};
-       background:{{BAND_BG}};color:{{TEXT_D}};
-       font-size:14px;font-weight:800;cursor:pointer;
-       font-family:'Noto Sans JP',sans-serif;}
-  .tab.on{background:{{SOON_A}};color:{{SOON_TX}};border-color:transparent;}
+  .tab{flex:1;padding:14px 8px;border-radius:12px;
+       border:2px solid rgba(255,255,255,.22);
+       background:transparent;color:{{TEXT_D}};
+       font-size:15px;font-weight:800;cursor:pointer;
+       font-family:'Noto Sans JP',sans-serif;transition:all .15s;}
+  /* 選ばれているほうだけ、薄く色を敷く */
+  .tab.on{background:rgba(255,140,0,.18);color:{{SOON_A}};
+          border-color:{{SOON_A}};}
+  /* まだ選んでいないうちは、両方ゆっくり点滅させて選択を促す */
+  .tabs.ask .tab{animation:tab-blink 1.5s ease-in-out infinite;}
+  .tabs.ask .tab:nth-child(2){animation-delay:.75s;}
+  @keyframes tab-blink{
+    0%,100%{ border-color:rgba(255,255,255,.22); background:transparent; }
+    50%    { border-color:{{SOON_A}}; background:rgba(255,140,0,.16); }
+  }
+  @media (prefers-reduced-motion: reduce){ .tabs.ask .tab{animation:none;} }
+
+  /* どちらか選んでください、の案内 */
+  .ask-msg{display:flex;align-items:center;justify-content:center;gap:8px;
+    margin-bottom:12px;padding:12px;border-radius:12px;
+    background:rgba(255,140,0,.12);border:1px solid rgba(255,140,0,.45);
+    color:{{SOON_A}};font-size:14px;font-weight:800;text-align:center;}
+  .ask-msg.done{display:none;}
 
   /* ==== 開くボタン ==== */
   .open-wrap{position:sticky;bottom:0;padding:14px 16px calc(14px + env(safe-area-inset-bottom));
@@ -58,7 +77,7 @@
             border-radius:14px;text-align:center;text-decoration:none;
             background:linear-gradient(135deg,{{SOON_A}},{{SOON_B}});color:{{SOON_TX}};
             font-size:17px;font-weight:900;}
-  .note{font-size:11.5px;color:{{BAND_TX}};text-align:center;margin-top:26px;line-height:1.9;}
+  .note{font-size:11.5px;color:#a9b0d6;text-align:center;margin-top:26px;line-height:1.9;}
 </style>
 </head>
 <body>
@@ -99,16 +118,18 @@
   </div>
 
   <div class="sec">ホーム画面に入れる</div>
-  <p style="font-size:13px;color:{{BAND_TX}};margin-bottom:14px;">
+  <p style="font-size:13px;color:#a9b0d6;margin-bottom:14px;">
     入れておくと、ふつうのアプリと同じように開けます。ストアからの入手は不要です。
   </p>
 
-  <div class="tabs">
-    <button class="tab on" id="tabI" onclick="pick('i')">🍎 iPhone</button>
+  <div class="ask-msg" id="askMsg">👇 お使いの機種はどちらですか？　入れ方が変わります</div>
+
+  <div class="tabs ask" id="tabs">
+    <button class="tab" id="tabI" onclick="pick('i')">🍎 iPhone</button>
     <button class="tab" id="tabA" onclick="pick('a')">🤖 Android</button>
   </div>
 
-  <div id="howI">
+  <div id="howI" style="display:none;">
     <div class="step"><div class="step-n">1</div><div class="step-b">
       <h4>下のボタンでアプリを開く</h4>
       <p>Safari で開いてください。</p></div></div>
@@ -145,17 +166,40 @@
 
 <script>
 /* iPhone・Android の切り替え。最初は端末に合わせて選んでおく。 */
+/* 機種を選ぶ。選ぶまでは手順を出さず、点滅で選択を促す。 */
 function pick(k){
   document.getElementById('tabI').classList.toggle('on', k==='i');
   document.getElementById('tabA').classList.toggle('on', k==='a');
   document.getElementById('howI').style.display = (k==='i') ? 'block' : 'none';
   document.getElementById('howA').style.display = (k==='a') ? 'block' : 'none';
+  document.getElementById('tabs').classList.remove('ask');   // 点滅を止める
+  document.getElementById('askMsg').classList.add('done');   // 案内を消す
+  stopAutoScroll();
 }
-(function(){
-  const ua = navigator.userAgent || '';
-  const isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-  pick(isIOS ? 'i' : 'a');
-})();
+
+/* ==== 開いたらゆっくり下へ送る ====
+   はじめての人に、全部読んでもらうため。
+   指で触ったら、その場で止める。 */
+var autoTimer = null;
+function stopAutoScroll(){
+  if(autoTimer){ clearInterval(autoTimer); autoTimer = null; }
+}
+function startAutoScroll(){
+  const tabs = document.getElementById('tabs');
+  autoTimer = setInterval(function(){
+    // 機種を選ぶところが画面の真ん中まで来たら止める
+    const r = tabs.getBoundingClientRect();
+    if(r.top <= window.innerHeight * 0.55){ stopAutoScroll(); return; }
+    window.scrollBy(0, 1);
+  }, 16);   // 1コマ1px。ゆっくり流れる速さ
+}
+['touchstart','wheel','keydown','pointerdown'].forEach(function(ev){
+  window.addEventListener(ev, stopAutoScroll, {passive:true});
+});
+window.addEventListener('load', function(){
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!reduce) setTimeout(startAutoScroll, 1200);   // 少し眺めてから動き出す
+});
 </script>
 </body>
 </html>
