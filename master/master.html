@@ -4204,30 +4204,37 @@ function renderMemoList(){
 /* マイページから新しくメモを作る。
    これまでは検索してからでないと書けなかったので、ここからでも書けるようにした。 */
 function openNewMemo(type){
+  /* 入力欄の名前は種類ごとに分ける。
+     同じ名前にすると、日付の欄と番号の欄が両方あるときに
+     取り違えて読んでしまう（2026-09-05 を番号として読む等）。 */
+  const other=document.getElementById(type==='date'?'newMemoDial':'newMemoDate');
+  if(other) other.innerHTML='';                 // もう片方は閉じておく
   const box=document.getElementById(type==='date'?'newMemoDate':'newMemoDial');
   if(!box || box.innerHTML.trim()) return;      // 二重に開かない
   const head = (type==='date')
     ? '<label class="ot-lb">日付</label>'
-      +'<input type="date" class="ot-in" id="nm-key" value="'+toISO(new Date())+'">'
+      +'<input type="date" class="ot-in" id="nm-key-date" value="'+toISO(new Date())+'">'
     : '<label class="ot-lb">ダイヤ番号</label>'
-      +'<input type="number" class="ot-in" id="nm-key" min="1" max="'+CUR_MAX+'" inputmode="numeric" placeholder="1〜'+CUR_MAX+'">';
+      +'<input type="number" class="ot-in" id="nm-key-dial" min="1" max="'+CUR_MAX+'" inputmode="numeric" placeholder="1〜'+CUR_MAX+'">';
   box.innerHTML =
      '<div class="ml-edit nm-box">'
     + head
     + '<label class="ot-lb">メモ</label>'
-    + '<textarea rows="3" id="nm-text" placeholder="'
+    + '<textarea rows="3" id="nm-text-'+type+'" placeholder="'
       + (type==='date' ? '年休申請、〇〇さんと交代　など' : 'この番号のときの注意　など')
       + '"></textarea>'
     + '<div class="ml-edit-acts">'
     +   '<button class="memo-act memo-save" onclick="saveNewMemo(\''+type+'\')">💾 保存</button>'
     +   '<button class="memo-act memo-close" onclick="renderMemoList()">✕ 取消</button>'
     + '</div></div>';
-  document.getElementById('nm-text').focus();
+  document.getElementById('nm-text-'+type).focus();
 }
 
 function saveNewMemo(type){
-  const keyEl=document.getElementById('nm-key');
-  const txt=document.getElementById('nm-text').value.trim();
+  const keyEl=document.getElementById('nm-key-'+type);
+  const txtEl=document.getElementById('nm-text-'+type);
+  if(!keyEl||!txtEl){ showToast('入力欄が見つかりませんでした'); return; }
+  const txt=txtEl.value.trim();
   let key=(keyEl.value||'').trim();
   if(type==='dial'){
     const n=parseInt(key);
