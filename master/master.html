@@ -808,6 +808,11 @@ body.light .stamp { opacity: 0.55; }
 body.multi .only-single{ display:none !important; }
 
 /* ==== 時間外 ==== */
+.nm-box{ margin-bottom:14px; padding:12px; border-radius:12px;
+  background:var(--bg-card2); border:1px solid var(--border); }
+.nm-box .ot-lb{ margin-top:8px; }
+.nm-box .ot-lb:first-child{ margin-top:0; }
+
 .ot-add-btn{ width:100%; padding:13px; margin-bottom:12px; border:none; border-radius:10px;
   background:linear-gradient(135deg,{{SOON_A}},{{SOON_B}}); color:{{SOON_TX}};
   font-size:15px; font-weight:bold; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
@@ -1573,7 +1578,7 @@ a.source-link:visited {
         <p>下の「📝 マイページ」を押すと開きます。<b>時間外・メモ・保存したカレンダー</b>がタブで分かれています。</p>
         <img src="images/guide-memolist.jpg" alt="マイページ">
         <div class="guide-note">
-          メモは「日付のメモ」と「ダイヤ番号のメモ」に分かれています。過ぎた日には印が付き、<b>🧹 過ぎた日のメモをまとめて削除</b>で一度に片付けられます。
+          メモは「日付のメモ」と「ダイヤ番号のメモ」に分かれています。<b>それぞれの上にある「📝 メモを追加」から、検索しなくてもその場で書けます。</b>書いたメモは編集・削除もできます。過ぎた日には印が付き、<b>🧹 過ぎた日のメモをまとめて削除</b>で一度に片付けられます。
         </div>
       </div>
 
@@ -4116,11 +4121,13 @@ function renderMemoList(){
   const dimgs=loadImgs(MEMOIMG_DATE_KEY);
   const dkeys=[...new Set([...Object.keys(dm), ...Object.keys(dimgs)])].sort();
   let h='';
+  h+='<button class="ot-add-btn" onclick="openNewMemo(\'date\')">📝 日付のメモを追加</button>'
+     +'<div id="newMemoDate"></div>';
   if(dkeys.length===0){
-    h='<div class="ml-empty">日付のメモはまだありません。<br>検索結果の「📝 メモを追加」から書けます。</div>';
+    h+='<div class="ml-empty">日付のメモはまだありません。<br>上のボタン、または検索結果の「📝 メモを追加」から書けます。</div>';
   }else{
     const past=dkeys.filter(k=>k<todayIso).length;
-    h=`<div class="ml-count">${dkeys.length}件${past?`（うち過ぎた日 ${past}件）`:''}</div>`;
+    h+=`<div class="ml-count">${dkeys.length}件${past?`（うち過ぎた日 ${past}件）`:''}</div>`;
     dkeys.forEach(k=>{
       const d=new Date(k+'T00:00:00');
       const isPast=k<todayIso;
@@ -4148,10 +4155,12 @@ function renderMemoList(){
   const limgs=loadImgs(MEMOIMG_DIAL_KEY);
   const lkeys=[...new Set([...Object.keys(lm), ...Object.keys(limgs)])].sort((a,b)=>Number(a)-Number(b));
   let h2='';
+  h2+='<button class="ot-add-btn" onclick="openNewMemo(\'dial\')">📝 ダイヤ番号のメモを追加</button>'
+      +'<div id="newMemoDial"></div>';
   if(lkeys.length===0){
-    h2='<div class="ml-empty">ダイヤ番号のメモはまだありません。<br>検索結果の「📝 メモを追加」から書けます。</div>';
+    h2+='<div class="ml-empty">ダイヤ番号のメモはまだありません。<br>上のボタン、または検索結果の「📝 メモを追加」から書けます。</div>';
   }else{
-    h2=`<div class="ml-count">${lkeys.length}件</div>`;
+    h2+=`<div class="ml-count">${lkeys.length}件</div>`;
     lkeys.forEach(k=>{
       h2+=`<div class="ml-item dial" id="ml-l-${k}">
         <div class="ml-top">
@@ -4192,6 +4201,51 @@ function renderMemoList(){
   document.getElementById('mlPaneCal').innerHTML=h3;
 }
 /* 一覧の中で直接編集する */
+/* マイページから新しくメモを作る。
+   これまでは検索してからでないと書けなかったので、ここからでも書けるようにした。 */
+function openNewMemo(type){
+  const box=document.getElementById(type==='date'?'newMemoDate':'newMemoDial');
+  if(!box || box.innerHTML.trim()) return;      // 二重に開かない
+  const head = (type==='date')
+    ? '<label class="ot-lb">日付</label>'
+      +'<input type="date" class="ot-in" id="nm-key" value="'+toISO(new Date())+'">'
+    : '<label class="ot-lb">ダイヤ番号</label>'
+      +'<input type="number" class="ot-in" id="nm-key" min="1" max="'+CUR_MAX+'" inputmode="numeric" placeholder="1〜'+CUR_MAX+'">';
+  box.innerHTML =
+     '<div class="ml-edit nm-box">'
+    + head
+    + '<label class="ot-lb">メモ</label>'
+    + '<textarea rows="3" id="nm-text" placeholder="'
+      + (type==='date' ? '年休申請、〇〇さんと交代　など' : 'この番号のときの注意　など')
+      + '"></textarea>'
+    + '<div class="ml-edit-acts">'
+    +   '<button class="memo-act memo-save" onclick="saveNewMemo(\''+type+'\')">💾 保存</button>'
+    +   '<button class="memo-act memo-close" onclick="renderMemoList()">✕ 取消</button>'
+    + '</div></div>';
+  document.getElementById('nm-text').focus();
+}
+
+function saveNewMemo(type){
+  const keyEl=document.getElementById('nm-key');
+  const txt=document.getElementById('nm-text').value.trim();
+  let key=(keyEl.value||'').trim();
+  if(type==='dial'){
+    const n=parseInt(key);
+    if(!n||n<1||n>CUR_MAX){ showToast('1〜'+CUR_MAX+' の番号を入れてください'); return; }
+    key=String(n);
+  }else if(!key){ showToast('日付を入れてください'); return; }
+  if(!txt){ showToast('メモを書いてください'); return; }
+
+  const store=(type==='date')?MEMO_DATE_KEY:MEMO_DIAL_KEY;
+  const obj=loadMemos(store);
+  // 同じ日付・番号にすでにメモがあれば、下に足す
+  obj[key] = obj[key] ? (obj[key]+'\n'+txt) : txt;
+  if(!saveMemos(store,obj)){ showToast('保存できませんでした'); return; }
+  showToast('💾 メモを保存しました');
+  renderMemoList();
+  refreshMemoViews();
+}
+
 function editMemoItem(type,key){
   const id=(type==='date'?'ml-d-':'ml-l-')+key;
   const box=document.getElementById(id);
