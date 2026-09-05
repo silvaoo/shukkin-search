@@ -32,6 +32,7 @@ TEMPLATES = [
     ("master-share.html",    "share.html"),
     ("master-qr.js",         "qr.js"),
     ("master-robots.txt",    "robots.txt"),
+    ("master-lp.html",       "lp.html"),
 ]
 
 BUMP = len(sys.argv) > 1 and sys.argv[1] == "bump"

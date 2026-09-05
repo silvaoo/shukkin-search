@@ -10,7 +10,7 @@
 
 // キャッシュ名にバージョンを入れておき、更新のたびにこの値を変えることで
 // 新しいService Workerが「更新あり」と判定されるようにする
-const CACHE_VERSION = 'a-shukkin-v148';
+const CACHE_VERSION = 'a-shukkin-v149';
 const CACHE_FILES = [
     './',
     './index.html',
@@ -19,7 +19,8 @@ const CACHE_FILES = [
     './mascot.png',
     './icons/icon-192.png',
     './manifest.json',
-    './qr.js'           // QRコードの部品。圏外でも共有画面が出せるように
+    './qr.js',          // QRコードの部品。圏外でも共有画面が出せるように
+    './lp.html'         // 共有したときに開く紹介ページ
 ];
 
 // インストール時: 主要ファイルをキャッシュに保存

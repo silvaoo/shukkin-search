@@ -684,6 +684,18 @@ input[type="date"] {
 .rescal-grid .cal-day.has-kyu  { border-color: rgba(74,163,255,.6); }
 .rescal-grid .cal-day.has-leave{ border-color: rgba(255,92,114,.6); }
 
+/* マイページの入口。よく使うので大きめにしてある。 */
+.mypage-btn{
+  width:100%; max-width:340px; padding:14px 12px;
+  border:1px solid var(--note); border-radius:12px;
+  background:rgba(255,212,121,.10); color:var(--note);
+  font-size:16px; font-weight:800; cursor:pointer;
+  font-family:'Noto Sans JP', sans-serif; line-height:1.5;
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+}
+.mypage-btn span{ font-size:11px; font-weight:400; color:var(--dim); }
+.mypage-btn:active{ background:rgba(255,212,121,.22); }
+
 /* ==== 公出・年休の印鑑 ==== */
 .stamp {
   position: absolute; left: 50%; top: 50%;
@@ -1374,7 +1386,9 @@ a.source-link:visited {
 <div class="footer">
   <div>⚠ あくまでも目安としてお使いください。</div>
   <div>出退勤時間に誤りがあっても当方は責任を負いかねます。</div>
-  <div style="margin-top:8px;" class="only-single"><span class="source-link" onclick="openMemoList()">📝 マイページ</span></div>
+  <div style="margin-top:12px;" class="only-single">
+    <button class="mypage-btn" onclick="openMemoList()">📝 マイページ<span>時間外・メモ・保存したカレンダー</span></button>
+  </div>
   <div style="margin-top:8px;"><span class="source-link" onclick="openGuide()">📖 使い方・アプリの入れ方・更新履歴</span></div>
   <div id="pushBox" class="only-single" style="margin-top:12px;"></div>
   <div style="margin-top:10px;">
@@ -1485,7 +1499,7 @@ a.source-link:visited {
         <ol>
           <li>自分の<b>ダイヤ番号</b>を入れる</li>
           <li>すぐ下に<b>今日の出退勤</b>が出る</li>
-          <li>先の予定は<b>「1週間」など</b>を押す</li>
+          <li>先の予定は<b>「9日後」など</b>を押す</li>
         </ol>
         <div class="qq">
           これだけで使えます。番号は保存されるので、次の日からは<b>開くだけ</b>でOKです。<br>
@@ -1507,8 +1521,8 @@ a.source-link:visited {
       </div>
 
       <div class="guide-step">
-        <h3>② 「明日」「1週間」「1ヶ月」を押す</h3>
-        <p>押すだけで勤務が出ます。「明日」は明日1日だけ、「1週間」「1ヶ月」はその期間をまとめて表示します。次の日以降は、番号が1日ずつ進んだ状態で出ます。</p>
+        <h3>② 「明日」「9日後」「1ヶ月」を押す</h3>
+        <p>押すだけで勤務が出ます。「明日」は明日1日だけ、<b>「9日後」は今日を入れて10日分</b>、「1ヶ月」はその期間をまとめて表示します。次の日以降は、番号が1日ずつ進んだ状態で出ます。</p>
         <img src="images/guide-2.jpg" alt="クイック検索と指定して検索">
       </div>
 
@@ -1555,16 +1569,42 @@ a.source-link:visited {
       </div>
 
       <div class="guide-step">
-        <h3>⑦ 書いたメモをまとめて見る</h3>
-        <p>下の「📝 マイページ」を押すと、<b>これまでのメモを全部まとめて見られます</b>。その場で編集・削除もできます。</p>
-        <img src="images/guide-memolist.jpg" alt="メモ一覧">
+        <h3>⑦ マイページ</h3>
+        <p>下の「📝 マイページ」を押すと開きます。<b>時間外・メモ・保存したカレンダー</b>がタブで分かれています。</p>
+        <img src="images/guide-memolist.jpg" alt="マイページ">
         <div class="guide-note">
-          「日付のメモ」と「ダイヤ番号のメモ」がタブで分かれています。過ぎた日には印が付き、<b>🧹 過ぎた日のメモをまとめて削除</b>で一度に片付けられます。
+          メモは「日付のメモ」と「ダイヤ番号のメモ」に分かれています。過ぎた日には印が付き、<b>🧹 過ぎた日のメモをまとめて削除</b>で一度に片付けられます。
         </div>
       </div>
 
+      <div class="guide-step">
+        <h3>⑧ 時間外を記録する</h3>
+        <p>マイページの「時間外」、または<b>検索結果の各日にある「⏱ 時間外」</b>から入れられます。</p>
+        <p>入れるのは3つだけです。</p>
+        <ul>
+          <li><b>この日は？</b>　勤務の日／公休（指定公休も）／年休</li>
+          <li><b>本来のダイヤをどう乗ったか</b>　まるごと／前半だけ／後半だけ／乗ってない</li>
+          <li><b>付いたダイヤ番号</b>　何本でも足せます</li>
+        </ul>
+        <p>入れた瞬間に時間外が出ます。<b>数字は手で直せます。</b>渋滞や居残りで増えたときは書き換えてください。一度直すと、あとから上書きされません。</p>
+        <div class="guide-note">
+          <b>16日〜翌月15日</b>の合計と、公出の回数が出ます。公出の日は青、年休の日は赤の印が付きます。<br>
+          ⚠ おおよその計算です。多少のズレがあることはご了承ください。
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <h3>⑨ 年休を入れておく</h3>
+        <p>「この日は？」で<b>年休</b>を選ぶと、その日は勤務時間の代わりに<b>次の出勤日と時間</b>が出ます。連続した年休や公休は飛ばして、本当に出る日を探します。</p>
+      </div>
+
+      <div class="guide-step">
+        <h3>⑩ 今日の勤務を画像で送る</h3>
+        <p>ダイヤ番号を入れた下の「🖼 今日の勤務を画像で送る」を押すと、その場で画像ができます。<b>LINEにそのまま貼れます。</b>早番・遅番・公休で絵柄が変わります。</p>
+      </div>
+
 <div class="guide-step">
-        <h3>⑧ 圏外でも使えます</h3>
+        <h3>⑪ 圏外でも使えます</h3>
         <p>一度オンラインで開いておけば、その後は圏外や機内モードでも起動できます。</p>
         <div class="guide-note">「🔄 新しいバージョンがあります」と出たらタップしてください。最新バージョンのアプリに更新されます。</div>
       </div>
@@ -3087,7 +3127,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.70';
+const APP_LABEL = 'バージョン 2.71';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -4937,7 +4977,10 @@ function toggleMode(){document.body.classList.toggle('light');}
 /* ==== アプリ共有 ====
    Androidの共有シートにはLINEが並ぶのでそのまま使う。
    iPhoneの共有シートにはLINEが出ないため、iPhoneのときだけ自前の画面を出す。 */
-const SHARE_URL  = 'https://silvaoo.github.io/{{REPO}}/';
+/* 共有するときは紹介ページを送る。
+   はじめての人に、いきなりアプリを開かせるより
+   何ができるものか・入れ方を先に読んでもらったほうが親切なため。 */
+const SHARE_URL  = 'https://silvaoo.github.io/{{REPO}}/lp.html';
 const SHARE_TEXT = '{{ABBR}}(出退勤検索くん) {{DIA_NAME}}';
 
 /* iPhone・iPadの判定。iPadOSはMacintoshを名乗るのでタッチの有無も見る。 */
