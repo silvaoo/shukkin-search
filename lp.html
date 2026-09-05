@@ -4,17 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow, noarchive">
-<title>学A 出退勤検索くん（北大和・学園前 Aダイヤ）</title>
-<meta name="theme-color" content="#0a0e27">
+<title>出退勤検索くん</title>
+<meta name="theme-color" content="#1f7a52">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;
     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif;}
-  body{background:#0a0e27;color:#dde0ff;line-height:1.8;
+  body{background:#0d1117;color:#e6ebf2;line-height:1.8;
        padding:0 0 60px;}
 
   /* ==== 見出し ==== */
   .hero{padding:44px 20px 34px;text-align:center;
-        background:linear-gradient(160deg,#ff8c00,#ff6a00);color:#fff;}
+        background:linear-gradient(160deg,#26794f,#164a33);color:#ffffff;}
   .hero .sub{opacity:.95;}
   .hero img{width:88px;height:88px;border-radius:20px;margin-bottom:14px;}
   .hero h1{font-size:26px;font-weight:900;letter-spacing:.02em;margin-bottom:6px;}
@@ -25,11 +25,11 @@
 
   /* ==== ひとこと ==== */
   .lead{font-size:16px;font-weight:700;text-align:center;
-        margin:28px 0 6px;color:#dde0ff;}
+        margin:28px 0 6px;color:#e6ebf2;}
   .lead-sub{font-size:13px;color:#a9b0d6;text-align:center;margin-bottom:26px;}
 
   /* ==== できること ==== */
-  .sec{font-size:12px;letter-spacing:.14em;color:#ffb35c;
+  .sec{font-size:12px;letter-spacing:.14em;color:#7fd9ae;
        margin:30px 0 12px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.14);}
   .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:14px;
         padding:14px 16px;margin-bottom:10px;}
@@ -37,9 +37,13 @@
   .card p{font-size:13px;color:#a9b0d6;}
 
   /* ==== 入れ方 ==== */
+  .card.grow{background:rgba(63,174,122,.10);border-color:rgba(63,174,122,.45);}
+  .card.grow h3{color:#7fd9ae;}
+  .card b{color:#e6ebf2;}
+
   .step{display:flex;gap:12px;margin-bottom:16px;}
   .step-n{flex:none;width:28px;height:28px;border-radius:14px;
-          background:#ff8c00;color:#fff;
+          background:#26794f;color:#ffffff;
           font-size:14px;font-weight:800;text-align:center;line-height:28px;}
   .step-b{flex:1;}
   .step-b h4{font-size:14.5px;font-weight:800;margin-bottom:2px;}
@@ -48,34 +52,34 @@
   .tabs{display:flex;gap:8px;margin-bottom:14px;}
   .tab{flex:1;padding:14px 8px;border-radius:12px;
        border:2px solid rgba(255,255,255,.22);
-       background:transparent;color:#dde0ff;
+       background:transparent;color:#e6ebf2;
        font-size:15px;font-weight:800;cursor:pointer;
        font-family:'Noto Sans JP',sans-serif;transition:all .15s;}
   /* 選ばれているほうだけ、薄く色を敷く */
-  .tab.on{background:rgba(255,140,0,.18);color:#ff8c00;
-          border-color:#ff8c00;}
+  .tab.on{background:rgba(63,174,122,.18);color:#3fae7a;
+          border-color:#3fae7a;}
   /* まだ選んでいないうちは、両方ゆっくり点滅させて選択を促す */
   .tabs.ask .tab{animation:tab-blink 1.5s ease-in-out infinite;}
   .tabs.ask .tab:nth-child(2){animation-delay:.75s;}
   @keyframes tab-blink{
     0%,100%{ border-color:rgba(255,255,255,.22); background:transparent; }
-    50%    { border-color:#ff8c00; background:rgba(255,140,0,.16); }
+    50%    { border-color:#3fae7a; background:rgba(63,174,122,.16); }
   }
   @media (prefers-reduced-motion: reduce){ .tabs.ask .tab{animation:none;} }
 
   /* どちらか選んでください、の案内 */
   .ask-msg{display:flex;align-items:center;justify-content:center;gap:8px;
     margin-bottom:12px;padding:12px;border-radius:12px;
-    background:rgba(255,140,0,.12);border:1px solid rgba(255,140,0,.45);
-    color:#ff8c00;font-size:14px;font-weight:800;text-align:center;}
+    background:rgba(63,174,122,.12);border:1px solid rgba(63,174,122,.5);
+    color:#3fae7a;font-size:14px;font-weight:800;text-align:center;}
   .ask-msg.done{display:none;}
 
   /* ==== 開くボタン ==== */
   .open-wrap{position:sticky;bottom:0;padding:14px 16px calc(14px + env(safe-area-inset-bottom));
-             background:linear-gradient(to top,#0a0e27 70%,transparent);}
+             background:linear-gradient(to top,#0d1117 70%,transparent);}
   .open-btn{display:block;max-width:560px;margin:0 auto;padding:17px;
             border-radius:14px;text-align:center;text-decoration:none;
-            background:linear-gradient(135deg,#ff8c00,#ff6a00);color:#fff;
+            background:linear-gradient(135deg,#26794f,#186040);color:#ffffff;
             font-size:17px;font-weight:900;}
   .note{font-size:11.5px;color:#a9b0d6;text-align:center;margin-top:26px;line-height:1.9;}
 </style>
@@ -83,9 +87,9 @@
 <body>
 
 <div class="hero">
-  <img src="icons/icon-192.png" alt="学A">
+  <img src="mascot.png" alt="奈良鹿ケンサクくん">
   <h1>出退勤検索くん</h1>
-  <div class="dia">北大和・学園前 Aダイヤ</div>
+  <div class="dia">奈良鹿ケンサクくん が お手伝いします</div>
   <div class="sub">ダイヤ番号を入れるだけ。<br>出勤も退勤も、すぐ分かります。</div>
 </div>
 
@@ -102,19 +106,42 @@
   </div>
   <div class="card">
     <h3>📅 先の予定もまとめて</h3>
-    <p>「明日」「9日後」「1ヶ月」を押すだけ。カレンダーでも見られます。土日祝・お盆もきちんと切り替わります。</p>
+    <p>「明日」「9日後」「1ヶ月」を押すだけ。カレンダーでも見られます。土日祝、お盆も自動で切り替わります。</p>
   </div>
   <div class="card">
     <h3>⏱ 時間外を数えておける</h3>
-    <p>公出や振替が付いた日を入れておくと、16日〜翌月15日の合計が出ます。年休を入れておけば、次の出勤日も分かります。</p>
+    <p>公出や振替が付いた日を入れておくと、16日〜翌月15日の合計と公出の回数が出ます。年休を入れておけば、その日は次の出勤日を教えてくれます。</p>
   </div>
   <div class="card">
     <h3>📝 メモを残せる</h3>
-    <p>日付ごと・ダイヤ番号ごとにメモや写真を残せます。この端末の中だけに保存されます。</p>
+    <p>日付ごと・ダイヤ番号ごとにメモや写真を残せます。この端末の中だけに保存されます。使うほどに、<b>最後にあなただけのアプリに育ちます。</b></p>
   </div>
   <div class="card">
     <h3>📶 圏外でも開ける</h3>
     <p>一度開いておけば、そのあとは電波がなくても使えます。営業所の奥でも大丈夫です。</p>
+  </div>
+
+  <div class="sec">まだまだあります</div>
+
+  <div class="card">
+    <h3>🖼 今日の勤務を画像で送る</h3>
+    <p>早番・遅番・公休で絵柄が変わるカードができます。LINEにそのまま貼れます。</p>
+  </div>
+  <div class="card">
+    <h3>🔊 読み上げ・🔔 お知らせ・📄 資料</h3>
+    <p>今日の勤務を声で読み上げます。急ぎの連絡はアプリに届きます。出退勤表や勤務系統表もその場で開けます。</p>
+  </div>
+  <div class="card">
+    <h3>🌈 全ダイヤをまとめて</h3>
+    <p>学園前Ａ・生駒・北大和Ｂ・北大和Ｃ・予備。ぜんぶ横断して調べられる「スペシャル検索くん」もあります。</p>
+  </div>
+
+  <div class="card grow">
+    <h3>🌱 これからも増えていきます</h3>
+    <p>このアプリは、乗務員の「こうだったら楽なのに」を1つずつ形にして育ってきました。
+       毎月の勤務のふりかえり、時間外のまとめ方、まだ入れたいものがたくさんあります。<br>
+       <b>使ってみて困ったことや、あったらいいなと思ったことは、ぜひ教えてください。</b>
+       次の更新で入っているかもしれません。</p>
   </div>
 
   <div class="sec">ホーム画面に入れる</div>
