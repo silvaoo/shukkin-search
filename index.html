@@ -684,6 +684,29 @@ input[type="date"] {
 .rescal-grid .cal-day.has-kyu  { border-color: rgba(74,163,255,.6); }
 .rescal-grid .cal-day.has-leave{ border-color: rgba(255,92,114,.6); }
 
+.real-duty{ margin:8px 0 4px; padding:8px 10px; border-radius:9px;
+  background:rgba(255,159,74,.14); border:1px solid var(--orange);
+  font-size:13px; color:var(--text); }
+.real-duty b{ font-size:15px; color:var(--orange); }
+
+/* 代走・振替の日に、実際に出るものと本来のダイヤを並べて出す */
+.dual{ margin-top:10px; padding:11px 12px; border-radius:11px; }
+.dual.real{ background:rgba(255,159,74,.12); border:2px solid var(--orange); }
+.dual.base{ background:var(--bg-card2); border:1px solid var(--border); opacity:.9; }
+.dual-ttl{ font-size:12px; font-weight:bold; margin-bottom:6px; }
+.dual.real .dual-ttl{ color:var(--orange); }
+.dual.base .dual-ttl{ color:var(--dim); }
+.dual-row{ display:flex; flex-wrap:wrap; align-items:baseline; gap:6px; margin-bottom:3px; }
+.dual-dial{ font-size:19px; font-weight:900; color:var(--text); }
+.dual-part{ font-size:12px; color:var(--dim); }
+.dual-time{ font-size:17px; font-weight:bold; color:var(--text);
+  font-variant-numeric:tabular-nums; }
+.dual.base .dual-time{ font-size:15px; font-weight:normal; color:var(--dim); }
+.dual-w{ font-size:12px; color:var(--dim); }
+.dual-first{ margin-top:6px; font-size:14px; color:var(--text); }
+.dual-first b{ font-size:22px; color:var(--orange); }
+.dual-note{ font-size:12px; color:var(--dim); margin-top:3px; }
+
 /* マイページの入口。よく使うので大きめにしてある。 */
 .mypage-btn{
   width:100%; max-width:340px; padding:14px 12px;
@@ -2171,27 +2194,61 @@ function otForDate(date){
 }
 /* 登録した内容を、今日の表示に足して出す */
 function otTodayHtml(v,m,d,dtLabel,r){
+  /* 代走や振替を登録した日は、当日ならびに前日に見たとき
+     「本来のダイヤ」と「実際に出るダイヤ」を必ず両方出す。
+     片方しか出ないと、間違えて本来の時間に出勤してしまう。 */
   const dt=dayType(new Date());
-  const partLb={all:'',first:'前半',second:'後半'};
-  const lines=(r.adds||[]).map(function(x){
-    const rec=DB[x.dial], slot=(rec&&rec[dt])?rec[dt]:null;
-    if(!slot) return '＋ '+x.dial+'番';
-    return '＋ '+x.dial+'番'+partLb[x.part]+' '+formatDisplayTime(slot.o).replace(/<[^>]*>/g,' ');
-  });
-  const baseWord={all:'まるごと乗る',first:'前半だけ',second:'後半だけ',none:'乗らない'}[r.base]||'';
-  const rec0=DB[v], slot0=(rec0&&rec0[dt])?rec0[dt]:null;
-  let head='<div class="today-head"><b>'+v+'番ダイヤ</b> ／ '+m+'/'+d+'（'+dtLabel+'）'
-          +'<span class="ok-text">⏱ 登録済み</span></div>';
-  let body='';
+  const partLb={all:'',first:'（前半）',second:'（後半）'};
+  const baseWord={all:'まるごと乗ります',first:'前半だけ乗ります',
+                  second:'後半だけ乗ります',none:'乗りません'}[r.base]||'';
+
+  const rec0=DB[v], slot0=(rec0&&rec0[dt]&&String(rec0[dt].o)!=='—')?rec0[dt]:null;
+
+  /* 実際に出るもの（本来のダイヤに乗る分＋付いた分） */
+  const real=[];
   if(slot0 && r.base!=='none'){
-    const tcls=String(slot0.o).includes('/')?'is-split':'is-day';
-    body='<div class="day-boxes today-boxes">'
-      +'<div class="day-box"><div class="day-box-label">本来の勤務（'+baseWord+'）</div>'
-      +'<div class="day-box-val '+tcls+'">'+formatDisplayTime(slot0.o)+'</div></div></div>';
+    real.push({dial:v, part:r.base, slot:slot0, mine:true});
   }
-  return head+body
-    +'<div class="today-note">'+lines.join('<br>')
-    +'<br>⏱ 時間外 '+otFmt(r.min)+(r.note?' ／ '+escapeHtml(r.note):'')+'</div>';
+  (r.adds||[]).forEach(function(x){
+    const rec=DB[x.dial], sl=(rec&&rec[dt]&&String(rec[dt].o)!=='—')?rec[dt]:null;
+    real.push({dial:x.dial, part:x.part, slot:sl, mine:false});
+  });
+
+  /* いちばん早い出勤時刻を、大きく出す */
+  let firstT='', firstMin=99999;
+  real.forEach(function(x){
+    if(!x.slot) return;
+    const mm=String(x.slot.o).match(/(\d{1,2}):(\d{2})/);
+    if(!mm) return;
+    const v2=parseInt(mm[1],10)*60+parseInt(mm[2],10);
+    if(v2<firstMin){ firstMin=v2; firstT=mm[0]; }
+  });
+
+  let h='<div class="today-head"><b>'+m+'/'+d+'（'+dtLabel+'）</b>'
+      + '<span class="ok-text">⏱ 代走・振替あり</span></div>';
+
+  /* --- 実際に出るほう（大きく・目立たせる） --- */
+  h+='<div class="dual real"><div class="dual-ttl">🚌 この日に出るのは</div>';
+  real.forEach(function(x){
+    const t=x.slot?formatDisplayTime(x.slot.o):'（時刻が確定していません）';
+    const w=x.slot?('　労働 '+(x.slot.w||'-')):'';
+    h+='<div class="dual-row"><span class="dual-dial">'+x.dial+'番</span>'
+      +'<span class="dual-part">'+(partLb[x.part]||'')+'</span>'
+      +'<span class="dual-time">'+t+'</span><span class="dual-w">'+w+'</span></div>';
+  });
+  if(firstT) h+='<div class="dual-first">出勤は <b>'+firstT+'</b> です</div>';
+  h+='</div>';
+
+  /* --- 本来のダイヤ（必ず出す。乗らない日も出す） --- */
+  h+='<div class="dual base"><div class="dual-ttl">📋 本来のダイヤ</div>'
+    +'<div class="dual-row"><span class="dual-dial">'+v+'番</span>'
+    +'<span class="dual-time">'+(slot0?formatDisplayTime(slot0.o):'公休')+'</span>'
+    +'<span class="dual-w">'+(slot0?('　労働 '+(slot0.w||'-')):'')+'</span></div>'
+    +'<div class="dual-note">'+(baseWord||'—')+'</div></div>';
+
+  h+='<div class="today-note">⏱ 時間外 '+otFmt(r.min)
+    +(r.note?' ／ '+escapeHtml(r.note):'')+'</div>';
+  return h;
 }
 
 /* ==== 今日の勤務をカード画像にする ====
@@ -2607,6 +2664,25 @@ function stampHash(n){
   x=x*0x27d4eb2d; x=x^(x>>>15);
   return Math.abs(x);
 }
+/* 代走・振替のある日に、検索結果のカードへ「実際に出るのは◯番」を足す。
+   前日に一覧を見たときも気づけるようにするため。 */
+function realDutyHtml(iso){
+  const r=otLoad()[iso];
+  if(!r || otIsLeave(r) || !r.adds || !r.adds.length) return '';
+  const d=new Date(iso+'T00:00:00');
+  const dt=dayType(d);
+  const partLb={all:'',first:'（前半）',second:'（後半）'};
+  const list=[];
+  if(r.base!=='none'){
+    const bd=otBaseDial(d);
+    const rec=(bd!==null)?DB[bd]:null;
+    if(rec && rec[dt] && String(rec[dt].o)!=='—') list.push(bd+'番'+(partLb[r.base]||''));
+  }
+  r.adds.forEach(function(x){ list.push(x.dial+'番'+(partLb[x.part]||'')); });
+  if(!list.length) return '';
+  return '<div class="real-duty">🚌 この日に出るのは <b>'+list.join(' ＋ ')+'</b></div>';
+}
+
 function stampHtml(iso){
   const r=otLoad()[iso];
   if(!r) return '';
@@ -2628,6 +2704,7 @@ function stampHtml(iso){
 /* 1日分のカードに差し込むメモ欄のHTML */
 function memoBlockHtml(iso,dn){
   return `<div class="memo-area" data-iso="${iso}" data-dial="${dn}">
+    ${realDutyHtml(iso)}
     <div class="memo-view">${memoViewHtml(iso,dn)}</div>
     <div class="memo-btn-row">
       <button class="memo-btn" onclick="toggleMemo('${iso}',${dn})">${memoBtnLabel(iso,dn)}</button>
@@ -2910,7 +2987,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v154';
+const APP_VERSION   = 'v155';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
