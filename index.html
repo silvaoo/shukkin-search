@@ -684,10 +684,22 @@ input[type="date"] {
 .rescal-grid .cal-day.has-kyu  { border-color: rgba(74,163,255,.6); }
 .rescal-grid .cal-day.has-leave{ border-color: rgba(255,92,114,.6); }
 
-.real-duty{ margin:8px 0 4px; padding:8px 10px; border-radius:9px;
-  background:rgba(255,159,74,.14); border:1px solid var(--orange);
-  font-size:13px; color:var(--text); }
-.real-duty b{ font-size:15px; color:var(--orange); }
+.real-duty{ margin:10px 0 6px; padding:12px; border-radius:11px;
+  background:rgba(255,159,74,.16); border:2px solid var(--orange);
+  box-shadow:0 0 0 3px rgba(255,159,74,.10); }
+.rd-ttl{ font-size:13px; font-weight:bold; color:var(--orange); margin-bottom:8px; }
+.rd-row{ display:flex; flex-wrap:wrap; align-items:baseline; gap:7px;
+  padding:5px 0; border-top:1px solid rgba(255,159,74,.25); }
+.rd-row:first-of-type{ border-top:none; }
+.rd-dial{ font-size:20px; font-weight:900; color:var(--text); }
+.rd-part{ font-size:12px; color:var(--dim); }
+.rd-time{ font-size:19px; font-weight:bold; color:var(--text);
+  font-variant-numeric:tabular-nums; letter-spacing:.02em; }
+.rd-w{ font-size:12px; color:var(--dim); }
+.rd-first{ margin-top:8px; font-size:14px; color:var(--text); }
+.rd-first b{ font-size:26px; font-weight:900; color:var(--orange);
+  font-variant-numeric:tabular-nums; }
+.rd-note{ margin-top:6px; font-size:11.5px; color:var(--dim); }
 
 /* 代走・振替の日に、実際に出るものと本来のダイヤを並べて出す */
 .dual{ margin-top:10px; padding:11px 12px; border-radius:11px; }
@@ -2214,15 +2226,15 @@ function otTodayHtml(v,m,d,dtLabel,r){
     real.push({dial:x.dial, part:x.part, slot:sl, mine:false});
   });
 
-  /* いちばん早い出勤時刻を、大きく出す */
-  let firstT='', firstMin=99999;
-  real.forEach(function(x){
-    if(!x.slot) return;
+  /* 出勤の早い順に並べ替える。朝いちばん早いものを先頭に。 */
+  function startMin(x){
+    if(!x.slot) return 99999;
     const mm=String(x.slot.o).match(/(\d{1,2}):(\d{2})/);
-    if(!mm) return;
-    const v2=parseInt(mm[1],10)*60+parseInt(mm[2],10);
-    if(v2<firstMin){ firstMin=v2; firstT=mm[0]; }
-  });
+    return mm ? parseInt(mm[1],10)*60+parseInt(mm[2],10) : 99999;
+  }
+  real.sort(function(a,b){ return startMin(a)-startMin(b); });
+  const f0=real[0];
+  const firstT=(f0&&f0.slot)?(String(f0.slot.o).match(/(\d{1,2}):(\d{2})/)||[''])[0]:'';
 
   let h='<div class="today-head"><b>'+m+'/'+d+'（'+dtLabel+'）</b>'
       + '<span class="ok-text">⏱ 代走・振替あり</span></div>';
@@ -2236,7 +2248,7 @@ function otTodayHtml(v,m,d,dtLabel,r){
       +'<span class="dual-part">'+(partLb[x.part]||'')+'</span>'
       +'<span class="dual-time">'+t+'</span><span class="dual-w">'+w+'</span></div>';
   });
-  if(firstT) h+='<div class="dual-first">出勤は <b>'+firstT+'</b> です</div>';
+  if(firstT) h+='<div class="dual-first">⏰ 出勤は <b>'+firstT+'</b> です</div>';
   h+='</div>';
 
   /* --- 本来のダイヤ（必ず出す。乗らない日も出す） --- */
@@ -2672,15 +2684,50 @@ function realDutyHtml(iso){
   const d=new Date(iso+'T00:00:00');
   const dt=dayType(d);
   const partLb={all:'',first:'（前半）',second:'（後半）'};
+
+  /* 実際に出るものを、時刻付きで並べる。
+     番号だけでは、何時に出るのか分からず役に立たない。 */
   const list=[];
   if(r.base!=='none'){
     const bd=otBaseDial(d);
     const rec=(bd!==null)?DB[bd]:null;
-    if(rec && rec[dt] && String(rec[dt].o)!=='—') list.push(bd+'番'+(partLb[r.base]||''));
+    const sl=(rec&&rec[dt]&&String(rec[dt].o)!=='—')?rec[dt]:null;
+    if(sl) list.push({dial:bd, part:r.base, slot:sl});
   }
-  r.adds.forEach(function(x){ list.push(x.dial+'番'+(partLb[x.part]||'')); });
+  r.adds.forEach(function(x){
+    const rec=DB[x.dial];
+    const sl=(rec&&rec[dt]&&String(rec[dt].o)!=='—')?rec[dt]:null;
+    list.push({dial:x.dial, part:x.part, slot:sl});
+  });
   if(!list.length) return '';
-  return '<div class="real-duty">🚌 この日に出るのは <b>'+list.join(' ＋ ')+'</b></div>';
+
+  /* 出勤の早い順に並べ替える。朝いちばん早いものを先頭に出したい。 */
+  function startMin(x){
+    if(!x.slot) return 99999;
+    const m=String(x.slot.o).match(/(\d{1,2}):(\d{2})/);
+    return m ? parseInt(m[1],10)*60+parseInt(m[2],10) : 99999;
+  }
+  list.sort(function(a,b){ return startMin(a)-startMin(b); });
+
+  const first=list[0];
+  const firstT=(first && first.slot)
+    ? (String(first.slot.o).match(/(\d{1,2}):(\d{2})/)||[''])[0] : '';
+
+  let h='<div class="real-duty">'
+      + '<div class="rd-ttl">🚌 この日に実際に出るのは</div>';
+  list.forEach(function(x){
+    h+='<div class="rd-row">'
+      +'<span class="rd-dial">'+x.dial+'番</span>'
+      +'<span class="rd-part">'+(partLb[x.part]||'')+'</span>'
+      +'<span class="rd-time">'+(x.slot?String(x.slot.o):'時刻が確定していません')+'</span>'
+      +(x.slot?'<span class="rd-w">労働 '+(x.slot.w||'-')+'</span>':'')
+      +'</div>';
+  });
+  if(firstT){
+    h+='<div class="rd-first">⏰ 出勤は <b>'+firstT+'</b></div>';
+  }
+  h+='<div class="rd-note">上の枠のダイヤとは別です。間違えないでください。</div>';
+  return h+'</div>';
 }
 
 function stampHtml(iso){
@@ -2987,7 +3034,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v155';
+const APP_VERSION   = 'v156';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
