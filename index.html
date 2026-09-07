@@ -1672,7 +1672,7 @@ a.source-link:visited {
       <div class="guide-step">
         <h3>⑦ マイページ</h3>
         <p>下の「📝 マイページ」を押すと開きます。<b>時間外・メモ・保存したカレンダー</b>がタブで分かれています。</p>
-        <img src="images/guide-memolist.jpg" alt="マイページ">
+        <img src="images/guide-mypage.jpg" alt="マイページ">
         <div class="guide-note">
           メモは「日付のメモ」と「ダイヤ番号のメモ」に分かれています。<b>それぞれの上にある「📝 メモを追加」から、検索しなくてもその場で書けます。</b>書いたメモは編集・削除もできます。過ぎた日には印が付き、<b>🧹 過ぎた日のメモをまとめて削除</b>で一度に片付けられます。
         </div>
@@ -1704,6 +1704,7 @@ a.source-link:visited {
           <li>早番と遅番のバランス、中間ダイヤ、24時をまたいだ日</li>
         </ul>
         <p>「日ごとに見る」を開くと1日ずつ並びます。<b>行をタップすれば、その日の時間外を入れ直せます。</b></p>
+        <img src="images/guide-mypage.jpg" alt="ふりかえり">
         <div class="guide-note">◀ ▶ で期間を移せます。<b>次の締め期間まで進めるので、10日ほど先に受けた代走もここで登録できます。</b>ダイヤ改正より前は正しく出せないため、表示されません。<br><b>真ん中の日付を押すと「全期間のまとめ」</b>に切り替わり、これまで登録した時間外を期間ごとに一覧できます。</div>
       </div>
 
@@ -3111,7 +3112,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v159';
+const APP_VERSION   = 'v160';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
