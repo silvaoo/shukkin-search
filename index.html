@@ -1688,6 +1688,7 @@ a.source-link:visited {
           <li><b>付いたダイヤ番号</b>　何本でも足せます</li>
         </ul>
         <p>入れた瞬間に時間外が出ます。<b>数字は手で直せます。</b>渋滞や居残りで増えたときは書き換えてください。一度直すと、あとから上書きされません。</p>
+        <div class="guide-note">計算は、どの勤務も<b>「労働時間」と「拘束時間×0.8」の多いほう</b>で見ています。公出も振替も同じ考え方です。</div>
         <div class="guide-note">
           <b>16日〜翌月15日</b>の合計と、公出の回数が出ます。公出の日は青、年休の日は赤の印が付きます。<br>
           ⚠ おおよその計算です。多少のズレがあることはご了承ください。
@@ -3112,7 +3113,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v161';
+const APP_VERSION   = 'v162';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -3831,8 +3832,8 @@ function closeMemoList(){
 /* ==================================================================
    ==== 時間外の計算と保存 ====
    規則（つとむーんTさんの実例から起こしたもの）:
-     公休の日に出た    → 労働時間 と 拘束時間×0.8 の多いほう
-     勤務の日に付いた   → 実際に働いた労働時間の合計 − 本来の労働時間
+     どの勤務も 評価時間 = 労働時間 と 拘束時間×0.8 の多いほう
+     時間外 = 実際に出た評価時間の合計 − 本来の評価時間
    0を下回るときは0。端数は1分単位で四捨五入。
    実際は渋滞や居残りで前後するため、あくまで目安。
    計算後に手で直せるようにしてある。
@@ -3859,9 +3860,12 @@ function otMin(t){
     return sum + (m ? parseInt(m[1],10)*60+parseInt(m[2],10) : 0);
   },0);
 }
-/* 分割勤務の片方だけを取り出す。part は 'first' か 'second'。 */
+/* 労働時間から、指定した側だけを取り出す。
+   part は 'all'（まるごと）／'first'（前半）／'second'（後半）。
+   'all' を渡したときに後半だけを返していた不具合があった（2026-09-05 修正）。 */
 function otPart(t, part){
   if(!t) return 0;
+  if(part==='all') return otMin(t);        // 分割なら前半＋後半の合計
   const a=String(t).split('/');
   if(a.length<2) return otMin(t);          // 分割でなければ全体
   return otMin(part==='first' ? a[0] : a[1]);
@@ -3915,13 +3919,31 @@ function otBaseDial(date){
    時間外 = (本来のうち乗った分の労働 + 付いた分の労働の合計) − 本来の労働の合計
    公休の日は労働時間が無いので、付いた分の拘束時間 × 0.8。
    0を下回るときは0。 */
+/* ある勤務の「評価時間」。労働時間と、拘束時間×0.8の多いほう。
+   上司に確認した決まり（2026-09-05）:
+     拘束10時間・労働9時間 → 9時間（労働のほうが多い）
+     拘束10時間・労働7時間 → 8時間（拘束×0.8のほうが多い）
+   公休出勤も振替も、同じ考え方で計算する。 */
+function otEval(slot, part){
+  if(!slot) return 0;
+  const l = otPart(slot.w, part);
+  const h = otHeldPart(slot.o, part) * 0.8;
+  return Math.max(l, h);
+}
+
+/* 時間外を計算する。
+   base : 本来のダイヤをどう乗ったか 'all'（まるごと）|'first'|'second'|'none'
+   adds : 付いたものの一覧 [{dial:37, part:'all'|'first'|'second'}, ...]
+
+   時間外 = 実際に出た評価時間の合計 − 本来の評価時間（0未満は0）
+   公休の日は本来がゼロなので、そのまま「付いた分の評価時間」になる。 */
 function otCalc(date, base, adds, forceKyu){
   const dt=dayType(date);
   // 指定公休の日はデータ上ふつうの勤務日なので、利用者が「公休」と言えばそちらを優先する
   const baseSlot=forceKyu ? null : otBaseSlot(date);
   const baseDial=otBaseDial(date);
   const rows=[];
-  let addLabor=0, addHeld=0;
+  let addEval=0, addLabor=0, addHeld=0;
 
   for(const a of (adds||[])){
     const rec=DB[a.dial];
@@ -3929,10 +3951,12 @@ function otCalc(date, base, adds, forceKyu){
     if(!slot||String(slot.o)==='—'){
       return {ok:false, msg:a.dial+'番は この日 公休か、時刻が確定していません'};
     }
+    addEval  += otEval(slot, a.part);
     addLabor += otPart(slot.w, a.part);
     addHeld  += otHeldPart(slot.o, a.part);
     rows.push({dial:a.dial, part:a.part, o:slot.o, w:slot.w});
   }
+
   // 公休の日は、番号が分からなくても（他営業所のダイヤなど）公出として扱える
   if(rows.length===0){
     if(!baseSlot){
@@ -3944,32 +3968,26 @@ function otCalc(date, base, adds, forceKyu){
   }
 
   // --- 公休の日に出た ---
-  // 労働時間と「拘束×0.8」を比べて、多いほうを時間外にする。
-  // 上司に確認した決まり（2026-09-05）:
-  //   拘束10時間・労働9時間 → 9時間（労働のほうが多い）
-  //   拘束10時間・労働7時間 → 8時間（拘束×0.8のほうが多い）
   if(!baseSlot){
-    const byHeld = addHeld*0.8;
-    const useLabor = addLabor >= byHeld;
-    const ot = Math.max(0, Math.round(useLabor ? addLabor : byHeld));
+    const useLabor = addLabor >= addHeld*0.8;
     return {ok:true, kind:'公休出勤', baseDial:baseDial, baseLabel:'公休',
-            rows:rows, ot:ot,
-            how:'労働 '+otFmt(addLabor)+' と 拘束 '+otFmt(addHeld)+'×0.8（'+otFmt(Math.round(byHeld))+'）の'
-               +(useLabor?'うち 労働':'うち 拘束×0.8')+'を採用'};
+            rows:rows, ot:Math.max(0,Math.round(addEval)),
+            how:'労働 '+otFmt(addLabor)+' と 拘束 '+otFmt(addHeld)+'×0.8（'
+               +otFmt(Math.round(addHeld*0.8))+'）のうち '
+               +(useLabor?'労働':'拘束×0.8')+' を採用'};
   }
 
-  // --- 勤務の日 ---
-  const baseTotal = otMin(baseSlot.w);
-  const kept = (base==='none') ? 0
-             : (base==='all')  ? baseTotal
-             : otPart(baseSlot.w, base);
-  const actual = kept + addLabor;
+  // --- 勤務の日に付いた／振り替わった ---
+  const baseEval = otEval(baseSlot,'all');
+  const kept = (base==='none') ? 0 : otEval(baseSlot, base);
+  const actual = kept + addEval;
   const baseWord = base==='all'?'まるごと乗った':base==='none'?'乗っていない'
                  : base==='first'?'前半だけ乗った':'後半だけ乗った';
   return {ok:true, kind:(base==='all'?'追加':'振替'), baseDial:baseDial,
           baseLabel:baseSlot.o+'（労働 '+baseSlot.w+'）／'+baseWord,
-          rows:rows, ot:Math.max(0,Math.round(actual-baseTotal)),
-          how:'実際 '+otFmt(actual)+' − 本来 '+otFmt(baseTotal)};
+          rows:rows, ot:Math.max(0,Math.round(actual-baseEval)),
+          how:'実際 '+otFmt(Math.round(actual))+' − 本来 '+otFmt(Math.round(baseEval))
+             +'　※労働と拘束×0.8の多いほうで比べています'};
 }
 
 /* 拘束時間のうち、指定した側だけを取り出す */
