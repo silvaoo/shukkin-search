@@ -81,6 +81,41 @@ for repo, cfg in apps.items():
             print(repo, tpl, "!! 未置換:", left)
             sys.exit(1)
 
+        # 全角の括弧がコードに混ざっていないか調べる。
+        # 日本語で書いていると（）を打ってしまい、画面が真っ白になる。
+        # 文字列とコメントを除いてから探す。
+        if out.endswith((".html", ".js")):
+            code = "\n".join(re.findall(r"<script>(.*?)</script>", text, re.S)) \
+                   if out.endswith(".html") else text
+            # 文字列・コメントを1文字ずつたどって取り除く。
+            # 正規表現だと、テンプレート文字列の入れ子で取りこぼす。
+            buf, i, n = [], 0, len(code)
+            while i < n:
+                c = code[i]
+                if c in "'\"":                      # ふつうの文字列
+                    q = c; i += 1
+                    while i < n and code[i] != q:
+                        i += 2 if code[i] == "\\" else 1
+                    i += 1; continue
+                if c == "`":                        # テンプレート文字列（入れ子あり）
+                    i += 1; depth = 0
+                    while i < n:
+                        if code[i] == "\\": i += 2; continue
+                        if code[i] == "$" and i+1 < n and code[i+1] == "{": depth += 1; i += 2; continue
+                        if code[i] == "}" and depth > 0: depth -= 1; i += 1; continue
+                        if code[i] == "`" and depth == 0: break
+                        i += 1
+                    i += 1; continue
+                if c == "/" and i+1 < n and code[i+1] == "*":
+                    j = code.find("*/", i+2); i = (j+2) if j >= 0 else n; continue
+                if c == "/" and i+1 < n and code[i+1] == "/":
+                    j = code.find("\n", i); i = j if j >= 0 else n; continue
+                buf.append(c); i += 1
+            ng = [c for c in "（）［］｛｝“”‘’" if c in "".join(buf)]
+            if ng:
+                print(repo, tpl, "!! コードに全角記号:", ng)
+                sys.exit(1)
+
         io.open(os.path.join(outdir, out), "w", encoding="utf-8").write(text)
 
     print(repo, "生成OK  版=" + cfg["SWVER"], "→ out-" + repo + "/")
