@@ -842,6 +842,55 @@ body.light .stamp { opacity: 0.55; }
    1つのダイヤを前提にした通知を隠す。 */
 body.multi .only-single{ display:none !important; }
 
+/* ==== ふりかえり ==== */
+.rv-per{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.rv-per button{ width:44px; height:44px; border-radius:22px; border:1px solid var(--border);
+  background:var(--bg-card2); color:var(--text); font-size:17px; cursor:pointer; }
+.rv-per button:disabled{ opacity:.3; }
+.rv-per-t{ flex:1; text-align:center; font-size:17px; font-weight:800; }
+.rv-per-s{ font-size:11px; font-weight:400; color:var(--dim); }
+.rv-top{ background:var(--bg-card); border:1px solid var(--border); border-radius:14px;
+  padding:15px; margin-bottom:9px; text-align:center; }
+.rv-top.rv-ot{ border-color:var(--note); background:rgba(255,212,121,.08); }
+.rv-top-lb{ font-size:12px; color:var(--dim); }
+.rv-top-v{ font-size:31px; font-weight:900; color:var(--note); line-height:1.3;
+  font-variant-numeric:tabular-nums; }
+.rv-top-s{ font-size:12.5px; color:var(--dim); }
+.rv-cmp{ font-size:12.5px; color:var(--dim); margin-top:5px; }
+.rv-up{ color:#ff9e4a; font-weight:800; }
+.rv-down{ color:#4ad991; font-weight:800; }
+.rv-same{ color:var(--dim); }
+.rv-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:9px; }
+.rv-cell{ background:var(--bg-card); border:1px solid var(--border); border-radius:12px;
+  padding:11px; text-align:center; }
+.rv-cell-lb{ font-size:11.5px; color:var(--dim); }
+.rv-cell-v{ font-size:21px; font-weight:800; font-variant-numeric:tabular-nums; }
+.rv-cell-v small{ font-size:12px; font-weight:400; }
+.rv-bars{ background:var(--bg-card); border:1px solid var(--border); border-radius:12px;
+  padding:12px; margin-bottom:9px; }
+.rv-bars-t{ font-size:12px; color:var(--dim); margin-bottom:8px; }
+.rv-bar{ display:flex; height:26px; border-radius:6px; overflow:hidden; margin-bottom:6px; }
+.rv-bar span{ display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:800; color:#0b0b12; }
+.rv-bar-k{ font-size:11.5px; color:var(--dim); }
+.rv-more{ width:100%; padding:13px; border-radius:10px; border:1px solid var(--border);
+  background:var(--bg-card2); color:var(--note); font-size:14px; font-weight:800;
+  cursor:pointer; margin-bottom:8px; font-family:'Noto Sans JP',sans-serif; }
+.rv-tbl{ width:100%; border-collapse:collapse; font-size:13px; }
+.rv-tbl tr{ cursor:pointer; }
+.rv-tbl td{ padding:8px 3px; border-bottom:1px solid rgba(128,128,160,.16); vertical-align:top; }
+.rv-d{ white-space:nowrap; color:var(--dim); font-size:12px; width:66px; }
+.rv-n{ white-space:nowrap; font-weight:800; width:46px; }
+.rv-t{ font-variant-numeric:tabular-nums; }
+.rv-w{ text-align:right; white-space:nowrap; color:var(--dim); font-size:12px; }
+.rv-mk{ display:inline-block; width:4px; height:14px; border-radius:2px;
+  vertical-align:-2px; margin-right:6px; }
+.rv-pill{ display:inline-block; padding:0 6px; border-radius:4px;
+  font-size:10.5px; font-weight:800; margin-left:5px; }
+.rv-pill.kyu{ background:#4aa3ff; color:#04182e; }
+.rv-pill.leave{ background:#ff5c72; color:#fff; }
+.rv-pill.sub{ background:var(--orange); color:#231402; }
+
 /* ==== 時間外 ==== */
 .nm-box{ margin-bottom:14px; padding:12px; border-radius:12px;
   background:var(--bg-card2); border:1px solid var(--border); }
@@ -1447,11 +1496,13 @@ a.source-link:visited {
     </div>
     <div class="ml-tabs">
       <button class="ml-tab on" id="mlTabOt" onclick="switchMemoList('ot')">時間外</button>
+      <button class="ml-tab" id="mlTabRev" onclick="switchMemoList('rev')">ふりかえり</button>
       <button class="ml-tab" id="mlTabDate" onclick="switchMemoList('date')">日付のメモ</button>
       <button class="ml-tab" id="mlTabDial" onclick="switchMemoList('dial')">ダイヤ番号のメモ</button>
       <button class="ml-tab" id="mlTabCal" onclick="switchMemoList('cal')">保存したカレンダー</button>
     </div>
     <div class="ml-pane on" id="mlPaneOt"></div>
+    <div class="ml-pane" id="mlPaneRev"></div>
     <div class="ml-pane" id="mlPaneDate"></div>
     <div class="ml-pane" id="mlPaneDial"></div>
     <div class="ml-pane" id="mlPaneCal"></div>
@@ -1634,17 +1685,30 @@ a.source-link:visited {
       </div>
 
       <div class="guide-step">
-        <h3>⑨ 年休を入れておく</h3>
+        <h3>⑨ ふりかえり</h3>
+        <p>マイページの「ふりかえり」で、<b>16日〜翌月15日</b>の勤務をまとめて見られます。</p>
+        <ul>
+          <li>労働時間の合計と、1日あたりの平均</li>
+          <li><b>前の期間との差</b>（時間外も）</li>
+          <li>出勤・休み・公出・年休の日数</li>
+          <li>早番と遅番のバランス、中間ダイヤ、24時をまたいだ日</li>
+        </ul>
+        <p>「日ごとに見る」を開くと1日ずつ並びます。<b>行をタップすれば、その日の時間外を入れ直せます。</b></p>
+        <div class="guide-note">◀ ▶ で前の期間に戻れます。ダイヤ改正より前は正しく出せないため、表示されません。</div>
+      </div>
+
+      <div class="guide-step">
+        <h3>⑩ 年休を入れておく</h3>
         <p>「この日は？」で<b>年休</b>を選ぶと、その日は勤務時間の代わりに<b>次の出勤日と時間</b>が出ます。連続した年休や公休は飛ばして、本当に出る日を探します。</p>
       </div>
 
       <div class="guide-step">
-        <h3>⑩ 今日の勤務を画像で送る</h3>
+        <h3>⑪ 今日の勤務を画像で送る</h3>
         <p>ダイヤ番号を入れた下の「🖼 今日の勤務を画像で送る」を押すと、その場で画像ができます。<b>LINEにそのまま貼れます。</b>早番・遅番・公休で絵柄が変わります。</p>
       </div>
 
 <div class="guide-step">
-        <h3>⑪ 圏外でも使えます</h3>
+        <h3>⑫ 圏外でも使えます</h3>
         <p>一度オンラインで開いておけば、その後は圏外や機内モードでも起動できます。</p>
         <div class="guide-note">「🔄 新しいバージョンがあります」と出たらタップしてください。最新バージョンのアプリに更新されます。</div>
       </div>
@@ -1786,6 +1850,8 @@ function applyDiaData(d){
     BASE_DATE = new Date(p[0], p[1]-1, p[2]);
   }
   if(d.meta && d.meta.baseDial) BASE_DIAL = d.meta.baseDial;
+  // 改正日。これより前は今のデータで計算しても実際と違うので、ふりかえりで出さない
+  REVISION_ISO = (d.meta && d.meta.revision) ? String(d.meta.revision) : '';
 }
 
 /* キャッシュ避けに付ける値。開くたびに変えると、同じ日に何度開いても
@@ -1901,6 +1967,7 @@ const DW=['日','月','火','水','木','金','土'];
    スペシャル検索くん（全ダイヤ対応）ではダイヤを切り替えるたびに入れ替わる。 */
 let CUR_MAX = 92;
 
+let REVISION_ISO='';        // ダイヤ改正日
 let BASE_DATE=new Date();   // 中身は dia-a.json から入れる
 let BASE_DIAL=1;
 
@@ -3034,7 +3101,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v156';
+const APP_VERSION   = 'v157';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4086,6 +4153,153 @@ function otDelete(iso){
   renderOtPane(); refreshOtButtons(); updateTodayPreview();
 }
 
+/* ==================================================================
+   ==== ふりかえり（16日〜翌月15日） ====
+   覚えた番号からその期間の勤務を並べ直し、合計を出す。
+   時間外・公出・年休は、時間外で登録したものをそのまま使う。
+   ここでは編集しない。直すときは時間外の入力を開く（入口を1つに保つため）。
+   ================================================================== */
+let revOffset=0;      // 0=今の期間、-1=前の期間
+let revOpenDays=false;
+
+function revMove(n){ revOffset+=n; revOpenDays=false; renderRevPane(); }
+function revToggleDays(){ revOpenDays=!revOpenDays; renderRevPane(); }
+
+/* ずらした数だけ前後した期間の始まり（16日）を返す */
+function revStart(off){
+  const t=new Date();
+  return new Date(t.getFullYear(), t.getMonth() + (t.getDate()<16 ? -1 : 0) + off, 16);
+}
+
+/* 期間ぶんを数える */
+function revCollect(from, to){
+  const all=otLoad();
+  const r={work:0, off:0, labor:0, early:0, late:0, split:0, over24:0,
+           ot:0, kyu:0, leave:0, rows:[]};
+  for(let d=new Date(from); d<=to; d.setDate(d.getDate()+1)){
+    const iso=toISO(d);
+    const n=otBaseDial(d);
+    const dt=dayType(d);
+    const rec=(n!==null)?DB[n]:null;
+    let slot=(rec&&rec[dt]&&String(rec[dt].o)!=='—')?rec[dt]:null;
+    const ot=all[iso];
+    r.rows.push({iso:iso, m:d.getMonth()+1, d:d.getDate(), dw:DW[d.getDay()],
+                 n:n, slot:slot, ot:ot});
+    if(ot){ r.ot+=(ot.min||0); if(otIsKyu(ot)) r.kyu++; if(otIsLeave(ot)) r.leave++; }
+    if(otIsLeave(ot)){ r.off++; continue; }
+    if(!slot && !otIsKyu(ot)){ r.off++; continue; }
+    r.work++;
+    if(slot){
+      r.labor+=otMin(slot.w);
+      const m=String(slot.o).match(/(\d{1,2}):/);
+      if(m){ (parseInt(m[1],10)<12) ? r.early++ : r.late++; }
+      if(String(slot.o).indexOf('/')>=0) r.split++;
+      const en=String(slot.o).split('〜')[1];
+      const em=en?String(en).match(/(\d{1,2}):/):null;
+      if(em && parseInt(em[1],10)>=24) r.over24++;
+    }
+  }
+  return r;
+}
+
+/* 前の期間との差を「＋◯時間」の形にする */
+function revDiff(now, prev){
+  const d=now-prev;
+  if(d===0) return '<span class="rv-same">前と同じ</span>';
+  const sign=d>0?'＋':'−';
+  const cls=d>0?'rv-up':'rv-down';
+  return '<span class="'+cls+'">'+sign+otFmt(Math.abs(d))+'</span>';
+}
+
+function renderRevPane(){
+  const pane=document.getElementById('mlPaneRev');
+  if(!pane) return;
+  const from=revStart(revOffset);
+  const to=new Date(from.getFullYear(), from.getMonth()+1, 15);
+  const label=(from.getMonth()+1)+'/16 〜 '+(to.getMonth()+1)+'/15';
+
+  let h='<div class="rv-per">'
+    +'<button onclick="revMove(-1)">◀</button>'
+    +'<div class="rv-per-t">'+label+'<div class="rv-per-s">締め期間</div></div>'
+    +'<button onclick="revMove(1)"'+(revOffset>=0?' disabled':'')+'>▶</button>'
+    +'</div>';
+
+  // 覚えた番号が無いと、その期間の勤務を割り出せない
+  if(otBaseDial(from)===null){
+    pane.innerHTML=h+'<div class="ml-empty">今日のダイヤ番号がまだ保存されていません。<br>'
+      +'トップで番号を入れると、この期間の勤務を出せます。</div>';
+    return;
+  }
+  // ダイヤ改正より前は、いまのデータでは正しく出せない
+  if(REVISION_ISO && toISO(to) < REVISION_ISO){
+    pane.innerHTML=h+'<div class="ml-empty">'+REVISION_ISO.replace(/-/g,'/')
+      +' のダイヤ改正より前のため、正しく出せません。</div>';
+    return;
+  }
+
+  const now=revCollect(from,to);
+  const pf=revStart(revOffset-1);
+  const pt=new Date(pf.getFullYear(), pf.getMonth()+1, 15);
+  const canPrev = !(REVISION_ISO && toISO(pt) < REVISION_ISO);
+  const prev = canPrev ? revCollect(pf,pt) : null;
+
+  h+='<div class="rv-top"><div class="rv-top-lb">この期間の労働時間</div>'
+    +'<div class="rv-top-v">'+otFmt(now.labor)+'</div>'
+    +'<div class="rv-top-s">1日あたり 平均 '+(now.work?otFmt(Math.round(now.labor/now.work)):'—')+'</div>'
+    +(prev?'<div class="rv-cmp">前の期間より '+revDiff(now.labor,prev.labor)+'</div>':'')
+    +'</div>';
+
+  h+='<div class="rv-top rv-ot"><div class="rv-top-lb">時間外</div>'
+    +'<div class="rv-top-v">'+otFmt(now.ot)+'</div>'
+    +(prev?'<div class="rv-cmp">前の期間（'+otFmt(prev.ot)+'）より '+revDiff(now.ot,prev.ot)+'</div>'
+          :'<div class="rv-cmp">前の期間は出せません</div>')
+    +'</div>';
+
+  h+='<div class="rv-grid">'
+    +'<div class="rv-cell"><div class="rv-cell-lb">出勤</div><div class="rv-cell-v">'+now.work+'<small>日</small></div></div>'
+    +'<div class="rv-cell"><div class="rv-cell-lb">休み</div><div class="rv-cell-v">'+now.off+'<small>日</small></div></div>'
+    +'<div class="rv-cell"><div class="rv-cell-lb">公出</div><div class="rv-cell-v" style="color:#4aa3ff">'+now.kyu+'<small>回</small></div></div>'
+    +'<div class="rv-cell"><div class="rv-cell-lb">年休</div><div class="rv-cell-v" style="color:#ff5c72">'+now.leave+'<small>日</small></div></div>'
+    +'</div>';
+
+  const tot=now.work+now.off||1;
+  const pc=v=>(v/tot*100);
+  h+='<div class="rv-bars"><div class="rv-bars-t">早番と遅番のバランス</div><div class="rv-bar">'
+    +(now.early?'<span style="width:'+pc(now.early)+'%;background:#ff9e4a">早 '+now.early+'</span>':'')
+    +(now.late ?'<span style="width:'+pc(now.late )+'%;background:#5b8dff">遅 '+now.late+'</span>':'')
+    +(now.off  ?'<span style="width:'+pc(now.off  )+'%;background:#4a4f66;color:#c9cee8">休 '+now.off+'</span>':'')
+    +'</div><div class="rv-bar-k">中間ダイヤ '+now.split+'回 ／ 24時をまたいだ日 '+now.over24+'日</div></div>';
+
+  h+='<button class="rv-more" onclick="revToggleDays()">'
+    +(revOpenDays?'▲ 日ごとの表示を閉じる':'▼ 日ごとに見る（'+now.rows.length+'日）')+'</button>';
+
+  if(revOpenDays){
+    h+='<table class="rv-tbl">';
+    now.rows.forEach(function(r){
+      let time='公休', w='', col='#4a4f66';
+      if(otIsLeave(r.ot)) time='年休';
+      else if(r.slot){
+        const m=String(r.slot.o).match(/(\d{1,2}):/);
+        col=(m&&parseInt(m[1],10)<12)?'#ff9e4a':'#5b8dff';
+        time=String(r.slot.o); w=(r.slot.w||'')+'h';
+      }
+      let pill='';
+      if(otIsKyu(r.ot)) pill='<span class="rv-pill kyu">公出</span>';
+      else if(otIsLeave(r.ot)) pill='<span class="rv-pill leave">年休</span>';
+      else if(r.ot && r.ot.adds && r.ot.adds.length){
+        pill='<span class="rv-pill sub">'+r.ot.adds.map(function(x){return x.dial+'番';}).join('＋')+'</span>';
+      }
+      h+='<tr onclick="otFromDetail(\''+r.iso+'\')">'
+        +'<td class="rv-d">'+r.m+'/'+r.d+'（'+r.dw+'）</td>'
+        +'<td class="rv-n"><span class="rv-mk" style="background:'+col+'"></span>'+(r.n||'')+'</td>'
+        +'<td class="rv-t">'+time+pill+'</td>'
+        +'<td class="rv-w">'+w+'</td></tr>';
+    });
+    h+='</table><div class="ml-empty" style="padding:10px 4px">行をタップすると、その日の時間外を入れ直せます。</div>';
+  }
+  pane.innerHTML=h;
+}
+
 /* マイページの「時間外」の中身 */
 function renderOtPane(){
   const pane=document.getElementById('mlPaneOt');
@@ -4228,8 +4442,9 @@ function exportSavedCal(id){
   exportCalendarICS(item.rows);
 }
 function switchMemoList(which){
-  const panes={ot:'mlPaneOt',date:'mlPaneDate',dial:'mlPaneDial',cal:'mlPaneCal'};
-  const tabs={ot:'mlTabOt',date:'mlTabDate',dial:'mlTabDial',cal:'mlTabCal'};
+  const panes={ot:'mlPaneOt',rev:'mlPaneRev',date:'mlPaneDate',dial:'mlPaneDial',cal:'mlPaneCal'};
+  const tabs={ot:'mlTabOt',rev:'mlTabRev',date:'mlTabDate',dial:'mlTabDial',cal:'mlTabCal'};
+  if(which==='rev') renderRevPane();
   for(const k in panes){
     document.getElementById(panes[k]).classList.toggle('on',k===which);
     document.getElementById(tabs[k]).classList.toggle('on',k===which);
