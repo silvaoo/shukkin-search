@@ -2338,7 +2338,7 @@ function otTodayHtml(v,m,d,dtLabel,r){
     +(isKyuDay?'公休出勤で出るのは':'この日に出るのは')+'</div>';
   real.forEach(function(x){
     const t=x.slot?formatDisplayTime(x.slot.o):'（時刻が確定していません）';
-    const w=x.slot?('　労働 '+(x.slot.w||'-')):'';
+    const w=x.slot?('　労働 '+formatDisplayLabor(x.slot.w)):'';
     h+='<div class="dual-row"><span class="dual-dial">'+x.dial+'番</span>'
       +'<span class="dual-part">'+(partLb[x.part]||'')+'</span>'
       +'<span class="dual-time">'+t+'</span><span class="dual-w">'+w+'</span></div>';
@@ -2415,11 +2415,36 @@ function buildCard(){
   if(slot && String(slot.o)==='—') slot=null;   // 奈良学園のように当日決まるものは公休扱いにしない
   const undecided = !!(rec&&rec[dt]&&String(rec[dt].o)==='—');
 
+  /* 代走・公休出勤・年休を登録した日は、そちらの絵にする。
+     本来のダイヤの絵を送ると、受け取った人も間違える。 */
+  const otRec=otLoad()[toISO(today)];
+  const otLeave=otIsLeave(otRec);
+  const otSub=!!(otRec && otRec.adds && otRec.adds.length);
+  let otList=[], otKyuDay=false;
+  if(otSub){
+    otKyuDay = otIsKyu(otRec) || !slot;
+    if(!otKyuDay && otRec.base!=='none' && slot){
+      otList.push({dial:v, part:otRec.base, slot:slot});
+    }
+    otRec.adds.forEach(function(x){
+      const r2=DB[x.dial], s2=(r2&&r2[dt]&&String(r2[dt].o)!=='—')?r2[dt]:null;
+      if(s2) otList.push({dial:x.dial, part:x.part, slot:s2});
+    });
+    otList.sort(function(a,b){
+      const f=function(x){const mm=String(x.slot.o).match(/(\d{1,2}):(\d{2})/);
+        return mm?parseInt(mm[1],10)*60+parseInt(mm[2],10):99999;};
+      return f(a)-f(b);
+    });
+  }
+
   const cv=document.createElement('canvas');
   cv.width=1080; cv.height=1080;
   const g=cv.getContext('2d');
   const W=cv.width,H=cv.height;
-  const kind=undecided?'off':cardKind(slot);
+  let kind;
+  if(otLeave) kind='off';
+  else if(otSub && otList.length) kind=cardKind(otList[0].slot);
+  else kind=undecided?'off':cardKind(slot);
 
   const grad=g.createLinearGradient(0,0,W,H);
   if(kind==='early'){ grad.addColorStop(0,'#2b1a3d'); grad.addColorStop(.55,'#7a3b2e'); grad.addColorStop(1,'#ffa652'); }
@@ -2437,7 +2462,33 @@ function buildCard(){
   g.fillStyle='#fff';
   fitText(g, `${cardDiaName()} ${v}番`, 80, 300, W-160, 118, 56);
 
-  if(undecided){
+  if(otLeave){
+    g.font='700 150px sans-serif'; g.fillStyle='#fff';
+    g.fillText('年 休',80,520);
+    const nx=nextWorkDay(new Date());
+    if(nx){
+      g.fillStyle='rgba(255,255,255,.85)'; g.font='500 44px sans-serif';
+      g.fillText('次の出勤',80,620);
+      g.fillStyle='#fff';
+      fitText(g, `${nx.date.getMonth()+1}/${nx.date.getDate()} ${nx.dial}番 ${nx.slot.o}`,
+              80, 700, W-160, 62, 34);
+    }
+  }else if(otSub && otList.length){
+    /* 実際に出るものを並べる。本来のダイヤは下に小さく添える。 */
+    g.fillStyle='#fff'; g.font='700 44px sans-serif';
+    g.fillText(otKyuDay?'公休出勤':'代走・振替',80,390);
+    let y=470;
+    const partLb={all:'',first:'（前半）',second:'（後半）'};
+    otList.slice(0,2).forEach(function(x){
+      g.fillStyle='#fff';
+      fitText(g, x.dial+'番'+(partLb[x.part]||''), 80, y, W-160, 64, 40);
+      g.fillStyle='rgba(255,255,255,.95)';
+      fitText(g, String(x.slot.o), 80, y+76, W-160, 68, 34);
+      y+=170;
+    });
+    g.fillStyle='rgba(255,255,255,.62)'; g.font='500 38px sans-serif';
+    g.fillText('本来は '+v+'番'+(slot?'':'（公休）'),80,Math.min(y+10,900));
+  }else if(undecided){
     g.font='700 150px sans-serif'; g.fillStyle='#fff';
     g.fillText('要確認',80,520);
     g.fillStyle='#ffd479'; g.font='700 42px sans-serif';
@@ -2488,6 +2539,27 @@ function shareTodayCard(){
 }
 
 /* ==== 今日の勤務を読み上げ ==== */
+/* 乗る側だけを読み上げる。前半だけ乗る日に後半まで読むと危ない。 */
+function otSpeakSlot(slot, part){
+  if(part==='all') return timeToSpeech(slot.o, slot.w);
+  const sp=String(slot.o).split('〜');
+  if(sp.length!==2) return timeToSpeech(slot.o, slot.w);
+  const st=sp[0].split('/').map(x=>x.trim()), en=sp[1].split('/').map(x=>x.trim());
+  if(st.length<2||en.length<2) return timeToSpeech(slot.o, slot.w);
+  const w=String(slot.w).split('/').map(x=>x.trim());
+  const i=(part==='first')?0:1;
+  const from=(part==='first')?st[0]:en[0];
+  const to  =(part==='first')?st[1]:en[1];
+  const lab =w[i]||'';
+  return `出勤${from}、${part==='first'?'解放':'退勤'}${to}` + (lab?`、労働時間${lab}`:'');
+}
+
+/* 時間外を読み上げ用の言い方にする */
+function otSpeak(min){
+  if(!min || min<=0) return 'なし';
+  const h=Math.floor(min/60), mi=Math.round(min)%60;
+  return (h?h+'時間':'')+(mi?mi+'分':(h?'':'0分'));
+}
 function handleSpeakToday(){
   const v=parseInt(document.getElementById('todayInput').value);
   if(!v||v<1||v>CUR_MAX){speakText('ダイヤ番号を入力してください','speakTodayBtn');return;}
@@ -2497,7 +2569,42 @@ function handleSpeakToday(){
   const dt=dayType(today);
   const holLabel=isObon(today)?'お盆休みで土曜ダイヤ':isHol(today)?'祝日':'';
   const rec=DB[v];
-  let text=`${m}月${d}日、${dw}曜日${holLabel}。${v}番ダイヤ。`;
+  let text=`${m}月${d}日、${dw}曜日${holLabel}。`;
+
+  /* 代走・公休出勤・年休を登録した日は、そちらを読み上げる。
+     本来のダイヤだけ読むと、間違えて本来の時間に出てしまう。 */
+  const otRec=otLoad()[toISO(today)];
+  if(otIsLeave(otRec)){
+    const nx=nextWorkDay(new Date());
+    text+='年休です。';
+    if(nx){
+      text+=`次の出勤は${nx.date.getMonth()+1}月${nx.date.getDate()}日、${nx.dial}番ダイヤ。`
+          + timeToSpeech(nx.slot.o, nx.slot.w)+'。';
+    }
+    speakText(text,'speakTodayBtn'); return;
+  }
+  if(otRec && otRec.adds && otRec.adds.length){
+    const base0=(rec&&rec[dt]&&String(rec[dt].o)!=='—')?rec[dt]:null;
+    const isKyuDay = otIsKyu(otRec) || !base0;
+    text += isKyuDay ? `本来は${v}番ダイヤで公休ですが、公休出勤です。`
+                     : `本来は${v}番ダイヤですが、代走・振替があります。`;
+    const list=[];
+    if(!isKyuDay && otRec.base!=='none' && base0){
+      list.push({dial:v, part:otRec.base, slot:base0});
+    }
+    otRec.adds.forEach(function(x){
+      const r2=DB[x.dial], s2=(r2&&r2[dt]&&String(r2[dt].o)!=='—')?r2[dt]:null;
+      if(s2) list.push({dial:x.dial, part:x.part, slot:s2});
+    });
+    const partW={all:'', first:'の前半', second:'の後半'};
+    list.forEach(function(x){
+      text += `${x.dial}番ダイヤ${partW[x.part]||''}。` + otSpeakSlot(x.slot, x.part) + '。';
+    });
+    text += `時間外は${otSpeak(otRec.min)}です。`;
+    speakText(text,'speakTodayBtn'); return;
+  }
+
+  text += `${v}番ダイヤ。`;
   if(!rec||!rec[dt]){
     text+='公休。お疲れ様です！';
   }else{
@@ -2823,8 +2930,8 @@ function realDutyHtml(iso){
     h+='<div class="rd-row">'
       +'<span class="rd-dial">'+x.dial+'番</span>'
       +'<span class="rd-part">'+(partLb[x.part]||'')+'</span>'
-      +'<span class="rd-time">'+(x.slot?String(x.slot.o):'時刻が確定していません')+'</span>'
-      +(x.slot?'<span class="rd-w">労働 '+(x.slot.w||'-')+'</span>':'')
+      +'<span class="rd-time">'+(x.slot?formatDisplayTime(x.slot.o):'時刻が確定していません')+'</span>'
+      +(x.slot?'<span class="rd-w">労働 '+formatDisplayLabor(x.slot.w)+'</span>':'')
       +'</div>';
   });
   if(firstT){
@@ -3140,7 +3247,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v163';
+const APP_VERSION   = 'v164';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
