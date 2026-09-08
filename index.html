@@ -700,6 +700,14 @@ input[type="date"] {
 .rd-first b{ font-size:26px; font-weight:900; color:var(--orange);
   font-variant-numeric:tabular-nums; }
 .rd-note{ margin-top:6px; font-size:11.5px; color:var(--dim); }
+.rd-chg{ font-size:13.5px; font-weight:800; color:var(--orange); margin-bottom:8px; }
+/* 中間ダイヤで、走る側と走らない側を分ける */
+.sp-row.sp-live{ font-weight:800; }
+.sp-row.sp-dead{ text-decoration:line-through; text-decoration-thickness:2px;
+  opacity:.42; font-weight:400; }
+.sp-w{ font-size:11.5px; opacity:.75; margin-left:8px; }
+.sp-x{ font-size:11px; margin-left:8px; text-decoration:none;
+  display:inline-block; opacity:.9; }
 /* 公休出勤の日は青系にして、代走・振替（オレンジ）と見分けられるようにする */
 .real-duty.is-kyu{ background:rgba(74,163,255,.14); border-color:#4aa3ff;
   box-shadow:0 0 0 3px rgba(74,163,255,.10); }
@@ -711,6 +719,8 @@ input[type="date"] {
   border-radius:6px; font-size:12.5px; font-weight:bold; white-space:nowrap; }
 .today-badge.kyu{ background:#4aa3ff; color:#04182e; }
 .today-badge.sub{ background:var(--orange); color:#231402; }
+.dual-chg{ font-size:14px; font-weight:800; color:var(--orange);
+  margin-bottom:8px; }
 
 /* 代走・振替の日に、実際に出るものと本来のダイヤを並べて出す */
 .dual{ margin-top:10px; padding:11px 12px; border-radius:11px; }
@@ -2036,6 +2046,27 @@ function parseTotalHours(w){
 }
 
 /* 出退勤時刻を画面表示用に見やすく整形する（2分割は前半/後半、3分割以上は番号表記） */
+/* 中間ダイヤのうち、乗る側だけを目立たせる。
+   乗らない側は取り消し線で消して、間違えないようにする。
+   part は 'all'／'first'（前半だけ乗る）／'second'（後半だけ乗る）。 */
+function formatDisplayTimePart(o, part, w){
+  if(!o || o==='—' || part==='all' || !String(o).includes('/')) return formatDisplayTime(o);
+  const sp=String(o).split('〜');
+  if(sp.length!==2) return formatDisplayTime(o);
+  const st=sp[0].split('/').map(x=>x.trim()), en=sp[1].split('/').map(x=>x.trim());
+  if(st.length<2 || en.length<2) return formatDisplayTime(o);
+  const ws=String(w||'').split('/').map(x=>x.trim());
+  function row(lb, from, to, lab, live){
+    return '<span class="sp-row'+(live?' sp-live':' sp-dead')+'">'
+         + '<span class="sp-lb">'+lb+'</span>'+from+'〜'+to
+         + (lab?'<span class="sp-w">'+lab+'h</span>':'')
+         + (live?'':'<span class="sp-x">走りません</span>')
+         + '</span>';
+  }
+  return row('前半', st[0], st[1], ws[0]||'', part==='first')
+       + row('後半', en[0], en[1], ws[1]||'', part==='second');
+}
+
 function formatDisplayTime(o){
   if(!o||o==='—')return '<span class="warn-text">要確認</span>';
   if(!o.includes('/'))return o;
@@ -2334,14 +2365,25 @@ function otTodayHtml(v,m,d,dtLabel,r){
   let h='<div class="today-head"><b>'+m+'/'+d+'（'+dtLabel+'）</b>'+badge+'</div>';
 
   /* --- 実際に出るほう（大きく・目立たせる） --- */
+  /* 何が振り替わったのかを、ひとことで言う */
+  let whatCh='';
+  if(!isKyuDay && r.adds && r.adds.length===1){
+    const a0=r.adds[0];
+    if(a0.part==='second' && r.base==='first') whatCh='後半だけ '+a0.dial+'番に替わりました';
+    else if(a0.part==='first' && r.base==='second') whatCh='前半だけ '+a0.dial+'番に替わりました';
+    else if(a0.part==='all' && r.base==='none')      whatCh='まるごと '+a0.dial+'番に替わりました';
+    else if(r.base==='all')                          whatCh=a0.dial+'番が足されました';
+  }
   h+='<div class="dual real"><div class="dual-ttl">🚌 '
-    +(isKyuDay?'公休出勤で出るのは':'この日に出るのは')+'</div>';
+    +(isKyuDay?'公休出勤で出るのは':'この日に出るのは')+'</div>'
+    +(whatCh?'<div class="dual-chg">✅ '+whatCh+'</div>':'');
   real.forEach(function(x){
-    const t=x.slot?formatDisplayTime(x.slot.o):'（時刻が確定していません）';
-    const w=x.slot?('　労働 '+formatDisplayLabor(x.slot.w)):'';
+    const t=x.slot?formatDisplayTimePart(x.slot.o, x.part, x.slot.w):'（時刻が確定していません）';
+    const one=!x.slot||!String(x.slot.o).includes('/')||x.part==='all';
     h+='<div class="dual-row"><span class="dual-dial">'+x.dial+'番</span>'
       +'<span class="dual-part">'+(partLb[x.part]||'')+'</span>'
-      +'<span class="dual-time">'+t+'</span><span class="dual-w">'+w+'</span></div>';
+      +'<span class="dual-time">'+t+'</span>'
+      +(one&&x.slot?'<span class="dual-w">　労働 '+(x.slot.w||'-')+'</span>':'')+'</div>';
   });
   if(firstT) h+='<div class="dual-first">⏰ 出勤は <b>'+firstT+'</b> です</div>';
   h+='</div>';
@@ -2922,16 +2964,26 @@ function realDutyHtml(iso){
   const rec0=(bd0!==null)?DB[bd0]:null;
   const has0=!!(rec0 && rec0[dt] && String(rec0[dt].o)!=='—');
   const isKyuDay = otIsKyu(r) || !has0;
+  let what='';
+  if(!isKyuDay && r.adds && r.adds.length===1){
+    const a0=r.adds[0];
+    if(a0.part==='second' && r.base==='first') what='後半だけ '+a0.dial+'番に替わりました';
+    else if(a0.part==='first' && r.base==='second') what='前半だけ '+a0.dial+'番に替わりました';
+    else if(a0.part==='all' && r.base==='none')      what='まるごと '+a0.dial+'番に替わりました';
+    else if(r.base==='all')                          what=a0.dial+'番が足されました';
+  }
   let h='<div class="real-duty'+(isKyuDay?' is-kyu':'')+'">'
       + '<div class="rd-ttl">'
       + (isKyuDay ? '🔵 公休出勤で出るのは' : '🚌 この日に実際に出るのは')
-      + '</div>';
+      + '</div>'
+      + (what?'<div class="rd-chg">✅ '+what+'</div>':'');
   list.forEach(function(x){
     h+='<div class="rd-row">'
       +'<span class="rd-dial">'+x.dial+'番</span>'
       +'<span class="rd-part">'+(partLb[x.part]||'')+'</span>'
-      +'<span class="rd-time">'+(x.slot?formatDisplayTime(x.slot.o):'時刻が確定していません')+'</span>'
-      +(x.slot?'<span class="rd-w">労働 '+formatDisplayLabor(x.slot.w)+'</span>':'')
+      +'<span class="rd-time">'+(x.slot?formatDisplayTimePart(x.slot.o,x.part,x.slot.w):'時刻が確定していません')+'</span>'
+      +((x.slot && (!String(x.slot.o).includes('/')||x.part==='all'))
+         ?'<span class="rd-w">労働 '+(x.slot.w||'-')+'</span>':'')
       +'</div>';
   });
   if(firstT){
@@ -3247,7 +3299,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v164';
+const APP_VERSION   = 'v165';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
