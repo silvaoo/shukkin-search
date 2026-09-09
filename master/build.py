@@ -39,6 +39,13 @@ BUMP = len(sys.argv) > 1 and sys.argv[1] == "bump"
 
 apps = json.load(io.open(os.path.join(HERE, "apps.json"), encoding="utf-8"))
 
+# 画面に出す版番号。ここ1か所だけで持つ。
+# 以前は master.html の中の文字列を手で書き換えていたが、
+# 書き換えに失敗しても気づけず、2.71 のまま何十版も進んでしまった。
+VER_PATH = os.path.join(HERE, "version.txt")
+APP_LABEL = "バージョン " + io.open(VER_PATH, encoding="utf-8").read().strip()
+print("画面に出す版:", APP_LABEL)
+
 # 雛形をまとめて読み込む
 src = {}
 for tpl, out in TEMPLATES:
@@ -65,6 +72,7 @@ for repo, cfg in apps.items():
     if num == 0:
         num = 1
     cfg["SWVER"] = "v" + str(num)
+    cfg["APP_LABEL"] = APP_LABEL
 
     # --- 雛形に値を差し込む ---------------------------------
     outdir = os.path.join(HERE, "out-" + repo)

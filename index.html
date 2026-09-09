@@ -3299,7 +3299,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v165';
+const APP_VERSION   = 'v166';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -3521,7 +3521,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.71';
+const APP_LABEL = 'バージョン 2.88';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -4018,8 +4018,9 @@ function closeMemoList(){
 /* ==================================================================
    ==== 時間外の計算と保存 ====
    規則（つとむーんTさんの実例から起こしたもの）:
-     どの勤務も 評価時間 = 労働時間 と 拘束時間×0.8 の多いほう
-     時間外 = 実際に出た評価時間の合計 − 本来の評価時間
+     付いた分 = 労働時間 と 拘束時間×0.8 の多いほう
+     走らなかった分 = 拘束時間 × 0.8
+     時間外 = 付いた分 − 走らなかった分（公休の日は引くものが無い）
    0を下回るときは0。端数は1分単位で四捨五入。
    実際は渋滞や居残りで前後するため、あくまで目安。
    計算後に手で直せるようにしてある。
@@ -4164,16 +4165,28 @@ function otCalc(date, base, adds, forceKyu){
   }
 
   // --- 勤務の日に付いた／振り替わった ---
-  const baseEval = otEval(baseSlot,'all');
-  const kept = (base==='none') ? 0 : otEval(baseSlot, base);
-  const actual = kept + addEval;
+  /* 引くのは「振替で走らなかった分」。そこは拘束×0.8で見る。
+     2026-09-09 の実例（73番の後半を6番の後半へ振替）:
+       走った 6番後半  労働6:32
+       走らなかった 73番後半  拘束7:06×0.8 = 5:41
+       差 51分 ← 会社の数字と一致（アプリは労働で引いて37分だった）
+     そのまま乗った分は自分の勤務なので、引き算に出てこない。 */
+  const dropped = (base==='all') ? null            // 何も降りていない（付いただけ）
+                : (base==='none') ? 'all'          // まるごと降りた
+                : (base==='first') ? 'second'      // 前半だけ乗った＝後半を降りた
+                : 'first';                         // 後半だけ乗った＝前半を降りた
+  const dropVal = dropped ? otHeldPart(baseSlot.o, dropped) * 0.8 : 0;
+  const ot = Math.max(0, Math.round(addEval - dropVal));
+
   const baseWord = base==='all'?'まるごと乗った':base==='none'?'乗っていない'
                  : base==='first'?'前半だけ乗った':'後半だけ乗った';
+  const howTxt = dropped
+    ? '付いた分 '+otFmt(Math.round(addEval))+' − 走らなかった分 '
+      +otFmt(Math.round(dropVal))+'（拘束×0.8）'
+    : '付いた分 '+otFmt(Math.round(addEval))+' がそのまま時間外';
   return {ok:true, kind:(base==='all'?'追加':'振替'), baseDial:baseDial,
           baseLabel:baseSlot.o+'（労働 '+baseSlot.w+'）／'+baseWord,
-          rows:rows, ot:Math.max(0,Math.round(actual-baseEval)),
-          how:'実際 '+otFmt(Math.round(actual))+' − 本来 '+otFmt(Math.round(baseEval))
-             +'　※労働と拘束×0.8の多いほうで比べています'};
+          rows:rows, ot:ot, how:howTxt};
 }
 
 /* 拘束時間のうち、指定した側だけを取り出す */
