@@ -945,25 +945,33 @@ body.multi .only-single{ display:none !important; }
 /* ==== 日付を選ぶ画面 ====
    時間外やメモの画面（z-index 10002）の上に出す必要がある。
    同じ高さだと、DOMの並び順で後ろに隠れてしまう。 */
-#dpModal{ z-index: 10040; }
-.dp-box{ max-width:460px; }
+#dpModal{ z-index: 10040; padding: 10px 6px; }   /* 外側の余白も詰めてマスを広く使う */
+/* 画面いっぱいに使う。左右の余白を詰めて、マスを大きくする。 */
+.dp-box{ max-width:100%; padding:14px 10px 20px; }
 .dp-nav{ display:flex; align-items:center; gap:8px; margin:6px 0 10px; }
-.dp-arrow{ width:52px; height:52px; border-radius:26px; border:1px solid var(--border);
+.dp-arrow{ flex:none; width:52px; height:52px; border-radius:26px;
+  border:1px solid var(--border);
   background:var(--bg-card2); color:var(--text); font-size:26px; cursor:pointer; }
-.dp-month{ flex:1; text-align:center; font-size:19px; font-weight:800;
+.dp-month{ flex:1; min-width:0; text-align:center; font-size:19px; font-weight:800;
   color:var(--text); cursor:pointer; }
-.dp-dw{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:5px; }
-.dp-dw span{ text-align:center; font-size:12px; color:var(--dim); }
+/* 曜日とマスで、列の作り方をそろえる。
+   1fr だけだと中身の幅に押されて列が広がり、右にはみ出す。 */
+.dp-dw{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px;
+  margin-bottom:4px; }
+.dp-dw span{ text-align:center; font-size:12px; color:var(--dim); min-width:0; }
 .dp-dw .sun{ color:#ff6b81; } .dp-dw .sat{ color:#5b8dff; }
-.dp-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
-.dp-cell{ aspect-ratio:1/1; border-radius:10px; border:1px solid var(--border);
+.dp-grid{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; }
+.dp-cell{ aspect-ratio:1/1; min-width:0; border-radius:10px;
+  border:1px solid var(--border);
   background:var(--bg-card2); color:var(--text);
   display:flex; flex-direction:column; align-items:center; justify-content:center;
-  cursor:pointer; padding:0; font-family:'Noto Sans JP',sans-serif; }
+  cursor:pointer; padding:0; font-family:'Noto Sans JP',sans-serif;
+  overflow:hidden; }
 .dp-cell.empty{ border-color:transparent; background:transparent; cursor:default; }
 /* ここがいちばん大事。選ぶ数字を大きくする */
-.dp-d{ font-size:22px; font-weight:800; line-height:1.1; }
-.dp-n{ font-size:10px; color:var(--dim); margin-top:1px; }
+.dp-d{ font-size:24px; font-weight:800; line-height:1.05; }
+.dp-n{ font-size:10px; color:var(--dim); margin-top:1px;
+  max-width:100%; overflow:hidden; white-space:nowrap; }
 .dp-cell.sun .dp-d{ color:#ff6b81; }
 .dp-cell.sat .dp-d{ color:#5b8dff; }
 .dp-cell.today{ border-color:var(--orange); border-width:2px; }
