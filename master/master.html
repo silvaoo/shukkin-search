@@ -924,6 +924,19 @@ body.multi .only-single{ display:none !important; }
   font-variant-numeric:tabular-nums; }
 .rv-allrow-s{ font-size:11.5px; color:var(--dim); }
 
+/* 選んだ日の勤務。ここがいちばん見たいところなので大きく出す */
+.ot-day{ margin-top:10px; padding:13px 14px; border-radius:12px;
+  background:var(--bg-card2); border:1px solid var(--border); }
+.ot-day-top{ display:flex; align-items:baseline; gap:10px; margin-bottom:4px; }
+.ot-day-dial{ font-size:24px; font-weight:900; color:var(--orange); }
+.ot-day-badge{ font-size:11.5px; color:var(--dim); }
+.ot-day-time{ font-size:20px; font-weight:800; color:var(--text);
+  font-variant-numeric:tabular-nums; line-height:1.5; }
+.ot-day-w{ font-size:12.5px; color:var(--dim); margin-top:3px; }
+.ot-day-off{ font-size:22px; font-weight:900; color:var(--green); }
+.ot-day-note{ font-size:12.5px; color:var(--note); margin-top:6px; line-height:1.6; }
+.ot-day-sub{ font-size:12.5px; color:var(--dim); }
+
 /* 日付欄。押すとカレンダーが開く */
 .dp-btn{ text-align:left; cursor:pointer; font-weight:700;
   display:flex; align-items:center; justify-content:space-between; }
@@ -1609,6 +1622,7 @@ a.source-link:visited {
     <div class="ot-form">
       <label class="ot-lb">日付</label>
       <button class="ot-in dp-btn" id="otDate" onclick="otPickDate()"></button>
+      <div id="otDayCard" class="ot-day"></div>
 
       <label class="ot-lb">この日は？</label>
       <div class="ot-parts">
@@ -1619,7 +1633,7 @@ a.source-link:visited {
       <p class="ot-hint" id="otKyuHint"></p>
 
       <div id="otBaseWrap">
-        <label class="ot-lb">本来のダイヤ（<span id="otBaseInfo">—</span>）は？</label>
+        <label class="ot-lb">本来のダイヤは、どう乗りましたか？</label>
         <div class="ot-parts">
           <button class="ot-part on" id="otBaseAll"    onclick="otSetBase('all')">まるごと乗った</button>
           <button class="ot-part"    id="otBaseFirst"  onclick="otSetBase('first')">前半だけ</button>
@@ -4375,6 +4389,31 @@ function closeOt(){
     switchMemoList('ot');
   }
 }
+/* 選んだ日の勤務を、はっきり見せる。
+   小さい文字で2か所に散っていて読みにくかったため、1つの枠にまとめた。 */
+function renderOtDayCard(date, slot, dial){
+  const box=document.getElementById('otDayCard');
+  if(!box) return;
+  const dt=dayType(date);
+  const badge = isObon(date) ? 'お盆（土曜ダイヤ）' : isHol(date) ? '祝日（日祝ダイヤ）'
+              : dt==='土' ? '土曜' : dt==='日祝' ? '日祝' : '平日';
+  if(dial===null){
+    box.innerHTML='<div class="ot-day-sub">今日のダイヤ番号を保存すると、この日の勤務が出ます</div>';
+    return;
+  }
+  if(!slot){
+    box.innerHTML='<div class="ot-day-top"><span class="ot-day-dial">'+dial+'番</span>'
+      +'<span class="ot-day-badge">'+badge+'</span></div>'
+      +'<div class="ot-day-off">公休</div>';
+    return;
+  }
+  box.innerHTML='<div class="ot-day-top"><span class="ot-day-dial">'+dial+'番</span>'
+    +'<span class="ot-day-badge">'+badge+'</span></div>'
+    +'<div class="ot-day-time">'+formatDisplayTime(slot.o)+'</div>'
+    +'<div class="ot-day-w">労働 '+formatDisplayLabor(slot.w)+'</div>'
+    +(slot.n?'<div class="ot-day-note">📌 '+escapeHtml(slot.n)+'</div>':'');
+}
+
 /* 時間外の日付を、自前のカレンダーから選ぶ */
 function otPickDate(){
   dpOpen(otDateVal(), '⏱ どの日の時間外ですか？', function(iso){
@@ -4468,14 +4507,13 @@ function otPreview(){
   document.getElementById('otHmLabel').style.display = isLeave ? 'none' : 'block';
   const hint=document.getElementById('otKyuHint');
   if(hint){
-    hint.textContent = !dataSlot
-      ? 'この日はダイヤ上も公休です。'
-      : (otKind==='kyu' ? '指定公休として扱います。出たダイヤの拘束時間×0.8で計算します。'
-        : isLeave ? '年休として記録します。この日は勤務時間を出さず、次の出勤を表示します。'
-        : 'ダイヤ上は '+(bd?bd+'番 ':'')+dataSlot.o+' の勤務日です。');
+    hint.textContent =
+        (otKind==='kyu' && dataSlot) ? '指定公休として扱います。出たダイヤの拘束時間×0.8で計算します。'
+      : isLeave ? '年休として記録します。この日は勤務時間を出さず、次の出勤を表示します。'
+      : '';
   }
-  const info=document.getElementById('otBaseInfo');
-  if(info) info.textContent = bs ? ((bd?bd+'番 ':'')+bs.o) : '公休';
+  // 選んだ日の勤務を、日付のすぐ下に大きく出す
+  renderOtDayCard(date, dataSlot, bd);
   const wrap=document.getElementById('otBaseWrap');
   if(wrap) wrap.style.display = bs ? 'block' : 'none';
 
