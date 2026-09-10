@@ -929,7 +929,10 @@ body.multi .only-single{ display:none !important; }
   display:flex; align-items:center; justify-content:space-between; }
 .dp-btn::after{ content:'📅'; font-size:18px; }
 
-/* ==== 日付を選ぶ画面 ==== */
+/* ==== 日付を選ぶ画面 ====
+   時間外やメモの画面（z-index 10002）の上に出す必要がある。
+   同じ高さだと、DOMの並び順で後ろに隠れてしまう。 */
+#dpModal{ z-index: 10040; }
 .dp-box{ max-width:460px; }
 .dp-nav{ display:flex; align-items:center; gap:8px; margin:6px 0 10px; }
 .dp-arrow{ width:52px; height:52px; border-radius:26px; border:1px solid var(--border);
@@ -1030,6 +1033,9 @@ body.multi .only-single{ display:none !important; }
 
 .rcd-ot{ width:100%; padding:12px; margin-top:12px; border:none; border-radius:10px;
   background:linear-gradient(135deg,{{SOON_A}},{{SOON_B}}); color:{{SOON_TX}};
+  font-size:15px; font-weight:bold; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
+.rcd-memo{ width:100%; padding:12px; margin-top:8px; border-radius:10px;
+  border:1px dashed var(--border); background:transparent; color:var(--text);
   font-size:15px; font-weight:bold; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
 .ot-addrow{ width:100%; padding:11px; margin-top:8px; border-radius:9px;
   border:1px dashed var(--border); background:transparent; color:var(--note);
@@ -4291,7 +4297,11 @@ function dpOpen(iso, title, onPick){
 }
 function dpClose(){
   document.getElementById('dpModal').classList.remove('active');
-  document.body.style.overflow='';
+  // 下にまだ時間外やマイページの画面が開いているなら、スクロール止めは戻さない
+  const still=['otModal','memoListModal','guideModal','resCalModal','rcDetail']
+    .some(function(id){ const e=document.getElementById(id);
+      return e && (e.classList.contains('active')); });
+  if(!still) document.body.style.overflow='';
 }
 function dpMove(n){
   _dpYM=new Date(_dpYM.getFullYear(), _dpYM.getMonth()+n, 1);
@@ -5692,6 +5702,8 @@ function openRcDetail(iso){
       +`</div>`;
   }
   html+=`<button class="rcd-ot" onclick="otFromDetail('${iso}')">⏱ ${otRec?'時間外を直す':'時間外を追加'}</button>`;
+  html+=`<button class="rcd-memo" onclick="memoFromDetail('${iso}',${r.dn})">📝 ${
+    (getDateMemo(iso)||getDateImgs(iso).length)?'メモを編集':'メモを追加'}</button>`;
   html+='<button class="rcd-close" onclick="closeRcDetail()">閉じる</button>';
   document.getElementById('rcDetailBox').innerHTML=html;
   document.getElementById('rcDetail').classList.add('active');
@@ -5706,6 +5718,25 @@ function refreshOtButtons(){
     const b=area.querySelector('.ot-btn');
     if(iso && b) b.textContent=otBtnLabel(iso);
   });
+}
+
+/* カレンダーの日付詳細から、そのままメモを書く。
+   マイページを開いて日付を選び直す手間をなくすため。 */
+function memoFromDetail(iso, dn){
+  closeRcDetail();
+  closeResultCal();
+  openMemoList();
+  switchMemoList('date');
+  openNewMemo('date');
+  const el=document.getElementById('nm-key-date');
+  if(el){
+    el.setAttribute('data-iso', iso);
+    el.textContent = nmDateLabel(iso);
+  }
+  // すでに書いてあれば、その中身を入れておく
+  const cur=getDateMemo(iso);
+  const tx=document.getElementById('nm-text-date');
+  if(tx && cur) tx.value=cur;
 }
 
 /* 検索結果の日付から、そのまま時間外の入力を開く */
