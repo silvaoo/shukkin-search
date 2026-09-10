@@ -982,6 +982,26 @@ body.multi .only-single{ display:none !important; }
 .dp-cell.has-leave{ box-shadow:inset 0 -4px 0 #ff5c72; }
 .dp-hint{ display:block; font-size:10.5px; font-weight:400; color:var(--dim); }
 
+/* ==== 上限の見張り ==== */
+.ot-warn-box{ margin-top:10px; padding:10px 12px; border-radius:10px;
+  font-size:13px; line-height:1.7; }
+.ot-warn-box.cau{ background:rgba(255,212,121,.12); border:1px solid var(--note);
+  color:var(--note); }
+.ot-warn-box.ng{ background:rgba(229,72,77,.14); border:2px solid #e5484d;
+  color:#ff8b95; font-weight:700; }
+.rv-lims{ margin-bottom:9px; }
+.rv-lim{ background:var(--bg-card); border:1px solid var(--border);
+  border-radius:12px; padding:11px 13px; margin-bottom:7px; }
+.rv-lim-t{ font-size:12.5px; color:var(--dim); }
+.rv-lim-t b{ font-size:17px; color:var(--text); font-variant-numeric:tabular-nums; }
+.rv-lim-bar{ height:8px; border-radius:4px; background:rgba(128,128,160,.25);
+  overflow:hidden; margin:6px 0 4px; }
+.rv-lim-bar span{ display:block; height:100%; border-radius:4px; background:#4ad991; }
+.rv-lim.cau .rv-lim-bar span{ background:var(--note); }
+.rv-lim.ng  .rv-lim-bar span{ background:#e5484d; }
+.rv-lim-s{ font-size:11.5px; color:var(--dim); }
+.rv-lim.ng .rv-lim-s{ color:#ff8b95; font-weight:700; }
+
 /* ==== 時間外 ==== */
 .nm-box{ margin-bottom:14px; padding:12px; border-radius:12px;
   background:var(--bg-card2); border:1px solid var(--border); }
@@ -1794,6 +1814,7 @@ a.source-link:visited {
         <div class="guide-note">計算は、どの勤務も<b>「労働時間」と「拘束時間×0.8」の多いほう</b>で見ています。公出も振替も同じ考え方です。</div>
         <div class="guide-note">
           <b>16日〜翌月15日</b>の合計と、公出の回数が出ます。公出の日は青、年休の日は赤の印が付きます。<br>
+          <b>時間外が90時間、拘束が275時間に近づくと警告が出ます。</b>入れる前に分かるので、超えそうなら受ける前に判断できます。<br>
           ⚠ おおよその計算です。多少のズレがあることはご了承ください。
         </div>
       </div>
@@ -4284,6 +4305,54 @@ function otHeldPart(o, part){
   return otHeld(o);   // 中間ダイヤでなければ、前半後半の区別なく全体
 }
 
+/* ==== 上限の見張り ====
+   2026-09 に実害が出た（時間外が90時間を超え、13日の公出が無効になった）。
+   同じことが起きないよう、入れる時点で知らせる。
+   数字は会社の決まり。変わったらここだけ直せばよい。 */
+const LIMIT_OT_MONTH   = 90*60;    // 締め期間の時間外の上限（分）
+const LIMIT_OT_WARN    = 80*60;    // ここを超えたら注意
+const LIMIT_HELD_MONTH = 275*60;   // 締め期間の拘束の上限（分）
+const LIMIT_HELD_WARN  = 260*60;
+
+/* その締め期間の、時間外と拘束の合計を出す。
+   addIso/addMin を渡すと「その日を足したら」の値になる。 */
+function limitTotals(periodStartIso, addIso, addMin){
+  const all=otLoad();
+  const p=periodStartIso.split('-').map(Number);
+  const from=new Date(p[0],p[1]-1,16);
+  const to=new Date(p[0],p[1],15);
+  let ot=0, held=0;
+  for(const k in all){
+    if(otPeriodStart(k)!==periodStartIso) continue;
+    if(addIso && k===addIso) continue;      // 足す分はあとで入れる
+    ot += (all[k].min||0);
+  }
+  if(addIso && otPeriodStart(addIso)===periodStartIso) ot += (addMin||0);
+
+  // 拘束は、その期間に実際に出る勤務から数える
+  for(let d=new Date(from); d<=to; d.setDate(d.getDate()+1)){
+    const iso=toISO(d), rec=all[iso];
+    if(otIsLeave(rec)) continue;            // 年休の日は拘束なし
+    const dt=dayType(d);
+    if(rec && rec.adds && rec.adds.length){
+      if(rec.base!=='none'){
+        const bd=otBaseDial(d), r0=(bd!==null)?DB[bd]:null;
+        const s0=(r0&&r0[dt]&&String(r0[dt].o)!=='—')?r0[dt]:null;
+        if(s0) held += otHeldPart(s0.o, rec.base);
+      }
+      rec.adds.forEach(function(x){
+        const r2=DB[x.dial], s2=(r2&&r2[dt]&&String(r2[dt].o)!=='—')?r2[dt]:null;
+        if(s2) held += otHeldPart(s2.o, x.part);
+      });
+    }else{
+      const bd=otBaseDial(d), r0=(bd!==null)?DB[bd]:null;
+      const s0=(r0&&r0[dt]&&String(r0[dt].o)!=='—')?r0[dt]:null;
+      if(s0) held += otHeld(s0.o);
+    }
+  }
+  return {ot:ot, held:held};
+}
+
 /* 締め期間（16日〜翌月15日）。その日が属する期間の始まりを返す。 */
 function otPeriodStart(iso){
   const p=iso.split('-').map(Number);
@@ -4541,6 +4610,29 @@ function otPreview(){
     kaime='<div class="ot-sub">この期間 '+n+'回目の公休出勤</div>';
   }
   const partLb={all:'まるごと',first:'前半だけ',second:'後半だけ'};
+  // この日を入れたら上限に触れないか、その場で知らせる
+  const willMin = otEdited
+    ? ((parseInt(document.getElementById('otH').value)||0)*60
+      +(parseInt(document.getElementById('otM').value)||0))
+    : r.ot;
+  const tot = limitTotals(otPeriodStart(iso), iso, willMin||0);
+  let warn='';
+  if(tot.ot > LIMIT_OT_MONTH){
+    warn='<div class="ot-warn-box ng">⛔ この日を入れると、この期間の時間外が '
+       + otFmt(tot.ot)+' になります。<b>90時間を超えます。</b><br>'
+       + '超えた分は認められないことがあります。</div>';
+  }else if(tot.ot > LIMIT_OT_WARN){
+    warn='<div class="ot-warn-box cau">⚠ この期間の時間外は '+otFmt(tot.ot)
+       + ' になります。90時間まであと '+otFmt(LIMIT_OT_MONTH-tot.ot)+' です。</div>';
+  }
+  if(tot.held > LIMIT_HELD_MONTH){
+    warn+='<div class="ot-warn-box ng">⛔ 拘束の合計が '+otFmt(tot.held)
+       + ' になります。<b>275時間を超えます。</b></div>';
+  }else if(tot.held > LIMIT_HELD_WARN){
+    warn+='<div class="ot-warn-box cau">⚠ 拘束の合計は '+otFmt(tot.held)
+       + '。275時間まであと '+otFmt(LIMIT_HELD_MONTH-tot.held)+' です。</div>';
+  }
+
   box.innerHTML =
      '<div class="ot-sub">本来：'+r.baseLabel+'</div>'
     +r.rows.map(function(x){
@@ -4548,7 +4640,7 @@ function otPreview(){
       }).join('')
     +'<div class="ot-sub">'+r.how+'</div>'
     +'<div class="ot-big">時間外 '+(r.ot===null?'（手で入れてください）':otFmt(r.ot))+'</div>'
-    +kaime;
+    +kaime+warn;
 
   if(!otEdited && r.ot!==null){
     document.getElementById('otH').value=Math.floor(r.ot/60);
@@ -4760,6 +4852,23 @@ function renderRevPane(){
     +(prev?'<div class="rv-cmp">前の期間（'+otFmt(prev.ot)+'）より '+revDiff(now.ot,prev.ot)+'</div>'
           :'<div class="rv-cmp">前の期間は出せません</div>')
     +'</div>';
+
+  // 上限までの余裕
+  const lim=limitTotals(toISO(from));
+  function bar(now, warnAt, maxAt, label, unitLabel){
+    const pc=Math.min(100, now/maxAt*100);
+    const cls = now>maxAt ? 'ng' : now>warnAt ? 'cau' : 'ok';
+    return '<div class="rv-lim '+cls+'">'
+      +'<div class="rv-lim-t">'+label+'　<b>'+otFmt(now)+'</b> / '+unitLabel+'</div>'
+      +'<div class="rv-lim-bar"><span style="width:'+pc+'%"></span></div>'
+      +'<div class="rv-lim-s">'
+      +(now>maxAt ? '⛔ 上限を '+otFmt(now-maxAt)+' 超えています'
+                  : 'あと '+otFmt(maxAt-now))+'</div></div>';
+  }
+  h+='<div class="rv-lims">'
+    + bar(lim.ot,   LIMIT_OT_WARN,   LIMIT_OT_MONTH,   '時間外', '90時間')
+    + bar(lim.held, LIMIT_HELD_WARN, LIMIT_HELD_MONTH, '拘束',   '275時間')
+    + '</div>';
 
   h+='<div class="rv-grid">'
     +'<div class="rv-cell"><div class="rv-cell-lb">出勤</div><div class="rv-cell-v">'+now.work+'<small>日</small></div></div>'
