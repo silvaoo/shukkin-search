@@ -959,9 +959,7 @@ body.multi .only-single{ display:none !important; }
 .dp-cell.has-ot{ box-shadow:inset 0 -4px 0 var(--note); }
 .dp-cell.has-kyu{ box-shadow:inset 0 -4px 0 #4aa3ff; }
 .dp-cell.has-leave{ box-shadow:inset 0 -4px 0 #ff5c72; }
-.dp-today{ width:100%; padding:13px; margin-top:12px; border-radius:10px;
-  border:1px solid var(--border); background:var(--bg-card2); color:var(--note);
-  font-size:14px; font-weight:800; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
+.dp-hint{ display:block; font-size:10.5px; font-weight:400; color:var(--dim); }
 
 /* ==== 時間外 ==== */
 .nm-box{ margin-bottom:14px; padding:12px; border-radius:12px;
@@ -1591,12 +1589,13 @@ a.source-link:visited {
     </div>
     <div class="dp-nav">
       <button class="dp-arrow" onclick="dpMove(-1)">‹</button>
-      <div class="dp-month" id="dpMonth" onclick="dpToday()"></div>
+      <div class="dp-month" id="dpMonth" onclick="dpToday()">
+        <span id="dpMonthT"></span><span class="dp-hint">押すと今日へ</span>
+      </div>
       <button class="dp-arrow" onclick="dpMove(1)">›</button>
     </div>
     <div class="dp-dw"><span class="sun">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sat">土</span></div>
     <div class="dp-grid" id="dpGrid"></div>
-    <button class="dp-today" onclick="dpToday()">今日に戻る</button>
   </div>
 </div>
 
@@ -3360,7 +3359,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v169';
+const APP_VERSION   = 'v170';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -3582,7 +3581,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.91';
+const APP_LABEL = 'バージョン 2.92';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -4320,7 +4319,7 @@ function dpPick(iso){
 }
 function dpRender(){
   const y=_dpYM.getFullYear(), m=_dpYM.getMonth()+1;
-  document.getElementById('dpMonth').textContent=y+'年 '+m+'月';
+  document.getElementById('dpMonthT').textContent=y+'年 '+m+'月';
   const first=new Date(y,m-1,1), days=new Date(y,m,0).getDate();
   const todayIso=toISO(new Date());
   const all=otLoad();
