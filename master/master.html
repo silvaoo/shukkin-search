@@ -320,7 +320,7 @@ body {
   background: #f0f0f5; border: 1px solid #d8d8e0; color: #1a1a2e;
   border-radius: 6px; width: 40px; height: 34px; font-size: 18px; font-weight: 800; cursor: pointer;
 }
-.cal-month { font-size: 16px; font-weight: 800; color: #1a1a2e; }
+.cal-month { font-size: 16px; font-weight: 800; color: #1a1a2e; cursor: pointer; }
 
 /* minmax(0,1fr) にしないと中身の最小幅で列が広がり、横にはみ出してしまう */
 .cal-dw { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 2px; margin-bottom: 2px; }
@@ -1477,7 +1477,7 @@ a.source-link:visited {
     </div>
     <div class="cal-nav">
       <button class="cal-arrow" id="rcPrev" onclick="resCalMove(-1)">‹</button>
-      <div class="cal-month" id="resCalMonth"></div>
+      <div class="cal-month" id="resCalMonth" onclick="resCalToday()"></div>
       <button class="cal-arrow" id="rcNext" onclick="resCalMove(1)">›</button>
     </div>
     <div class="cal-dw">
@@ -1669,7 +1669,8 @@ a.source-link:visited {
 
       <div class="guide-step">
         <h3>⑤ カレンダーで見る・保存・スマホに登録</h3>
-        <p>結果の一番下の「📅 カレンダーを見る」を押すと、<b>1ヶ月分が一目で分かります</b>。マスをタップすると大きく表示され、分割勤務の詳しい時間も読めます。土曜は青、日曜・祝日は赤で色分けされます。</p>
+        <p>結果の一番下の「📅 カレンダーを作る」を押すと、<b>1ヶ月分が一目で分かります</b>。マスをタップすると大きく表示され、分割勤務の詳しい時間も読めます。土曜は青、日曜・祝日は赤で色分けされます。</p>
+        <div class="guide-note"><b>‹ › で何ヶ月でも前後に動かせます。</b>検索していない月でも、覚えた番号から勤務が出ます。<b>過去の日をタップすれば、付け忘れた時間外もその場で足せます。</b>月の表示を押すと今月に戻ります。</div>
         <img src="images/guide-rescal.jpg" alt="検索結果をカレンダーで一覧">
         <div class="guide-note">
           この画面の<b>「⭐ マイページに保存」</b>で検索結果を保存でき、あとで<b>「📝 マイページ」→「保存したカレンダー」</b>からいつでも開けます。<br>
@@ -5001,7 +5002,7 @@ function render(rows){
   }
   html+=`<div class="action-row">
     <button class="act-btn act-more" onclick="continueSearch()">➕ 続けて検索</button>
-    <button class="act-btn act-cal" onclick="openResultCal()">📅 カレンダーを見る</button>
+    <button class="act-btn act-cal" onclick="openResultCal()">📅 カレンダーを作る</button>
   </div>`;
 
   el.innerHTML=html;
@@ -5356,16 +5357,19 @@ function showMyDialNote(on){
 /* ==== 検索結果をカレンダーで見る ====
    検索した結果を、月ごとのカレンダーに並べて一目で分かるようにする。
    マスにはダイヤ番号と出退勤時間だけを出す。 */
-let _rcMonths=[];   // 結果に含まれる月の一覧
-let _rcIdx=0;       // 今表示している月
+let _rcYM=null;     // いま表示している月（Date。1日を指す）
 
+/* カレンダーは検索結果に縛られない。
+   覚えたダイヤ番号があれば、過去でも先でも自分の勤務を出せる。
+   時間外の付け忘れを、あとから拾えるようにするため。 */
 function openResultCal(){
   const rows=window._lastRows;
-  if(!rows||!rows.length){showToast('先に検索してください');return;}
-  // 結果に含まれる月を拾い出す
-  const set=new Set(rows.map(r=>r.iso.slice(0,7)));
-  _rcMonths=[...set].sort();
-  _rcIdx=0;
+  if(rows && rows.length){
+    const p=rows[0].iso.split('-').map(Number);
+    _rcYM=new Date(p[0], p[1]-1, 1);       // 検索したところから始める
+  }else{
+    const t=new Date(); _rcYM=new Date(t.getFullYear(), t.getMonth(), 1);
+  }
   renderResultCal();
   attachCalSwipe(document.getElementById('resCalGrid'), resCalMove);   // 横スワイプで月移動
   document.getElementById('resCalModal').classList.add('active');
@@ -5377,10 +5381,15 @@ function closeResultCal(){
   document.body.style.overflow='';
 }
 function resCalMove(n){
-  const i=_rcIdx+n;
-  if(i<0||i>=_rcMonths.length)return;
-  _rcIdx=i; renderResultCal();
+  _rcYM=new Date(_rcYM.getFullYear(), _rcYM.getMonth()+n, 1);
+  renderResultCal();
   beep(760,50,0);
+}
+/* 今月へ戻る */
+function resCalToday(){
+  const t=new Date();
+  _rcYM=new Date(t.getFullYear(), t.getMonth(), 1);
+  renderResultCal();
 }
 /* カレンダーに横スワイプで月移動を付ける。
    横に十分動いたら onMove(方向) を呼ぶ。縦スクロールやタップと誤認しないよう、
@@ -5411,13 +5420,26 @@ function rcTimes(o){
   const split=o.includes('/');
   return {s,e,split};
 }
+/* 検索していない日のぶんを、覚えたダイヤ番号から組み立てる。
+   検索結果と同じ形にして、以降の処理をそのまま使えるようにする。 */
+function rcMakeRow(date){
+  const n=otBaseDial(date);
+  if(n===null) return null;                 // 番号を覚えていなければ出せない
+  const dt=dayType(date);
+  const rec=DB[n];
+  const slot=(rec&&rec[dt]&&String(rec[dt].o)!=='—')?rec[dt]:null;
+  return {iso:toISO(date), dn:n, rec:rec, slot:slot, dt:dt,
+          hol:isHol(date), obon:isObon(date),
+          m:date.getMonth()+1, d:date.getDate(), dw:DW[date.getDay()]};
+}
+
 function renderResultCal(){
   const rows=window._lastRows||[];
-  const ym=_rcMonths[_rcIdx];
-  const [y,m]=ym.split('-').map(Number);
+  const y=_rcYM.getFullYear(), m=_rcYM.getMonth()+1;
   document.getElementById('resCalMonth').textContent=`${y}年 ${m}月`;
-  document.getElementById('rcPrev').style.visibility=_rcIdx>0?'visible':'hidden';
-  document.getElementById('rcNext').style.visibility=_rcIdx<_rcMonths.length-1?'visible':'hidden';
+  // 前後どちらへも動かせる
+  document.getElementById('rcPrev').style.visibility='visible';
+  document.getElementById('rcNext').style.visibility='visible';
 
   const byIso={}; rows.forEach(r=>byIso[r.iso]=r);
   const first=new Date(y,m-1,1);
@@ -5430,7 +5452,8 @@ function renderResultCal(){
   for(let d=1;d<=days;d++){
     const dt=new Date(y,m-1,d);
     const iso=toISO(dt);
-    const r=byIso[iso];
+    let r=byIso[iso];
+    if(!r) r=rcMakeRow(dt);      // 検索していない日も、覚えた番号から作る
     const dw=dt.getDay();
     let cls='cal-day';
     if(dw===0)cls+=' sun'; if(dw===6)cls+=' sat';
@@ -5472,7 +5495,8 @@ function renderResultCal(){
 /* ==== マスをタップした時の詳細（文字を大きくして読めるようにする） ==== */
 function openRcDetail(iso){
   const rows=window._lastRows||[];
-  const r=rows.find(x=>x.iso===iso);
+  let r=rows.find(x=>x.iso===iso);
+  if(!r) r=rcMakeRow(new Date(iso+'T00:00:00'));   // 検索していない日も開ける
   if(!r)return;
   beep(760,50,0);
   if(navigator.vibrate)navigator.vibrate(12);
