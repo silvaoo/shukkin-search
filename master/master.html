@@ -992,7 +992,7 @@ body.multi .only-single{ display:none !important; }
 .rv-lims{ margin-bottom:9px; }
 .rv-lim{ background:var(--bg-card); border:1px solid var(--border);
   border-radius:12px; padding:11px 13px; margin-bottom:7px; }
-.rv-lim-t{ font-size:12.5px; color:var(--dim); }
+.rv-lim-t{ font-size:12.5px; color:var(--dim); line-height:1.6; }
 .rv-lim-t b{ font-size:17px; color:var(--text); font-variant-numeric:tabular-nums; }
 .rv-lim-bar{ height:8px; border-radius:4px; background:rgba(128,128,160,.25);
   overflow:hidden; margin:6px 0 4px; }
@@ -4313,6 +4313,11 @@ const LIMIT_OT_MONTH   = 90*60;    // 締め期間の時間外の上限（分）
 const LIMIT_OT_WARN    = 80*60;    // ここを超えたら注意
 const LIMIT_HELD_MONTH = 275*60;   // 締め期間の拘束の上限（分）
 const LIMIT_HELD_WARN  = 265*60;   // ここは緩めでよい。ふだんは届かないため
+/* 3期間（3ヶ月）の時間外。上司の話では「3ヶ月平均180時間、上限240時間」。
+   3期間の合計として読んでいるが、まだ確かめられていない。
+   実際の数字と突き合わせてから線を引き直すこと。 */
+const LIMIT_OT_3M      = 240*60;   // 3期間の合計の上限
+const LIMIT_OT_3M_WARN = 180*60;   // ここを超えたら注意（平均60時間）
 const LIMIT_DAY_HELD   = 15*60;    // 1日の拘束の上限（出勤から退勤まで通し）
 const LIMIT_DAY_REST   = 4*60;     // 解放がこれ以上あれば、1日15時間を超えてよい
 
@@ -4415,6 +4420,22 @@ function limitTotals(periodStartIso, addIso, addMin){
     }
   }
   return {ot:ot, held:held};
+}
+
+/* この期間を含む直近3期間の、時間外の合計を出す。 */
+function ot3Months(periodStartIso){
+  const all=otLoad();
+  const p=periodStartIso.split('-').map(Number);
+  const keys=[];
+  for(let i=0;i<3;i++){
+    const d=new Date(p[0], p[1]-1-i, 16);
+    keys.push(toISO(d));
+  }
+  let sum=0;
+  for(const k in all){
+    if(keys.indexOf(otPeriodStart(k))>=0) sum += (all[k].min||0);
+  }
+  return {sum:sum, from:keys[2], to:keys[0]};
 }
 
 /* 締め期間（16日〜翌月15日）。その日が属する期間の始まりを返す。 */
@@ -4699,6 +4720,15 @@ function otPreview(){
     warn+='<div class="ot-warn-box cau">ℹ この日は通しで '+otFmt(span.span)
        + '（15時間超）ですが、休息が '+otFmt(span.rest)+' あるので問題ありません。</div>';
   }
+  const m3w=ot3Months(otPeriodStart(iso));
+  const m3sum=m3w.sum - (otLoad()[iso]?(otLoad()[iso].min||0):0) + (willMin||0);
+  if(m3sum > LIMIT_OT_3M){
+    warn+='<div class="ot-warn-box ng">⛔ 直近3期間の時間外が '+otFmt(m3sum)
+       + ' になります。<b>240時間を超えます。</b></div>';
+  }else if(m3sum > LIMIT_OT_3M_WARN){
+    warn+='<div class="ot-warn-box cau">⚠ 直近3期間の時間外は '+otFmt(m3sum)
+       + '。240時間まであと '+otFmt(LIMIT_OT_3M-m3sum)+' です。</div>';
+  }
   if(tot.held > LIMIT_HELD_MONTH){
     warn+='<div class="ot-warn-box ng">⛔ 拘束の合計が '+otFmt(tot.held)
        + ' になります。<b>275時間を超えます。</b></div>';
@@ -4939,8 +4969,12 @@ function renderRevPane(){
       +(now>maxAt ? '⛔ 上限を '+otFmt(now-maxAt)+' 超えています'
                   : 'あと '+otFmt(maxAt-now))+'</div></div>';
   }
+  const m3=ot3Months(toISO(from));
+  const p3=m3.from.split('-').map(Number);
+  const lb3=p3[1]+'月からの3期間';
   h+='<div class="rv-lims">'
     + bar(lim.ot,   LIMIT_OT_WARN,   LIMIT_OT_MONTH,   '時間外', '90時間')
+    + bar(m3.sum,   LIMIT_OT_3M_WARN, LIMIT_OT_3M,     '時間外 '+lb3, '240時間')
     + bar(lim.held, LIMIT_HELD_WARN, LIMIT_HELD_MONTH, '拘束',   '275時間')
     + '</div>';
 
