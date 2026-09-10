@@ -4312,7 +4312,71 @@ function otHeldPart(o, part){
 const LIMIT_OT_MONTH   = 90*60;    // 締め期間の時間外の上限（分）
 const LIMIT_OT_WARN    = 80*60;    // ここを超えたら注意
 const LIMIT_HELD_MONTH = 275*60;   // 締め期間の拘束の上限（分）
-const LIMIT_HELD_WARN  = 260*60;
+const LIMIT_HELD_WARN  = 265*60;   // ここは緩めでよい。ふだんは届かないため
+const LIMIT_DAY_HELD   = 15*60;    // 1日の拘束の上限（出勤から退勤まで通し）
+const LIMIT_DAY_REST   = 4*60;     // 解放がこれ以上あれば、1日15時間を超えてよい
+
+/* 出勤から退勤まで、通しの時間。1日15時間の判定に使う。
+   月の合計には使わない（解放を抜いた前半＋後半で数える）。 */
+function otThrough(o){
+  const sp=String(o).split('〜');
+  if(sp.length<2) return 0;
+  const st=sp[0].split('/').map(x=>x.trim()), en=sp[1].split('/').map(x=>x.trim());
+  const mm=function(t){const m=String(t).match(/^(\d{1,2}):(\d{2})$/);
+    return m?parseInt(m[1],10)*60+parseInt(m[2],10):null;};
+  const a=mm(st[0]), b=mm(en[en.length-1]);
+  return (a===null||b===null)?0:b-a;
+}
+/* 中間ダイヤの解放時間 */
+function otRest(o){
+  const sp=String(o).split('〜');
+  if(sp.length<2) return 0;
+  const st=sp[0].split('/').map(x=>x.trim()), en=sp[1].split('/').map(x=>x.trim());
+  if(st.length<2||en.length<2) return 0;
+  const mm=function(t){const m=String(t).match(/^(\d{1,2}):(\d{2})$/);
+    return m?parseInt(m[1],10)*60+parseInt(m[2],10):null;};
+  const a=mm(st[1]), b=mm(en[0]);
+  return (a===null||b===null)?0:b-a;
+}
+/* その日、実際に出る全部をひっくるめた通しの拘束と、いちばん長い解放を出す。
+   2本以上乗る日は、いちばん早い出勤からいちばん遅い退勤まで。 */
+function otDaySpan(date, rec){
+  const dt=dayType(date);
+  const list=[];
+  if(rec && rec.adds && rec.adds.length){
+    if(rec.base!=='none'){
+      const bd=otBaseDial(date), r0=(bd!==null)?DB[bd]:null;
+      const s0=(r0&&r0[dt]&&String(r0[dt].o)!=='—')?r0[dt]:null;
+      if(s0) list.push(s0.o);
+    }
+    rec.adds.forEach(function(x){
+      const r2=DB[x.dial], s2=(r2&&r2[dt]&&String(r2[dt].o)!=='—')?r2[dt]:null;
+      if(s2) list.push(s2.o);
+    });
+  }
+  if(!list.length) return {span:0, rest:0};
+  const mm=function(t){const m=String(t).match(/^(\d{1,2}):(\d{2})$/);
+    return m?parseInt(m[1],10)*60+parseInt(m[2],10):null;};
+  let first=99999, last=-1, rest=0;
+  list.forEach(function(o){
+    const sp=String(o).split('〜');
+    const st=sp[0].split('/').map(x=>x.trim()), en=sp[1].split('/').map(x=>x.trim());
+    const a=mm(st[0]), b=mm(en[en.length-1]);
+    if(a!==null && a<first) first=a;
+    if(b!==null && b>last)  last=b;
+    rest=Math.max(rest, otRest(o));
+  });
+  // 2本乗るときは、1本目の退勤から2本目の出勤までも休息になりうる
+  if(list.length>1){
+    const arr=list.map(function(o){
+      const sp=String(o).split('〜');
+      const st=sp[0].split('/').map(x=>x.trim()), en=sp[1].split('/').map(x=>x.trim());
+      return {a:mm(st[0]), b:mm(en[en.length-1])};
+    }).sort(function(x,y){ return x.a-y.a; });
+    for(let i=1;i<arr.length;i++) rest=Math.max(rest, arr[i].a-arr[i-1].b);
+  }
+  return {span:(last>first)?last-first:0, rest:rest};
+}
 
 /* その締め期間の、時間外と拘束の合計を出す。
    addIso/addMin を渡すと「その日を足したら」の値になる。 */
@@ -4624,6 +4688,16 @@ function otPreview(){
   }else if(tot.ot > LIMIT_OT_WARN){
     warn='<div class="ot-warn-box cau">⚠ この期間の時間外は '+otFmt(tot.ot)
        + ' になります。90時間まであと '+otFmt(LIMIT_OT_MONTH-tot.ot)+' です。</div>';
+  }
+  // 1日の拘束（出勤から退勤まで通し）。解放が4時間以上あれば超えてよい。
+  const span=otDaySpan(date, {base:(bs?otBaseSel:'none'), adds:adds});
+  if(span.span > LIMIT_DAY_HELD && span.rest < LIMIT_DAY_REST){
+    warn+='<div class="ot-warn-box ng">⛔ この日は出勤から退勤まで '+otFmt(span.span)
+       + ' になります。<b>1日15時間を超えます。</b><br>'
+       + '休息が4時間以上あれば伸ばせますが、いまは '+otFmt(span.rest)+' です。</div>';
+  }else if(span.span > LIMIT_DAY_HELD){
+    warn+='<div class="ot-warn-box cau">ℹ この日は通しで '+otFmt(span.span)
+       + '（15時間超）ですが、休息が '+otFmt(span.rest)+' あるので問題ありません。</div>';
   }
   if(tot.held > LIMIT_HELD_MONTH){
     warn+='<div class="ot-warn-box ng">⛔ 拘束の合計が '+otFmt(tot.held)
