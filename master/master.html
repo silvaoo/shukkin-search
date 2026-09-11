@@ -1136,6 +1136,7 @@ body.multi .only-single{ display:none !important; }
 .hole-why{ font-size:13px; }
 .hole-why b{ color:var(--note); }
 .hole-sub{ font-size:11px; color:var(--dim); margin-top:2px; }
+.roster-tbl tr.is-split td{ background:rgba(74,163,255,.08); }
 .roster-tbl{ width:100%; border-collapse:collapse; font-size:13px; }
 .roster-tbl th{ font-size:11px; color:var(--dim); text-align:left;
   padding:6px 3px; border-bottom:1px solid var(--border);
@@ -2479,38 +2480,55 @@ function rCanFill(code, num, date, hole){
   const rec=j.dials[String(num)];
   const own=(rec&&rec[dt]&&/\d/.test(String(rec[dt].o)))?rSpan(rec[dt].o):null;
 
-  let kind, keep=null;
+  /* その番号が、この穴をどう受けられるか。
+     ・公休なら まるごと受けられる
+     ・中間ダイヤなら、穴と重ならない側だけ残して、もう片方を降りて受けられる
+       （本来の片側は降りるので、その人にも時間外が付く）
+     ・日勤（1本もの）は、もう丸1日乗っているので受けられない */
+  let keep=null, kindLabel, rank, dayStart, dayEnd, useRest=hole.rest||0;
+
   if(!own){
-    kind='公休';                       // まるごと空いている
+    // --- 公休の日 ---
+    const prev0=rDayOf(code,num,-1,date), next0=rDayOf(code,num,1,date);
+    const prevOff=!prev0.slot, nextOff=!next0.slot;
+    rank = nextOff ? (prevOff?2:0) : 3;
+    kindLabel = nextOff ? (prevOff?'連休の2日目':'2連休の1日目') : 'シングル公休';
+    dayStart=hole.start; dayEnd=hole.end;
   }else if(own.split){
-    // 中間ダイヤ。片方だけ残して、もう片方に穴を入れられるか
-    if(hole.end <= own.f1 || hole.start >= own.s2) return null;  // 重ならない日は対象外
-    return null;                        // 中間の人に足すのは今回は対象外（本人が乗務中）
+    // --- 中間ダイヤ。穴と重ならない側だけ残す ---
+    const canKeepFirst  = (hole.start >= own.f2);   // 穴が前半の解放より後なら、前半は乗れる
+    const canKeepSecond = (hole.end   <= own.s1);   // 穴が後半の出勤より前なら、後半は乗れる
+    if(canKeepFirst){
+      keep='first';
+      dayStart=own.f1; dayEnd=hole.end;
+      useRest=Math.max(useRest, hole.start-own.f2);   // 前半の解放から穴まで
+      kindLabel='中間の前半＋この穴';
+    }else if(canKeepSecond){
+      keep='second';
+      dayStart=hole.start; dayEnd=own.s2;
+      useRest=Math.max(useRest, own.s1-hole.end);     // 穴のあと後半まで
+      kindLabel='この穴＋中間の後半';
+    }else{
+      return null;                                    // どちらも重なる
+    }
+    rank=1;                                           // 公休の人より後、シングル公休より前
   }else{
-    return null;                        // 日勤の人は既に乗務中
+    return null;                                      // 日勤の人は受けられない
   }
 
-  // 入れたあとの1日を見る
-  const start=Math.min(hole.start, own?own.start:hole.start);
-  const end  =Math.max(hole.end,   own?own.end  :hole.end);
-  const span =end-start;
-  let rest=hole.rest||0;
-  if(span>15*60 && rest<4*60) return null;
+  const span=dayEnd-dayStart;
+  if(span>15*60 && useRest<4*60) return null;          // 1日15時間（休息4時間で延長可）
 
   const prev=rDayOf(code,num,-1,date);
   const next=rDayOf(code,num, 1,date);
-  const lp=rLinkPrev(prev, hole.start);
+  const lp=rLinkPrev(prev, dayStart);
   if(!lp.ok) return null;
-  const ln=rLink(hole.end, next);
+  const ln=rLink(dayEnd, next);
   if(!ln.ok) return null;
 
-  // 公休の種類。2連休の1日目を先に出す。
-  const prevOff=!prev.slot, nextOff=!next.slot;
-  const rank = nextOff ? (prevOff?2:0) : 3;   // 0=2連休の1日目 2=連休の2日目 3=単独
-  const kindLabel = nextOff ? (prevOff?'連休の2日目':'2連休の1日目') : 'シングル公休';
-  return {code:code, num:num, kind:kindLabel, rank:rank,
-          span:span, prev:lp.why, next:ln.why,
-          prevSlot:prev.slot, nextSlot:next.slot};
+  return {code:code, num:num, kind:kindLabel, rank:rank, keep:keep,
+          span:span, rest:useRest, prev:lp.why, next:ln.why,
+          own:own?own:null};
 }
 
 function buildRoster(){
@@ -2638,11 +2656,14 @@ function buildRoster(){
     h+='<div class="hole-count">'+cands.length+'番が候補です</div>';
     h+='<table class="roster-tbl">';
     cands.forEach(function(c){
-      h+='<tr><td class="roster-dia">'+c.name+'</td>'
+      h+='<tr'+(c.keep?' class="is-split"':'')+'><td class="roster-dia">'+c.name+'</td>'
         +'<td class="hole-no">'+c.num+'</td>'
         +'<td class="hole-why"><b>'+c.kind+'</b>'
+        +(c.keep?'<div class="hole-sub">本来の'
+            +(c.keep==='first'?'後半':'前半')+'を降りて入る</div>':'')
         +'<div class="hole-sub">前 '+c.prev+'　後 '+c.next+'</div>'
-        +'<div class="hole-sub">1日の拘束 '+otFmt(c.span)+'</div></td></tr>';
+        +'<div class="hole-sub">1日の拘束 '+otFmt(c.span)
+        +(c.rest?'（休息 '+otFmt(c.rest)+'）':'')+'</div></td></tr>';
     });
     h+='</table>';
     box.innerHTML=h;
