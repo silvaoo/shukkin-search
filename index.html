@@ -1102,6 +1102,12 @@ body.multi .only-single{ display:none !important; }
   font-size:12px; font-weight:bold; cursor:pointer; }
 .roster-tab.on{ background:linear-gradient(135deg,#ff8c00,#ff6a00);
   color:#fff; border-color:transparent; }
+.roster-modes{ display:flex; gap:5px; margin-bottom:9px; }
+.roster-mode{ flex:1; padding:10px 4px; border-radius:9px;
+  border:1px solid var(--border); background:var(--bg-card2); color:var(--text);
+  font-size:12.5px; font-weight:bold; cursor:pointer;
+  font-family:'Noto Sans JP',sans-serif; }
+.roster-mode.on{ background:var(--note); color:#231402; border-color:transparent; }
 .roster-tbl{ width:100%; border-collapse:collapse; font-size:13px; }
 .roster-tbl th{ font-size:11px; color:var(--dim); text-align:left;
   padding:6px 3px; border-bottom:1px solid var(--border);
@@ -2296,14 +2302,28 @@ function updateTodayPreview(){
    その日の211番すべてを1画面に並べる。出退勤時刻で並べ替えると
    全営業所が朝から順に一列になり、紙の表では見られない眺めになる。 */
 const R_COLOR={early:'#ff9e4a', late:'#5b8dff', off:'#4a4f66'};
-let rOpen=false, rFilter='all', rSort='time', rAsc=true;
+let rOpen=false, rSort='time', rAsc=true;
+let rPick={};          // どのダイヤを見るか（複数選べる）
+let rMode='all';       // 'all'=全部の時間 / 'now'=いまの時間帯 / 'hole'=穴埋め探し
 
 function toggleRoster(){
+  if(!Object.keys(rPick).length) ALL_DIAS.forEach(function(d){ rPick[d.code]=true; });
   rOpen=!rOpen;
   document.getElementById('rosterBox').style.display = rOpen?'block':'none';
   if(rOpen) buildRoster();
 }
-function rSetFilter(v){ rFilter=v; buildRoster(); }
+/* ダイヤの選び方。押すたびに入れたり外したりする。 */
+function rTogglePick(code){
+  if(code==='all'){                       // 「すべて」を押したら全部入れる
+    rPick={}; ALL_DIAS.forEach(function(d){ rPick[d.code]=true; });
+  }else{
+    rPick[code]=!rPick[code];
+    if(!Object.keys(rPick).some(function(k){ return rPick[k]; })) rPick[code]=true;  // 全部外すのは防ぐ
+  }
+  buildRoster();
+}
+function rIsPicked(code){ return !!rPick[code]; }
+function rSetMode(m){ rMode=m; buildRoster(); }
 function rSetSort(k){ if(rSort===k) rAsc=!rAsc; else { rSort=k; rAsc=true; } buildRoster(); }
 
 /* 並べ替え用に出勤時刻を分に直す。取れないものは末尾へ。 */
@@ -2318,6 +2338,48 @@ function rKind(slot){
   return k < 12*60 ? 'early' : 'late';
 }
 
+/* ==== いまの時間帯／穴埋め探し ====
+   全ダイヤ211番から、いま動ける人を探す。
+   運行の穴を埋める候補を出すのが目的。 */
+
+/* 勤務の時刻をばらして持つ */
+function rSpan(o){
+  const mm=function(t){const m=String(t).match(/^(\d{1,2}):(\d{2})$/);
+    return m?parseInt(m[1],10)*60+parseInt(m[2],10):null;};
+  const sp=String(o).split('〜');
+  if(sp.length<2) return null;
+  const st=sp[0].split('/').map(function(x){return mm(x.trim());});
+  const en=sp[1].split('/').map(function(x){return mm(x.trim());});
+  if(st.some(function(x){return x===null;})||en.some(function(x){return x===null;})) return null;
+  const split=(st.length===2&&en.length===2);
+  return {start:st[0], end:en[en.length-1], split:split,
+          f1:st[0], f2:split?st[1]:null, s1:split?en[0]:null, s2:split?en[1]:null,
+          rest:split?(en[0]-st[1]):0};
+}
+
+/* その番号の翌日の勤務（番号は1日1つ進む） */
+function rNextDay(code, num, date){
+  const j=ALL_DB[code]; if(!j) return null;
+  const max=j.meta.cycle;
+  const nn=num%max+1;
+  const d=new Date(date); d.setDate(d.getDate()+1);
+  const rec=j.dials[String(nn)];
+  const slot=(rec&&rec[dayType(d)])?rec[dayType(d)]:null;
+  return (slot&&slot.o&&/\d/.test(slot.o))
+    ? {num:nn, slot:slot, span:rSpan(slot.o)} : {num:nn, slot:null, span:null};
+}
+
+/* 退勤したあと、翌日と繋がるか。
+   8時間以上あく、または翌日が中間ダイヤで解放が4時間以上あれば入れられる。 */
+function rCanRest(endMin, next){
+  if(!next || !next.slot) return {ok:true, why:'翌日も休み'};
+  const gap=(24*60+next.span.start)-endMin;
+  if(gap>=8*60) return {ok:true, why:'休息 '+otFmt(gap)};
+  if(next.span.split && next.span.rest>=4*60)
+    return {ok:true, why:'休息 '+otFmt(gap)+'＋翌日の解放 '+otFmt(next.span.rest)};
+  return {ok:false, why:'休息 '+otFmt(gap)+' しかない'};
+}
+
 function buildRoster(){
   const box=document.getElementById('rosterBox');
   if(!box) return;
@@ -2325,7 +2387,7 @@ function buildRoster(){
   const dt=dayType(today);
   let rows=[];
   for(const d of ALL_DIAS){
-    if(rFilter!=='all' && rFilter!==d.code) continue;
+    if(!rIsPicked(d.code)) continue;
     const j=ALL_DB[d.code];
     if(!j) continue;
     const max=j.meta.cycle;
@@ -2345,6 +2407,40 @@ function buildRoster(){
     return rAsc?v:-v;
   });
 
+  /* いまの時間帯：これから出る人と、乗務中の人だけに絞る。
+     朝と夜で違う画面になるようにするため。 */
+  let nowNote='';
+  if(rMode==='now'){
+    const t=new Date();
+    const cur=t.getHours()*60+t.getMinutes();
+    rows=rows.filter(function(r){
+      if(!r.slot) return false;
+      const sp=rSpan(r.slot.o);
+      if(!sp) return false;
+      r._sp=sp;
+      // これから3時間以内に出勤する、またはいま乗務中
+      const soon = sp.start>=cur && sp.start<=cur+180;
+      const now  = sp.start<=cur && cur<=sp.end;
+      r._now = now;
+      return soon || now;
+    });
+    rows.sort(function(a,b){ return a._sp.start-b._sp.start; });
+    const h=String(t.getHours()).padStart(2,'0'), mi=String(t.getMinutes()).padStart(2,'0');
+    nowNote='<div class="roster-now">🕐 '+h+':'+mi+' 現在　'
+      +'乗務中 '+rows.filter(function(r){return r._now;}).length+'人／'
+      +'3時間以内に出勤 '+rows.filter(function(r){return !r._now;}).length+'人</div>';
+  }
+
+  /* 穴埋め探しは、これから作るところ */
+  if(rMode==='hole'){
+    box.innerHTML='<div class="roster-sum">穴埋め探し</div>'
+      + tabsHtml
+      + '<div class="ml-empty">この機能はいま作っているところです。<br>'
+      + '穴の空いたダイヤを入れると、埋められる番号を順番に出す予定です。<br><br>'
+      + '「すべて」か「いまの時間帯」をお使いください。</div>';
+    return;
+  }
+
   const work=rows.filter(r=>r.slot).length;
   const dw=DW[today.getDay()];
   const extra=isObon(today)?'・お盆':isHol(today)?'・祝':'';
@@ -2353,10 +2449,14 @@ function buildRoster(){
   box.innerHTML =
     '<div class="roster-sum">'+(today.getMonth()+1)+'月'+today.getDate()+'日（'+dw+extra+'）　'
       +rows.length+'番中 '+work+'番が乗務、'+(rows.length-work)+'番が公休</div>'
+    /* 「いまの時間帯」「穴埋めを探す」は次回。
+       中身が無いうちはボタンを出さない（押せるのに動かないと混乱するため）。 */
     +'<div class="roster-tabs">'
-      +tabs.map(function(t){
-          return '<button class="roster-tab'+(rFilter===t[0]?' on':'')
-               +'" onclick="rSetFilter(\''+t[0]+'\')">'+t[1]+'</button>';
+      +'<button class="roster-tab" onclick="rTogglePick(\'all\')">すべて選ぶ</button>'
+      +ALL_DIAS.filter(function(d){ return ALL_DB[d.code]; }).map(function(d){
+          return '<button class="roster-tab'+(rIsPicked(d.code)?' on':'')
+               +'" onclick="rTogglePick(\''+d.code+'\')">'
+               +(rIsPicked(d.code)?'✓ ':'')+d.name+'</button>';
         }).join('')
     +'</div>'
     +'<table class="roster-tbl"><thead><tr>'
@@ -3402,7 +3502,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v175';
+const APP_VERSION   = 'v176';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -3624,7 +3724,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 2.97';
+const APP_LABEL = 'バージョン 2.98';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
