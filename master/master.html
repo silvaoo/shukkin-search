@@ -1131,6 +1131,10 @@ body.multi .only-single{ display:none !important; }
   font-size:17px; font-weight:800; color:var(--text); }
 .hole-target-s{ font-size:12.5px; font-weight:400; color:var(--dim); margin-top:3px; }
 .hole-count{ font-size:12.5px; color:var(--note); margin-bottom:6px; font-weight:bold; }
+.hole-hint{ font-size:11px; color:var(--dim); font-weight:400; }
+.hole-ot{ font-size:12.5px; font-weight:800; color:var(--note); margin-top:3px; }
+.hole-ot.zero{ color:var(--dim); font-weight:400; }
+.roster-tbl tr.hole-row-tap{ cursor:pointer; }
 .hole-no{ font-size:19px; font-weight:900; color:var(--text); width:52px;
   white-space:nowrap; }
 .hole-why{ font-size:13px; }
@@ -1653,6 +1657,17 @@ a.source-link:visited {
     <div class="ml-pane" id="mlPaneDate"></div>
     <div class="ml-pane" id="mlPaneDial"></div>
     <div class="ml-pane" id="mlPaneCal"></div>
+  </div>
+</div>
+
+<!-- 穴埋めの組み合わせを、はめ込んで確かめる画面 -->
+<div id="fitModal" class="memolist-modal" onclick="if(event.target===this)fitClose()">
+  <div class="ml-box">
+    <div class="ml-head">
+      <h2>🧩 はめ込んだ結果</h2>
+      <button class="guide-close" onclick="fitClose()">← 候補に戻る</button>
+    </div>
+    <div id="fitBody"></div>
   </div>
 </div>
 
@@ -2409,6 +2424,94 @@ function rCanRest(endMin, next){
   return {ok:false, why:'休息 '+otFmt(gap)+' しかない'};
 }
 
+/* ==== はめ込んで確かめる ====
+   候補をタップしたら、その人がその日どう動くことになるのかを出す。
+   実際の出退勤と、増える時間外を見てから決められるようにする。 */
+let _fitCur=null;
+
+function fitClose(){
+  document.getElementById('fitModal').classList.remove('active');
+  document.body.style.overflow='hidden';   // 下の早見表は開いたまま
+}
+
+function fitOpen(code, num){
+  const today=new Date();
+  const hole=rHoleSlot(today);
+  if(!hole) return;
+  const c=rCanFill(code, num, today, hole);
+  if(!c){ showToast('この番号には入れられません'); return; }
+  _fitCur={code:code, num:num};
+
+  const dia=ALL_DIAS.find(function(x){ return x.code===code; });
+  const j=ALL_DB[code];
+  const rec=j.dials[String(num)];
+  const own=(rec&&rec[dayType(today)]&&/\d/.test(String(rec[dayType(today)].o)))
+            ? rec[dayType(today)] : null;
+  const hd=ALL_DIAS.find(function(x){ return x.code===rHoleDia; });
+
+  const tm=function(v){ return String(Math.floor(v/60)).padStart(2,'0')+':'
+                             +String(v%60).padStart(2,'0'); };
+  /* 実際に走る本数を、時刻の早い順に並べる */
+  const runs=[];
+  if(c.keep==='first'){
+    const sp=rSpan(own.o);
+    runs.push({lb:dia.name+' '+num+'番 前半', from:sp.f1, to:sp.f2, mine:true});
+  }
+  if(c.keep==='second'){
+    const sp=rSpan(own.o);
+    runs.push({lb:dia.name+' '+num+'番 後半', from:sp.s1, to:sp.s2, mine:true});
+  }
+  runs.push({lb:hd.name+' '+rHoleNum+'番'
+    +(rHolePart==='first'?' 前半':rHolePart==='second'?' 後半':''),
+    from:hole.start, to:hole.end, mine:false});
+  runs.sort(function(a,b){ return a.from-b.from; });
+
+  let h='<div class="fit-head">'+dia.name+' <b>'+num+'番</b> の人</div>'
+   +'<div class="fit-sub">'+(own?('本来 '+own.o):'本来は公休')+'</div>';
+
+  h+='<div class="fit-runs">';
+  runs.forEach(function(r,i){
+    if(i>0){
+      const gap=r.from-runs[i-1].to;
+      h+='<div class="fit-gap">'+(gap>0?('あき '+otFmt(gap)):'重なっています')+'</div>';
+    }
+    h+='<div class="fit-run'+(r.mine?'':' add')+'">'
+      +'<span class="fit-lb">'+r.lb+'</span>'
+      +'<span class="fit-tm">'+tm(r.from)+'〜'+tm(r.to)+'</span></div>';
+  });
+  h+='</div>';
+
+  const first=runs[0].from, last=runs[runs.length-1].to;
+  h+='<div class="fit-box"><div class="fit-box-l">この日の拘束</div>'
+   +'<div class="fit-box-v">'+tm(first)+' 〜 '+tm(last)+'　'+otFmt(last-first)+'</div>'
+   +'<div class="fit-sub">'
+   +((last-first)>15*60
+      ? '15時間を超えますが、休息 '+otFmt(c.rest)+' があるので入れられます'
+      : '15時間以内です')+'</div></div>';
+
+  h+='<div class="fit-box"><div class="fit-box-l">前後のつながり</div>'
+   +'<div class="fit-sub">前日から　'+c.prev+'</div>'
+   +'<div class="fit-sub">翌日へ　　'+c.next+'</div></div>';
+
+  // 増える時間外（この人の視点で）
+  let add=0, drop=0;
+  const hj=ALL_DB[rHoleDia];
+  const hrec=hj.dials[String(parseInt(rHoleNum))];
+  const hslot=hrec?hrec[dayType(today)]:null;
+  if(hslot){
+    add = otEval(hslot, rHolePart);
+    if(own && c.keep) drop = otHeldPart(own.o, c.keep==='first'?'second':'first')*0.8;
+  }
+  h+='<div class="fit-box ot"><div class="fit-box-l">この人に付く時間外（目安）</div>'
+   +'<div class="fit-ot">'+otFmt(Math.max(0,Math.round(add-drop)))+'</div>'
+   +'<div class="fit-sub">'
+   +(drop? ('付いた分 '+otFmt(Math.round(add))+' − 降りた分 '+otFmt(Math.round(drop))+'（拘束×0.8）')
+         : '付いた分 '+otFmt(Math.round(add)))+'</div></div>';
+
+  document.getElementById('fitBody').innerHTML=h;
+  document.getElementById('fitModal').classList.add('active');
+}
+
 /* 穴埋めの入力（どのダイヤのどこが空いたか） */
 let rHoleDia='', rHoleNum='', rHolePart='all';
 
@@ -2632,7 +2735,17 @@ function buildRoster(){
       for(let n=1;n<=j.meta.cycle;n++){
         if(d.code===rHoleDia && n===parseInt(rHoleNum)) continue;  // 本人は除く
         const c=rCanFill(d.code, n, today, hole);
-        if(c){ c.name=d.name; cands.push(c); }
+        if(c){
+          c.name=d.name;
+          // この人に付く時間外。付かないなら受ける動機がないので、見えるようにする。
+          const hj2=ALL_DB[rHoleDia];
+          const hrec2=hj2?hj2.dials[String(parseInt(rHoleNum))]:null;
+          const hs2=hrec2?hrec2[dt]:null;
+          let add=hs2?otEval(hs2, rHolePart):0, drop=0;
+          if(c.own && c.keep) drop=otHeldPart(c.own.o, c.keep==='first'?'second':'first')*0.8;
+          c.addOt=Math.max(0, Math.round(add-drop));
+          cands.push(c);
+        }
       }
     }
     /* 並べ方。同じダイヤと予備を先に、次に2連休の1日目、最後にシングル公休。
@@ -2644,6 +2757,7 @@ function buildRoster(){
     };
     cands.sort(function(a,b){
       return pri(a)-pri(b) || a.rank-b.rank
+          || (b.addOt>0?1:0)-(a.addOt>0?1:0)   // 時間外が付く人を先に
           || ALL_DIAS.findIndex(x=>x.code===a.code)-ALL_DIAS.findIndex(x=>x.code===b.code)
           || a.num-b.num;
     });
@@ -2653,17 +2767,21 @@ function buildRoster(){
         +'選ぶダイヤを増やすか、前半・後半に分けてみてください。</div>';
       return;
     }
-    h+='<div class="hole-count">'+cands.length+'番が候補です</div>';
+    h+='<div class="hole-count">'+cands.length+'番が候補です　'
+      +'<span class="hole-hint">タップすると、はめ込んだ結果が見られます</span></div>';
     h+='<table class="roster-tbl">';
     cands.forEach(function(c){
-      h+='<tr'+(c.keep?' class="is-split"':'')+'><td class="roster-dia">'+c.name+'</td>'
+      h+='<tr class="hole-row-tap'+(c.keep?' is-split':'')+'"'
+        +' onclick="fitOpen(\''+c.code+'\','+c.num+')"><td class="roster-dia">'+c.name+'</td>'
         +'<td class="hole-no">'+c.num+'</td>'
         +'<td class="hole-why"><b>'+c.kind+'</b>'
         +(c.keep?'<div class="hole-sub">本来の'
             +(c.keep==='first'?'後半':'前半')+'を降りて入る</div>':'')
         +'<div class="hole-sub">前 '+c.prev+'　後 '+c.next+'</div>'
         +'<div class="hole-sub">1日の拘束 '+otFmt(c.span)
-        +(c.rest?'（休息 '+otFmt(c.rest)+'）':'')+'</div></td></tr>';
+        +(c.rest?'（休息 '+otFmt(c.rest)+'）':'')+'</div>'
+        +'<div class="hole-ot'+(c.addOt>0?'':' zero')+'">時間外 '+otFmt(c.addOt)
+        +(c.addOt>0?'':'（付きません）')+'</div></td></tr>';
     });
     h+='</table>';
     box.innerHTML=h;
