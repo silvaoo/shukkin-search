@@ -1113,6 +1113,29 @@ body.multi .only-single{ display:none !important; }
   border:1px solid rgba(255,212,121,.4); }
 .roster-tbl tr.is-soon td{ background:rgba(255,212,121,.10); }
 .roster-in{ font-size:11.5px; color:var(--note); margin-top:2px; }
+/* ==== 穴埋め探し ==== */
+.hole-form{ background:var(--bg-card2); border:1px solid var(--border);
+  border-radius:11px; padding:10px; margin-bottom:9px; }
+.hole-row{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:7px; }
+.hole-dia,.hole-part{ flex:1 1 auto; min-width:68px; padding:9px 5px;
+  border-radius:8px; border:1px solid var(--border); background:var(--bg-card);
+  color:var(--text); font-size:12.5px; font-weight:bold; cursor:pointer;
+  font-family:'Noto Sans JP',sans-serif; }
+.hole-dia.on,.hole-part.on{ background:linear-gradient(135deg,#ff8c00,#ff6a00);
+  color:#fff; border-color:transparent; }
+.hole-num{ width:100%; padding:11px; border-radius:9px; border:1px solid var(--border);
+  background:var(--bg-card); color:var(--text); font-size:16px; margin-bottom:7px;
+  font-family:'Noto Sans JP',sans-serif; }
+.hole-target{ padding:11px 13px; border-radius:11px; margin-bottom:9px;
+  background:rgba(229,72,77,.12); border:2px solid #e5484d;
+  font-size:17px; font-weight:800; color:var(--text); }
+.hole-target-s{ font-size:12.5px; font-weight:400; color:var(--dim); margin-top:3px; }
+.hole-count{ font-size:12.5px; color:var(--note); margin-bottom:6px; font-weight:bold; }
+.hole-no{ font-size:19px; font-weight:900; color:var(--text); width:52px;
+  white-space:nowrap; }
+.hole-why{ font-size:13px; }
+.hole-why b{ color:var(--note); }
+.hole-sub{ font-size:11px; color:var(--dim); margin-top:2px; }
 .roster-tbl{ width:100%; border-collapse:collapse; font-size:13px; }
 .roster-tbl th{ font-size:11px; color:var(--dim); text-align:left;
   padding:6px 3px; border-bottom:1px solid var(--border);
@@ -2385,10 +2408,122 @@ function rCanRest(endMin, next){
   return {ok:false, why:'休息 '+otFmt(gap)+' しかない'};
 }
 
+/* 穴埋めの入力（どのダイヤのどこが空いたか） */
+let rHoleDia='', rHoleNum='', rHolePart='all';
+
+function rSetHoleDia(c){ rHoleDia=c; buildRoster(); }
+function rSetHolePart(p){ rHolePart=p; buildRoster(); }
+function rSetHoleNum(v){ rHoleNum=v; buildRoster(); }
+
+/* 穴の勤務そのものを取り出す */
+function rHoleSlot(date){
+  if(!rHoleDia || !rHoleNum) return null;
+  const j=ALL_DB[rHoleDia]; if(!j) return null;
+  const n=parseInt(rHoleNum);
+  if(!n || n<1 || n>j.meta.cycle) return null;
+  const rec=j.dials[String(n)];
+  const slot=(rec&&rec[dayType(date)])?rec[dayType(date)]:null;
+  if(!slot||!slot.o||!/\d/.test(String(slot.o))) return null;
+  const sp=rSpan(slot.o);
+  if(!sp) return null;
+  if(rHolePart==='all')   return {start:sp.start, end:sp.end, rest:sp.rest, o:slot.o, sp:sp};
+  if(!sp.split)           return {start:sp.start, end:sp.end, rest:0, o:slot.o, sp:sp};
+  if(rHolePart==='first') return {start:sp.f1, end:sp.f2, rest:0, o:slot.o, sp:sp};
+  return {start:sp.s1, end:sp.s2, rest:0, o:slot.o, sp:sp};
+}
+
+/* ==== 穴埋め探し ====
+   穴の空いたダイヤを入れると、埋められる番号を順番に出す。
+   判定するのは次の4つ。
+     ・その日その番号が空いているか（公休、または前半後半の片側が空き）
+     ・入れたあとの1日の拘束が15時間以内か（休息4時間以上なら超えてよい）
+     ・前日の退勤から、入れる勤務の出勤まで繋がるか
+     ・入れた勤務の退勤から、翌日の出勤まで繋がるか
+   繋がるの判定は「8時間以上あく」か「相手が中間ダイヤで解放4時間以上」。 */
+
+/* 前後の日の勤務を取る。番号は1日1つ進む。 */
+function rDayOf(code, num, offset, date){
+  const j=ALL_DB[code]; if(!j) return null;
+  const max=j.meta.cycle;
+  const nn=((num-1+offset)%max+max)%max+1;
+  const d=new Date(date); d.setDate(d.getDate()+offset);
+  const rec=j.dials[String(nn)];
+  const slot=(rec&&rec[dayType(d)])?rec[dayType(d)]:null;
+  const ok=(slot&&slot.o&&/\d/.test(slot.o));
+  return {num:nn, slot:ok?slot:null, span:ok?rSpan(slot.o):null};
+}
+
+/* 2つの勤務が繋がるか。a のあとに b が来る。 */
+function rLink(aEnd, b){
+  if(!b || !b.slot) return {ok:true, why:'相手は休み'};
+  const gap=(24*60+b.span.start)-aEnd;
+  if(gap>=8*60) return {ok:true, why:'休息 '+otFmt(gap)};
+  if(b.span.split && b.span.rest>=4*60)
+    return {ok:true, why:'休息 '+otFmt(gap)+'＋解放 '+otFmt(b.span.rest)};
+  return {ok:false, why:'休息 '+otFmt(gap)+' しかない'};
+}
+/* 前日 a の退勤から、今日 b の出勤まで */
+function rLinkPrev(a, bStart){
+  if(!a || !a.slot) return {ok:true, why:'前日は休み'};
+  const gap=(24*60+bStart)-a.span.end;
+  if(gap>=8*60) return {ok:true, why:'休息 '+otFmt(gap)};
+  if(a.span.split && a.span.rest>=4*60)
+    return {ok:true, why:'休息 '+otFmt(gap)+'＋前日の解放 '+otFmt(a.span.rest)};
+  return {ok:false, why:'休息 '+otFmt(gap)+' しかない'};
+}
+
+/* 穴の空いた勤務を、ある番号に入れられるか調べる */
+function rCanFill(code, num, date, hole){
+  const j=ALL_DB[code]; if(!j) return null;
+  const dt=dayType(date);
+  const rec=j.dials[String(num)];
+  const own=(rec&&rec[dt]&&/\d/.test(String(rec[dt].o)))?rSpan(rec[dt].o):null;
+
+  let kind, keep=null;
+  if(!own){
+    kind='公休';                       // まるごと空いている
+  }else if(own.split){
+    // 中間ダイヤ。片方だけ残して、もう片方に穴を入れられるか
+    if(hole.end <= own.f1 || hole.start >= own.s2) return null;  // 重ならない日は対象外
+    return null;                        // 中間の人に足すのは今回は対象外（本人が乗務中）
+  }else{
+    return null;                        // 日勤の人は既に乗務中
+  }
+
+  // 入れたあとの1日を見る
+  const start=Math.min(hole.start, own?own.start:hole.start);
+  const end  =Math.max(hole.end,   own?own.end  :hole.end);
+  const span =end-start;
+  let rest=hole.rest||0;
+  if(span>15*60 && rest<4*60) return null;
+
+  const prev=rDayOf(code,num,-1,date);
+  const next=rDayOf(code,num, 1,date);
+  const lp=rLinkPrev(prev, hole.start);
+  if(!lp.ok) return null;
+  const ln=rLink(hole.end, next);
+  if(!ln.ok) return null;
+
+  // 公休の種類。2連休の1日目を先に出す。
+  const prevOff=!prev.slot, nextOff=!next.slot;
+  const rank = nextOff ? (prevOff?2:0) : 3;   // 0=2連休の1日目 2=連休の2日目 3=単独
+  const kindLabel = nextOff ? (prevOff?'連休の2日目':'2連休の1日目') : 'シングル公休';
+  return {code:code, num:num, kind:kindLabel, rank:rank,
+          span:span, prev:lp.why, next:ln.why,
+          prevSlot:prev.slot, nextSlot:next.slot};
+}
+
 function buildRoster(){
   const box=document.getElementById('rosterBox');
   if(!box) return;
   const today=new Date();
+  /* 表示の切り替え。どの画面でも同じものを出す。 */
+  const modesHtml='<div class="roster-modes">'
+    +[['all','すべて'],['now','いまの時間帯'],['hole','穴埋めを探す']].map(function(m){
+        return '<button class="roster-mode'+(rMode===m[0]?' on':'')
+             +'" onclick="rSetMode(\''+m[0]+'\')">'+m[1]+'</button>';
+      }).join('')
+    +'</div>';
   const dt=dayType(today);
   let rows=[];
   for(const d of ALL_DIAS){
@@ -2434,6 +2569,86 @@ function buildRoster(){
       +(soon?'（3時間以内 '+soon+'人）':'')+'</div>';
   }
 
+  /* ==== 穴埋め探し ==== */
+  if(rMode==='hole'){
+    const dias=ALL_DIAS.filter(function(d){ return ALL_DB[d.code]; });
+    if(!rHoleDia && dias.length) rHoleDia=dias[0].code;
+    const jm=ALL_DB[rHoleDia];
+    let h='<div class="roster-sum">穴の空いたダイヤを入れてください</div>'
+      + modesHtml
+      + '<div class="hole-form">'
+      + '<div class="hole-row">'
+      +   dias.map(function(d){
+            return '<button class="hole-dia'+(rHoleDia===d.code?' on':'')
+                 +'" onclick="rSetHoleDia(\''+d.code+'\')">'+d.name+'</button>';
+          }).join('')
+      + '</div>'
+      + '<input type="number" class="hole-num" inputmode="numeric" placeholder="番号'
+      +   (jm?'（1〜'+jm.meta.cycle+'）':'')+'" value="'+(rHoleNum||'')
+      +   '" oninput="rSetHoleNum(this.value)">'
+      + '<div class="hole-row">'
+      +   [['all','まるごと'],['first','前半だけ'],['second','後半だけ']].map(function(x){
+            return '<button class="hole-part'+(rHolePart===x[0]?' on':'')
+                 +'" onclick="rSetHolePart(\''+x[0]+'\')">'+x[1]+'</button>';
+          }).join('')
+      + '</div></div>';
+
+    const hole=rHoleSlot(today);
+    if(!hole){
+      box.innerHTML=h+'<div class="ml-empty">ダイヤ番号を入れてください。<br>'
+        +'その日が公休の番号は、埋める対象になりません。</div>';
+      return;
+    }
+    const partLb={all:'まるごと',first:'前半だけ',second:'後半だけ'}[rHolePart];
+    h+='<div class="hole-target">🕳 '+formatDisplayTime(hole.o)
+      +'<div class="hole-target-s">'+partLb+'　'
+      + String(Math.floor(hole.start/60)).padStart(2,'0')+':'+String(hole.start%60).padStart(2,'0')
+      +'〜'+String(Math.floor(hole.end/60)).padStart(2,'0')+':'+String(hole.end%60).padStart(2,'0')
+      +'（'+otFmt(hole.end-hole.start)+'）</div></div>';
+
+    // 候補を集める
+    let cands=[];
+    for(const d of ALL_DIAS){
+      if(!rIsPicked(d.code)) continue;
+      const j=ALL_DB[d.code]; if(!j) continue;
+      for(let n=1;n<=j.meta.cycle;n++){
+        if(d.code===rHoleDia && n===parseInt(rHoleNum)) continue;  // 本人は除く
+        const c=rCanFill(d.code, n, today, hole);
+        if(c){ c.name=d.name; cands.push(c); }
+      }
+    }
+    /* 並べ方。同じダイヤと予備を先に、次に2連休の1日目、最後にシングル公休。
+       どれも番号の若い順。 */
+    const pri=function(c){
+      if(c.code===rHoleDia) return 0;      // 同じダイヤ
+      if(c.code==='yobi')   return 1;      // 予備はどこにでも使える
+      return 2;
+    };
+    cands.sort(function(a,b){
+      return pri(a)-pri(b) || a.rank-b.rank
+          || ALL_DIAS.findIndex(x=>x.code===a.code)-ALL_DIAS.findIndex(x=>x.code===b.code)
+          || a.num-b.num;
+    });
+
+    if(!cands.length){
+      box.innerHTML=h+'<div class="ml-empty">埋められる番号が見つかりませんでした。<br>'
+        +'選ぶダイヤを増やすか、前半・後半に分けてみてください。</div>';
+      return;
+    }
+    h+='<div class="hole-count">'+cands.length+'番が候補です</div>';
+    h+='<table class="roster-tbl">';
+    cands.forEach(function(c){
+      h+='<tr><td class="roster-dia">'+c.name+'</td>'
+        +'<td class="hole-no">'+c.num+'</td>'
+        +'<td class="hole-why"><b>'+c.kind+'</b>'
+        +'<div class="hole-sub">前 '+c.prev+'　後 '+c.next+'</div>'
+        +'<div class="hole-sub">1日の拘束 '+otFmt(c.span)+'</div></td></tr>';
+    });
+    h+='</table>';
+    box.innerHTML=h;
+    return;
+  }
+
   const work=rows.filter(r=>r.slot).length;
   const dw=DW[today.getDay()];
   const extra=isObon(today)?'・お盆':isHol(today)?'・祝':'';
@@ -2443,12 +2658,7 @@ function buildRoster(){
       +(rMode==='now' ? (rows.length+'番を表示中')
                       : (rows.length+'番中 '+work+'番が乗務、'+(rows.length-work)+'番が公休'))+'</div>'
     +nowNote
-    +'<div class="roster-modes">'
-      +[['all','すべて'],['now','いまの時間帯']].map(function(m){
-          return '<button class="roster-mode'+(rMode===m[0]?' on':'')
-               +'" onclick="rSetMode(\''+m[0]+'\')">'+m[1]+'</button>';
-        }).join('')
-    +'</div>'
+    +modesHtml
     +'<div class="roster-tabs">'
       +'<button class="roster-tab" onclick="rTogglePick(\'all\')">すべて選ぶ</button>'
       +ALL_DIAS.filter(function(d){ return ALL_DB[d.code]; }).map(function(d){
@@ -3503,7 +3713,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v178';
+const APP_VERSION   = 'v179';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -3725,7 +3935,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.00';
+const APP_LABEL = 'バージョン 3.01';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
