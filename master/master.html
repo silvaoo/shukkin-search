@@ -1108,6 +1108,10 @@ body.multi .only-single{ display:none !important; }
   font-size:12.5px; font-weight:bold; cursor:pointer;
   font-family:'Noto Sans JP',sans-serif; }
 .roster-mode.on{ background:var(--note); color:#231402; border-color:transparent; }
+.roster-now{ font-size:12.5px; color:var(--note); margin-bottom:8px;
+  padding:8px 10px; border-radius:9px; background:rgba(255,212,121,.10);
+  border:1px solid rgba(255,212,121,.4); }
+.roster-tbl tr.is-now td{ background:rgba(74,163,255,.10); }
 .roster-tbl{ width:100%; border-collapse:collapse; font-size:13px; }
 .roster-tbl th{ font-size:11px; color:var(--dim); text-align:left;
   padding:6px 3px; border-bottom:1px solid var(--border);
@@ -2431,26 +2435,21 @@ function buildRoster(){
       +'3時間以内に出勤 '+rows.filter(function(r){return !r._now;}).length+'人</div>';
   }
 
-  /* 穴埋め探しは、これから作るところ */
-  if(rMode==='hole'){
-    box.innerHTML='<div class="roster-sum">穴埋め探し</div>'
-      + tabsHtml
-      + '<div class="ml-empty">この機能はいま作っているところです。<br>'
-      + '穴の空いたダイヤを入れると、埋められる番号を順番に出す予定です。<br><br>'
-      + '「すべて」か「いまの時間帯」をお使いください。</div>';
-    return;
-  }
-
   const work=rows.filter(r=>r.slot).length;
   const dw=DW[today.getDay()];
   const extra=isObon(today)?'・お盆':isHol(today)?'・祝':'';
-  const tabs=[['all','すべて']].concat(ALL_DIAS.filter(d=>ALL_DB[d.code]).map(d=>[d.code,d.name]));
 
   box.innerHTML =
     '<div class="roster-sum">'+(today.getMonth()+1)+'月'+today.getDate()+'日（'+dw+extra+'）　'
-      +rows.length+'番中 '+work+'番が乗務、'+(rows.length-work)+'番が公休</div>'
-    /* 「いまの時間帯」「穴埋めを探す」は次回。
-       中身が無いうちはボタンを出さない（押せるのに動かないと混乱するため）。 */
+      +(rMode==='now' ? (rows.length+'番を表示中')
+                      : (rows.length+'番中 '+work+'番が乗務、'+(rows.length-work)+'番が公休'))+'</div>'
+    +nowNote
+    +'<div class="roster-modes">'
+      +[['all','すべて'],['now','いまの時間帯']].map(function(m){
+          return '<button class="roster-mode'+(rMode===m[0]?' on':'')
+               +'" onclick="rSetMode(\''+m[0]+'\')">'+m[1]+'</button>';
+        }).join('')
+    +'</div>'
     +'<div class="roster-tabs">'
       +'<button class="roster-tab" onclick="rTogglePick(\'all\')">すべて選ぶ</button>'
       +ALL_DIAS.filter(function(d){ return ALL_DB[d.code]; }).map(function(d){
@@ -2465,7 +2464,7 @@ function buildRoster(){
       +'<th class="'+(rSort==='time'?'on':'')+'" onclick="rSetSort(\'time\')">出退勤 ▲▼</th>'
       +'<th>労働</th></tr></thead><tbody>'
       +rows.map(function(r){
-          return '<tr><td class="roster-dia">'+r.name+'</td>'
+          return '<tr'+(r._now?' class="is-now"':'')+'><td class="roster-dia">'+r.name+'</td>'
             +'<td><span class="roster-bar" style="background:'+R_COLOR[rKind(r.slot)]+'"></span>'+r.num+'</td>'
             +'<td class="roster-tm">'+(r.slot?formatDisplayTime(r.slot.o):(r.note?'要確認':'公休'))
             +(r.note?'<div class="roster-nt">📌 '+escapeHtml(r.note)+'</div>':'')+'</td>'
