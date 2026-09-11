@@ -2546,8 +2546,23 @@ function fitOpen(code, num){
 let rHoleDia='', rHoleNum='', rHolePart='all';
 
 function rSetHoleDia(c){ rHoleDia=c; buildRoster(); }
-function rSetHolePart(p){ rHolePart=p; buildRoster(); }
-function rSetHoleNum(v){ rHoleNum=v; buildRoster(); }
+function rSetHolePart(p){
+  rHolePart=p;
+  // 選んだ印を付け替えてから、結果だけ差し替える（入力欄はそのまま）
+  document.querySelectorAll('.hole-part').forEach(function(b,i){
+    b.classList.toggle('on', ['all','first','second'][i]===p);
+  });
+  const box=document.getElementById('holeResult');
+  if(box) box.innerHTML=holeResultHtml(); else buildRoster();
+}
+/* 番号を打つたびに画面全部を作り直すと、入力欄ごと新しくなって
+   カーソルが外れ、1桁しか打てなくなる。結果の部分だけ差し替える。 */
+function rSetHoleNum(v){
+  rHoleNum=v;
+  const box=document.getElementById('holeResult');
+  if(box) box.innerHTML=holeResultHtml();
+  else buildRoster();
+}
 
 /* 穴の勤務そのものを取り出す */
 function rHoleSlot(date){
@@ -2665,6 +2680,82 @@ function rCanFill(code, num, date, hole){
           own:own?own:null, ownSlot:ownSlot};
 }
 
+/* 穴埋めの結果だけを作る。番号を打つたびにここだけ差し替える。 */
+function holeResultHtml(){
+  const today=new Date();
+  let h='';
+  const hole=rHoleSlot(today);
+  if(!hole){
+    return '<div class="ml-empty">ダイヤ番号を入れてください。<br>'
+      +'その日が公休の番号は、埋める対象になりません。</div>';
+  }
+  const partLb={all:'まるごと',first:'前半だけ',second:'後半だけ'}[rHolePart];
+  h+='<div class="hole-target">🕳 '+formatDisplayTime(hole.o)
+    +'<div class="hole-target-s">'+partLb+'　'
+    + String(Math.floor(hole.start/60)).padStart(2,'0')+':'+String(hole.start%60).padStart(2,'0')
+    +'〜'+String(Math.floor(hole.end/60)).padStart(2,'0')+':'+String(hole.end%60).padStart(2,'0')
+    +'（'+otFmt(hole.end-hole.start)+'）</div></div>';
+
+  // 候補を集める
+  let cands=[];
+  for(const d of ALL_DIAS){
+    if(!rIsPicked(d.code)) continue;
+    const j=ALL_DB[d.code]; if(!j) continue;
+    for(let n=1;n<=j.meta.cycle;n++){
+      if(d.code===rHoleDia && n===parseInt(rHoleNum)) continue;  // 本人は除く
+      const c=rCanFill(d.code, n, today, hole);
+      if(c){
+        c.name=d.name;
+        // この人に付く時間外。付かないなら受ける動機がないので、見えるようにする。
+        const hj2=ALL_DB[rHoleDia];
+        const hrec2=hj2?hj2.dials[String(parseInt(rHoleNum))]:null;
+        const hs2=hrec2?hrec2[dt]:null;
+        let add=hs2?otEval(hs2, rHolePart):0, drop=0;
+        if(c.ownSlot && c.keep) drop=otHeldPart(c.ownSlot.o, c.keep==='first'?'second':'first')*0.8;
+        c.addOt=Math.max(0, Math.round(add-drop));
+        cands.push(c);
+      }
+    }
+  }
+  /* 並べ方。同じダイヤと予備を先に、次に2連休の1日目、最後にシングル公休。
+     どれも番号の若い順。 */
+  const pri=function(c){
+    if(c.code===rHoleDia) return 0;      // 同じダイヤ
+    if(c.code==='yobi')   return 1;      // 予備はどこにでも使える
+    return 2;
+  };
+  cands.sort(function(a,b){
+    return pri(a)-pri(b) || a.rank-b.rank
+        || (b.addOt>0?1:0)-(a.addOt>0?1:0)   // 時間外が付く人を先に
+        || ALL_DIAS.findIndex(x=>x.code===a.code)-ALL_DIAS.findIndex(x=>x.code===b.code)
+        || a.num-b.num;
+  });
+
+  if(!cands.length){
+    return '<div class="ml-empty">埋められる番号が見つかりませんでした。<br>'
+      +'選ぶダイヤを増やすか、前半・後半に分けてみてください。</div>';
+    return;
+  }
+  h+='<div class="hole-count">'+cands.length+'番が候補です　'
+    +'<span class="hole-hint">タップすると、はめ込んだ結果が見られます</span></div>';
+  h+='<table class="roster-tbl">';
+  cands.forEach(function(c){
+    h+='<tr class="hole-row-tap'+(c.keep?' is-split':' is-off')+'"'
+      +' onclick="fitOpen(\''+c.code+'\','+c.num+')"><td class="roster-dia">'+c.name+'</td>'
+      +'<td class="hole-no">'+c.num+'</td>'
+      +'<td class="hole-why"><b>'+c.kind+'</b>'
+      +(c.keep?'<div class="hole-sub">本来の'
+          +(c.keep==='first'?'後半':'前半')+'を降りて入る</div>':'')
+      +'<div class="hole-sub">前 '+c.prev+'　後 '+c.next+'</div>'
+      +'<div class="hole-sub">1日の拘束 '+otFmt(c.span)
+      +(c.rest?'（休息 '+otFmt(c.rest)+'）':'')+'</div>'
+      +'<div class="hole-ot'+(c.addOt>0?'':' zero')+'">時間外 '+otFmt(c.addOt)
+      +(c.addOt>0?'':'（付きません）')+'</div></td></tr>';
+  });
+  h+='</table>';
+  return h;
+}
+
 function buildRoster(){
   const box=document.getElementById('rosterBox');
   if(!box) return;
@@ -2745,77 +2836,7 @@ function buildRoster(){
           }).join('')
       + '</div></div>';
 
-    const hole=rHoleSlot(today);
-    if(!hole){
-      box.innerHTML=h+'<div class="ml-empty">ダイヤ番号を入れてください。<br>'
-        +'その日が公休の番号は、埋める対象になりません。</div>';
-      return;
-    }
-    const partLb={all:'まるごと',first:'前半だけ',second:'後半だけ'}[rHolePart];
-    h+='<div class="hole-target">🕳 '+formatDisplayTime(hole.o)
-      +'<div class="hole-target-s">'+partLb+'　'
-      + String(Math.floor(hole.start/60)).padStart(2,'0')+':'+String(hole.start%60).padStart(2,'0')
-      +'〜'+String(Math.floor(hole.end/60)).padStart(2,'0')+':'+String(hole.end%60).padStart(2,'0')
-      +'（'+otFmt(hole.end-hole.start)+'）</div></div>';
-
-    // 候補を集める
-    let cands=[];
-    for(const d of ALL_DIAS){
-      if(!rIsPicked(d.code)) continue;
-      const j=ALL_DB[d.code]; if(!j) continue;
-      for(let n=1;n<=j.meta.cycle;n++){
-        if(d.code===rHoleDia && n===parseInt(rHoleNum)) continue;  // 本人は除く
-        const c=rCanFill(d.code, n, today, hole);
-        if(c){
-          c.name=d.name;
-          // この人に付く時間外。付かないなら受ける動機がないので、見えるようにする。
-          const hj2=ALL_DB[rHoleDia];
-          const hrec2=hj2?hj2.dials[String(parseInt(rHoleNum))]:null;
-          const hs2=hrec2?hrec2[dt]:null;
-          let add=hs2?otEval(hs2, rHolePart):0, drop=0;
-          if(c.ownSlot && c.keep) drop=otHeldPart(c.ownSlot.o, c.keep==='first'?'second':'first')*0.8;
-          c.addOt=Math.max(0, Math.round(add-drop));
-          cands.push(c);
-        }
-      }
-    }
-    /* 並べ方。同じダイヤと予備を先に、次に2連休の1日目、最後にシングル公休。
-       どれも番号の若い順。 */
-    const pri=function(c){
-      if(c.code===rHoleDia) return 0;      // 同じダイヤ
-      if(c.code==='yobi')   return 1;      // 予備はどこにでも使える
-      return 2;
-    };
-    cands.sort(function(a,b){
-      return pri(a)-pri(b) || a.rank-b.rank
-          || (b.addOt>0?1:0)-(a.addOt>0?1:0)   // 時間外が付く人を先に
-          || ALL_DIAS.findIndex(x=>x.code===a.code)-ALL_DIAS.findIndex(x=>x.code===b.code)
-          || a.num-b.num;
-    });
-
-    if(!cands.length){
-      box.innerHTML=h+'<div class="ml-empty">埋められる番号が見つかりませんでした。<br>'
-        +'選ぶダイヤを増やすか、前半・後半に分けてみてください。</div>';
-      return;
-    }
-    h+='<div class="hole-count">'+cands.length+'番が候補です　'
-      +'<span class="hole-hint">タップすると、はめ込んだ結果が見られます</span></div>';
-    h+='<table class="roster-tbl">';
-    cands.forEach(function(c){
-      h+='<tr class="hole-row-tap'+(c.keep?' is-split':' is-off')+'"'
-        +' onclick="fitOpen(\''+c.code+'\','+c.num+')"><td class="roster-dia">'+c.name+'</td>'
-        +'<td class="hole-no">'+c.num+'</td>'
-        +'<td class="hole-why"><b>'+c.kind+'</b>'
-        +(c.keep?'<div class="hole-sub">本来の'
-            +(c.keep==='first'?'後半':'前半')+'を降りて入る</div>':'')
-        +'<div class="hole-sub">前 '+c.prev+'　後 '+c.next+'</div>'
-        +'<div class="hole-sub">1日の拘束 '+otFmt(c.span)
-        +(c.rest?'（休息 '+otFmt(c.rest)+'）':'')+'</div>'
-        +'<div class="hole-ot'+(c.addOt>0?'':' zero')+'">時間外 '+otFmt(c.addOt)
-        +(c.addOt>0?'':'（付きません）')+'</div></td></tr>';
-    });
-    h+='</table>';
-    box.innerHTML=h;
+    box.innerHTML=h+'<div id="holeResult">'+holeResultHtml()+'</div>';
     return;
   }
 
@@ -3883,7 +3904,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v185';
+const APP_VERSION   = 'v186';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4105,7 +4126,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.07';
+const APP_LABEL = 'バージョン 3.08';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
