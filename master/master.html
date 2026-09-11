@@ -1111,7 +1111,8 @@ body.multi .only-single{ display:none !important; }
 .roster-now{ font-size:12.5px; color:var(--note); margin-bottom:8px;
   padding:8px 10px; border-radius:9px; background:rgba(255,212,121,.10);
   border:1px solid rgba(255,212,121,.4); }
-.roster-tbl tr.is-now td{ background:rgba(74,163,255,.10); }
+.roster-tbl tr.is-soon td{ background:rgba(255,212,121,.10); }
+.roster-in{ font-size:11.5px; color:var(--note); margin-top:2px; }
 .roster-tbl{ width:100%; border-collapse:collapse; font-size:13px; }
 .roster-tbl th{ font-size:11px; color:var(--dim); text-align:left;
   padding:6px 3px; border-bottom:1px solid var(--border);
@@ -2411,8 +2412,8 @@ function buildRoster(){
     return rAsc?v:-v;
   });
 
-  /* いまの時間帯：これから出る人と、乗務中の人だけに絞る。
-     朝と夜で違う画面になるようにするため。 */
+  /* いまの時間帯：これから出勤を迎えるダイヤだけに絞る。
+     乗務中の人は出さない（もう出ているので、穴埋めには使えない）。 */
   let nowNote='';
   if(rMode==='now'){
     const t=new Date();
@@ -2422,17 +2423,15 @@ function buildRoster(){
       const sp=rSpan(r.slot.o);
       if(!sp) return false;
       r._sp=sp;
-      // これから3時間以内に出勤する、またはいま乗務中
-      const soon = sp.start>=cur && sp.start<=cur+180;
-      const now  = sp.start<=cur && cur<=sp.end;
-      r._now = now;
-      return soon || now;
+      r._mins=sp.start-cur;              // 出勤まであと何分か
+      return sp.start>=cur;              // これから出勤する人だけ
     });
     rows.sort(function(a,b){ return a._sp.start-b._sp.start; });
     const h=String(t.getHours()).padStart(2,'0'), mi=String(t.getMinutes()).padStart(2,'0');
+    const soon=rows.filter(function(r){ return r._mins<=180; }).length;
     nowNote='<div class="roster-now">🕐 '+h+':'+mi+' 現在　'
-      +'乗務中 '+rows.filter(function(r){return r._now;}).length+'人／'
-      +'3時間以内に出勤 '+rows.filter(function(r){return !r._now;}).length+'人</div>';
+      +'これから出勤 '+rows.length+'人'
+      +(soon?'（3時間以内 '+soon+'人）':'')+'</div>';
   }
 
   const work=rows.filter(r=>r.slot).length;
@@ -2464,9 +2463,12 @@ function buildRoster(){
       +'<th class="'+(rSort==='time'?'on':'')+'" onclick="rSetSort(\'time\')">出退勤 ▲▼</th>'
       +'<th>労働</th></tr></thead><tbody>'
       +rows.map(function(r){
-          return '<tr'+(r._now?' class="is-now"':'')+'><td class="roster-dia">'+r.name+'</td>'
+          return '<tr'+((r._mins!==undefined&&r._mins<=180)?' class="is-soon"':'')
+            +'><td class="roster-dia">'+r.name+'</td>'
             +'<td><span class="roster-bar" style="background:'+R_COLOR[rKind(r.slot)]+'"></span>'+r.num+'</td>'
             +'<td class="roster-tm">'+(r.slot?formatDisplayTime(r.slot.o):(r.note?'要確認':'公休'))
+            +(r._mins!==undefined
+               ?'<div class="roster-in">あと '+otFmt(r._mins)+'</div>':'')
             +(r.note?'<div class="roster-nt">📌 '+escapeHtml(r.note)+'</div>':'')+'</td>'
             +'<td class="roster-tm">'+(r.slot?formatDisplayLabor(r.slot.w):'-')+'</td></tr>';
         }).join('')
