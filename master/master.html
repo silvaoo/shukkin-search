@@ -2438,6 +2438,18 @@ function rCanRest(endMin, next){
   return {ok:false, why:'休息 '+otFmt(gap)+' しかない'};
 }
 
+/* 中間ダイヤの時刻を、読みやすい並びにする。
+   データは「前半出勤/後半出勤〜前半退勤/後半退勤」の順なので、
+   そのまま出すと 6:24/12:20〜17:13/20:35 となって誤読する。 */
+function rTimeText(o){
+  const sp=String(o).split('〜');
+  if(sp.length!==2) return String(o);
+  const st=sp[0].split('/').map(function(x){return x.trim();});
+  const en=sp[1].split('/').map(function(x){return x.trim();});
+  if(st.length!==2||en.length!==2) return String(o);
+  return st[0]+'〜'+st[1]+' / '+en[0]+'〜'+en[1];
+}
+
 /* ==== はめ込んで確かめる ====
    候補をタップしたら、その人がその日どう動くことになるのかを出す。
    実際の出退勤と、増える時間外を見てから決められるようにする。 */
@@ -2483,7 +2495,7 @@ function fitOpen(code, num){
   runs.sort(function(a,b){ return a.from-b.from; });
 
   let h='<div class="fit-head">'+dia.name+' <b>'+num+'番</b> の人</div>'
-   +'<div class="fit-sub">'+(own?('本来 '+own.o):'本来は公休')+'</div>';
+   +'<div class="fit-sub">'+(own?('本来 '+rTimeText(own.o)):'本来は公休')+'</div>';
 
   h+='<div class="fit-runs">';
   runs.forEach(function(r,i){
@@ -2597,7 +2609,8 @@ function rCanFill(code, num, date, hole){
   const j=ALL_DB[code]; if(!j) return null;
   const dt=dayType(date);
   const rec=j.dials[String(num)];
-  const own=(rec&&rec[dt]&&/\d/.test(String(rec[dt].o)))?rSpan(rec[dt].o):null;
+  const ownSlot=(rec&&rec[dt]&&/\d/.test(String(rec[dt].o)))?rec[dt]:null;
+  const own=ownSlot?rSpan(ownSlot.o):null;
 
   /* その番号が、この穴をどう受けられるか。
      ・公休なら まるごと受けられる
@@ -2647,7 +2660,7 @@ function rCanFill(code, num, date, hole){
 
   return {code:code, num:num, kind:kindLabel, rank:rank, keep:keep,
           span:span, rest:useRest, prev:lp.why, next:ln.why,
-          own:own?own:null};
+          own:own?own:null, ownSlot:ownSlot};
 }
 
 function buildRoster(){
@@ -2758,7 +2771,7 @@ function buildRoster(){
           const hrec2=hj2?hj2.dials[String(parseInt(rHoleNum))]:null;
           const hs2=hrec2?hrec2[dt]:null;
           let add=hs2?otEval(hs2, rHolePart):0, drop=0;
-          if(c.own && c.keep) drop=otHeldPart(c.own.o, c.keep==='first'?'second':'first')*0.8;
+          if(c.ownSlot && c.keep) drop=otHeldPart(c.ownSlot.o, c.keep==='first'?'second':'first')*0.8;
           c.addOt=Math.max(0, Math.round(add-drop));
           cands.push(c);
         }
