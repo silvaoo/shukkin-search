@@ -2685,6 +2685,7 @@ function rCanFill(code, num, date, hole){
 /* 穴埋めの結果だけを作る。番号を打つたびにここだけ差し替える。 */
 function holeResultHtml(){
   const today=new Date();
+  const dt=dayType(today);     // 切り出したときに持ってこられていなかった
   let h='';
   const hole=rHoleSlot(today);
   if(!hole){
