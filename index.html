@@ -1093,8 +1093,11 @@ body.multi .only-single{ display:none !important; }
   font-size:14px; font-weight:bold; cursor:pointer;
   font-family:'Noto Sans JP',sans-serif; }
 .roster-open:active{ background:rgba(255,212,121,.15); }
-.roster-box{ margin-top:10px; background:var(--bg-card);
-  border:1px solid var(--border); border-radius:12px; padding:12px; }
+.roster-box{ padding:2px 0; }
+.roster-full{ max-width:100%; padding:14px 10px 30px; }
+/* 早見表は単独画面。はめ込み画面はその上、日付選択はさらに上に出す。 */
+#rosterModal{ z-index:10020; padding:10px 6px; }
+#fitModal{ z-index:10030; }
 .roster-sum{ font-size:12px; color:var(--dim); margin-bottom:8px; }
 .roster-tabs{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; }
 .roster-tab{ flex:1 1 auto; min-width:70px; padding:8px 5px; border-radius:8px;
@@ -1510,7 +1513,6 @@ a.source-link:visited {
 <!-- 全ダイヤ早見表（スペシャル検索くんだけ） -->
 <div id="rosterWrap" class="roster-wrap" style="display:none;">
   <button class="roster-open" onclick="toggleRoster()">📋 今日の全ダイヤ早見表</button>
-  <div id="rosterBox" class="roster-box" style="display:none;"></div>
 </div>
 
 <!-- 今日のダイヤ入力 -->
@@ -1661,6 +1663,17 @@ a.source-link:visited {
 </div>
 
 <!-- 穴埋めの組み合わせを、はめ込んで確かめる画面 -->
+<!-- 全ダイヤ早見表（単独の画面。検索やクイック検索が混ざらないようにする） -->
+<div id="rosterModal" class="memolist-modal">
+  <div class="ml-box roster-full">
+    <div class="ml-head">
+      <h2>📋 全ダイヤ早見表</h2>
+      <button class="guide-close" onclick="toggleRoster()">✕ 閉じる</button>
+    </div>
+    <div id="rosterBox" class="roster-box"></div>
+  </div>
+</div>
+
 <div id="fitModal" class="memolist-modal" onclick="if(event.target===this)fitClose()">
   <div class="ml-box">
     <div class="ml-head">
@@ -2353,7 +2366,8 @@ let rMode='all';       // 'all'=全部の時間 / 'now'=いまの時間帯 / 'ho
 function toggleRoster(){
   if(!Object.keys(rPick).length) ALL_DIAS.forEach(function(d){ rPick[d.code]=true; });
   rOpen=!rOpen;
-  document.getElementById('rosterBox').style.display = rOpen?'block':'none';
+  document.getElementById('rosterModal').classList.toggle('active', rOpen);
+  document.body.style.overflow = rOpen?'hidden':'';
   if(rOpen) buildRoster();
 }
 /* ダイヤの選び方。押すたびに入れたり外したりする。 */
@@ -2431,7 +2445,9 @@ let _fitCur=null;
 
 function fitClose(){
   document.getElementById('fitModal').classList.remove('active');
-  document.body.style.overflow='hidden';   // 下の早見表は開いたまま
+  // 下に早見表が開いているならスクロール止めは戻さない
+  const m=document.getElementById('rosterModal');
+  if(!(m && m.classList.contains('active'))) document.body.style.overflow='';
 }
 
 function fitOpen(code, num){
@@ -3852,7 +3868,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v181';
+const APP_VERSION   = 'v182';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4074,7 +4090,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.03';
+const APP_LABEL = 'バージョン 3.04';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
