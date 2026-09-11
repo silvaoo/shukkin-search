@@ -1135,6 +1135,8 @@ body.multi .only-single{ display:none !important; }
 .hole-target-s{ font-size:12.5px; font-weight:400; color:var(--dim); margin-top:3px; }
 .hole-count{ font-size:12.5px; color:var(--note); margin-bottom:6px; font-weight:bold; }
 .hole-hint{ font-size:11px; color:var(--dim); font-weight:400; }
+.hole-ng{ font-size:11.5px; color:var(--dim); margin-bottom:8px; line-height:1.7;
+  padding:7px 9px; border-radius:8px; background:rgba(128,128,160,.10); }
 .hole-ot{ font-size:12.5px; font-weight:800; color:var(--note); margin-top:3px; }
 .hole-ot.zero{ color:var(--dim); font-weight:400; }
 .roster-tbl tr.hole-row-tap{ cursor:pointer; }
@@ -2658,22 +2660,22 @@ function rCanFill(code, num, date, hole){
       useRest=Math.max(useRest, own.s1-hole.end);     // 穴のあと後半まで
       kindLabel='この穴＋中間の後半';
     }else{
-      return null;                                    // どちらも重なる
+      return {ng:'overlap'};                        // 前半とも後半とも重なる
     }
     rank=1;                                           // 公休の人より後、シングル公休より前
   }else{
-    return null;                                      // 日勤の人は受けられない
+    return {ng:'work'};                             // 日勤の人は既に丸1日乗っている
   }
 
   const span=dayEnd-dayStart;
-  if(span>15*60 && useRest<4*60) return null;          // 1日15時間（休息4時間で延長可）
+  if(span>15*60 && useRest<4*60) return {ng:'span'};  // 1日15時間（休息4時間で延長可）
 
   const prev=rDayOf(code,num,-1,date);
   const next=rDayOf(code,num, 1,date);
   const lp=rLinkPrev(prev, dayStart);
-  if(!lp.ok) return null;
+  if(!lp.ok) return {ng:'rest'};
   const ln=rLink(dayEnd, next);
-  if(!ln.ok) return null;
+  if(!ln.ok) return {ng:'rest'};
 
   return {code:code, num:num, kind:kindLabel, rank:rank, keep:keep,
           span:span, rest:useRest, prev:lp.why, next:ln.why,
@@ -2698,12 +2700,20 @@ function holeResultHtml(){
 
   // 候補を集める
   let cands=[];
+  let ngOverlap=0, ngSpan=0, ngRest=0, ngWork=0;   // 外れた理由の数
   for(const d of ALL_DIAS){
     if(!rIsPicked(d.code)) continue;
     const j=ALL_DB[d.code]; if(!j) continue;
     for(let n=1;n<=j.meta.cycle;n++){
       if(d.code===rHoleDia && n===parseInt(rHoleNum)) continue;  // 本人は除く
       const c=rCanFill(d.code, n, today, hole);
+      if(c && c.ng){          // 外れた理由を数えておく
+        if(c.ng==='overlap') ngOverlap++;
+        else if(c.ng==='span') ngSpan++;
+        else if(c.ng==='rest') ngRest++;
+        else if(c.ng==='work') ngWork++;
+        continue;
+      }
       if(c){
         c.name=d.name;
         // この人に付く時間外。付かないなら受ける動機がないので、見えるようにする。
@@ -2738,6 +2748,14 @@ function holeResultHtml(){
   }
   h+='<div class="hole-count">'+cands.length+'番が候補です　'
     +'<span class="hole-hint">タップすると、はめ込んだ結果が見られます</span></div>';
+  /* なぜ他の人が出ないのか分かるようにする。
+     「公休ばかり出る」ときは、たいてい穴が長くて中間の人が入らない。 */
+  const ngs=[];
+  if(ngWork)    ngs.push('乗務中 '+ngWork+'番');
+  if(ngOverlap) ngs.push('勤務と重なる '+ngOverlap+'番');
+  if(ngSpan)    ngs.push('1日15時間を超える '+ngSpan+'番');
+  if(ngRest)    ngs.push('前後の休息が足りない '+ngRest+'番');
+  if(ngs.length) h+='<div class="hole-ng">入れられなかった人　'+ngs.join('／')+'</div>';
   h+='<table class="roster-tbl">';
   cands.forEach(function(c){
     h+='<tr class="hole-row-tap'+(c.keep?' is-split':' is-off')+'"'
