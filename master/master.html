@@ -1144,6 +1144,8 @@ body.multi .only-single{ display:none !important; }
 .hole-why b{ color:var(--note); }
 .hole-sub{ font-size:11px; color:var(--dim); margin-top:2px; }
 .roster-tbl tr.is-split td{ background:rgba(74,163,255,.08); }
+/* 穴埋めの候補のうち、公休の人は薄い赤にして見分けやすくする */
+.roster-tbl tr.is-off td{ background:rgba(255,92,114,.10); }
 .roster-tbl{ width:100%; border-collapse:collapse; font-size:13px; }
 .roster-tbl th{ font-size:11px; color:var(--dim); text-align:left;
   padding:6px 3px; border-bottom:1px solid var(--border);
@@ -1151,27 +1153,8 @@ body.multi .only-single{ display:none !important; }
 .roster-tbl th.on{ color:var(--note); }
 .roster-tbl td{ padding:7px 3px; border-bottom:1px solid rgba(128,128,160,.15);
   vertical-align:top; }
-/* 早番・遅番・公休を、ひと目で分かるように色で分ける。
-   細い棒だけでは見分けにくいという声があったため、
-   番号を色付きの札にして、行そのものにも薄く色を敷く。 */
 .roster-bar{ display:inline-block; width:4px; height:14px; border-radius:2px;
   vertical-align:-2px; margin-right:5px; }
-.roster-no{ width:66px; }
-.roster-chip{ display:inline-block; min-width:52px; padding:4px 7px;
-  border-radius:8px; font-size:16px; font-weight:900; text-align:center;
-  font-variant-numeric:tabular-nums; }
-.roster-chip.lg{ min-width:0; font-size:12px; padding:2px 8px; }
-/* 早番＝朝焼けの橙 */
-.rk-early .roster-chip, .roster-chip.rk-early{ background:#ff9e4a; color:#241100; }
-/* 遅番＝夜の青 */
-.rk-late  .roster-chip, .roster-chip.rk-late { background:#5b8dff; color:#04122e; }
-/* 公休＝灰 */
-.rk-off   .roster-chip, .roster-chip.rk-off  { background:#4a4f66; color:#dde0ff; }
-/* 行にも薄く色を敷いて、まとまりが見えるようにする */
-.roster-tbl tr.rk-early td{ background:rgba(255,158,74,.09); }
-.roster-tbl tr.rk-late  td{ background:rgba(91,141,255,.09); }
-.roster-tbl tr.rk-off   td{ background:rgba(74,79,102,.16); }
-.roster-tbl tr.rk-off .roster-tm{ color:var(--dim); }
 .roster-dia{ font-size:11px; color:var(--dim); white-space:nowrap; }
 .roster-tm{ font-variant-numeric:tabular-nums; }
 .roster-nt{ font-size:11px; color:var(--note); margin-top:2px; }
@@ -2819,7 +2802,7 @@ function buildRoster(){
       +'<span class="hole-hint">タップすると、はめ込んだ結果が見られます</span></div>';
     h+='<table class="roster-tbl">';
     cands.forEach(function(c){
-      h+='<tr class="hole-row-tap'+(c.keep?' is-split':'')+'"'
+      h+='<tr class="hole-row-tap'+(c.keep?' is-split':' is-off')+'"'
         +' onclick="fitOpen(\''+c.code+'\','+c.num+')"><td class="roster-dia">'+c.name+'</td>'
         +'<td class="hole-no">'+c.num+'</td>'
         +'<td class="hole-why"><b>'+c.kind+'</b>'
@@ -2860,11 +2843,9 @@ function buildRoster(){
       +'<th class="'+(rSort==='time'?'on':'')+'" onclick="rSetSort(\'time\')">出退勤 ▲▼</th>'
       +'<th>労働</th></tr></thead><tbody>'
       +rows.map(function(r){
-          return '<tr class="rk-'+rKind(r.slot)
-            +((r._mins!==undefined&&r._mins<=180)?' is-soon':'')+'"'
+          return '<tr'+((r._mins!==undefined&&r._mins<=180)?' class="is-soon"':'')
             +'><td class="roster-dia">'+r.name+'</td>'
-            +'<td class="roster-no"><span class="roster-chip">'
-              +({early:'☀',late:'☾',off:'休'}[rKind(r.slot)]||'')+' '+r.num+'</span></td>'
+            +'<td><span class="roster-bar" style="background:'+R_COLOR[rKind(r.slot)]+'"></span>'+r.num+'</td>'
             +'<td class="roster-tm">'+(r.slot?formatDisplayTime(r.slot.o):(r.note?'要確認':'公休'))
             +(r._mins!==undefined
                ?'<div class="roster-in">あと '+otFmt(r._mins)+'</div>':'')
@@ -2873,9 +2854,9 @@ function buildRoster(){
         }).join('')
     +'</tbody></table>'
     +'<div class="roster-leg">'
-      +'<span class="roster-chip lg rk-early">☀ 早番</span> 12時前に出勤　'
-      +'<span class="roster-chip lg rk-late">☾ 遅番</span> 12時以降　'
-      +'<span class="roster-chip lg rk-off">休 公休</span><br>'
+      +'<span class="roster-bar" style="background:'+R_COLOR.early+'"></span>早番（12時前に出勤）　'
+      +'<span class="roster-bar" style="background:'+R_COLOR.late+'"></span>遅番（12時以降）　'
+      +'<span class="roster-bar" style="background:'+R_COLOR.off+'"></span>公休<br>'
       +'見出しを押すと並べ替わります。</div>';
 }
 
