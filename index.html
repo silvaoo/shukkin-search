@@ -3739,18 +3739,55 @@ function refreshMemoViews(){
 function cdToMin(t){const m=t.match(/^(\d+):(\d+)$/);return m?parseInt(m[1])*60+parseInt(m[2]):null;}
 /* 残り分数を「あと◯時間◯分」の読みやすい形にする */
 function cdFmt(min){const h=Math.floor(min/60),m=min%60;return h>0?`あと${h}時間${m}分`:`あと${m}分`;}
-/* 今日のダイヤの勤務ペア[出勤,退勤]を返す。公休・要確認・3分割以上はnull */
-function todayShiftPairs(v){
-  const rec=DB[v];const dt=dayType(new Date());
-  if(!rec||!rec[dt])return null;
-  const o=rec[dt].o;
-  if(!o||o==='—'||!o.includes('〜'))return null;
-  const parts=o.split('〜');
+/* 勤務の時刻から[出勤,退勤]の組を取り出す */
+function shiftPairsOf(o){
+  if(!o||o==='—'||!String(o).includes('〜'))return null;
+  const parts=String(o).split('〜');
   if(parts.length!==2)return null;
   const st=parts[0].split('/').map(x=>x.trim()),en=parts[1].split('/').map(x=>x.trim());
   if(st.length===2&&en.length===2)return[[st[0],st[1]],[en[0],en[1]]]; // 中間解放(前半・後半)
   if(st.length===1&&en.length===1)return[[st[0],en[0]]];               // 通常の通し勤務
   return null;
+}
+/* 今日のカウントダウンに使う勤務ペアを返す。
+   年休の日は出さない。代走・公休出勤の日は、実際に出るほうで数える。
+   本来のダイヤだけを見ていたため、年休でも出勤まで◯分と出ていた（2026-09-15 修正）。 */
+function todayShiftPairs(v){
+  const today=new Date();
+  const dt=dayType(today);
+  const rec0=otLoad()[toISO(today)];
+
+  if(otIsLeave(rec0)) return null;               // 年休の日は数えない
+
+  if(rec0 && rec0.adds && rec0.adds.length){
+    // 実際に出る本数を集めて、時刻の早い順に並べる
+    const list=[];
+    const own=(DB[v]&&DB[v][dt]&&String(DB[v][dt].o)!=='—')?DB[v][dt]:null;
+    if(own && rec0.base!=='none'){
+      const pr=shiftPairsOf(own.o);
+      if(pr){
+        if(rec0.base==='all') pr.forEach(function(x){ list.push(x); });
+        else if(pr.length===2) list.push(rec0.base==='first'?pr[0]:pr[1]);
+        else list.push(pr[0]);
+      }
+    }
+    rec0.adds.forEach(function(a){
+      const r2=DB[a.dial], s2=(r2&&r2[dt]&&String(r2[dt].o)!=='—')?r2[dt]:null;
+      if(!s2) return;
+      const pr=shiftPairsOf(s2.o);
+      if(!pr) return;
+      if(a.part==='all') pr.forEach(function(x){ list.push(x); });
+      else if(pr.length===2) list.push(a.part==='first'?pr[0]:pr[1]);
+      else list.push(pr[0]);
+    });
+    if(!list.length) return null;
+    list.sort(function(a,b){ return (cdToMin(a[0])||0)-(cdToMin(b[0])||0); });
+    return list;
+  }
+
+  const rec=DB[v];
+  if(!rec||!rec[dt])return null;
+  return shiftPairsOf(rec[dt].o);
 }
 /* 今日カードの下にカウントダウンを表示する(updateClockから毎秒呼ばれる) */
 function updateCountdown(){
@@ -3765,7 +3802,8 @@ function updateCountdown(){
   for(let i=0;i<pairs.length;i++){
     const s=cdToMin(pairs[i][0]),e=cdToMin(pairs[i][1]);
     if(s===null||e===null){el.style.display='none';return;}
-    const label=pairs.length===2?(i===0?'前半':'後半'):'';
+    const label=pairs.length===2?(i===0?'前半':'後半')
+              : pairs.length>2?(i+1)+'本目 ':'';
     if(nowMin<s){msg=`🚌 ${label}出勤まで ${cdFmt(s-nowMin)}`;soon=(s-nowMin)<=60;break;}
     if(nowMin<e){msg=`🏠 ${label}退勤まで ${cdFmt(e-nowMin)}`;break;}
   }
@@ -3923,7 +3961,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v188';
+const APP_VERSION   = 'v189';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4145,7 +4183,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.10';
+const APP_LABEL = 'バージョン 3.11';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
