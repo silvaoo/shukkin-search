@@ -776,6 +776,7 @@ input[type="date"] {
 /* 公休は緑の角印。ひとまわり大きくして目立たせる。 */
 .off-wrap{ position:relative; overflow:hidden; padding:4px 0; }
 .off-line{ position:relative; z-index:1; }
+.off-wrap > *:not(.stamp){ position:relative; z-index:1; }
 .until-next{ margin-top:10px; padding:11px; border-radius:10px;
   background:rgba(0,255,136,.08); border:1px solid rgba(0,255,136,.45);
   text-align:center; font-size:15px; font-weight:800; color:var(--green);
@@ -785,6 +786,11 @@ input[type="date"] {
 .stamp-off {
   color:#00ff88; border: 6px solid #00ff88; border-radius: 10px;
   font-size: 54px; padding: 6px 26px; letter-spacing: 10px; text-indent: 10px;
+}
+/* 代走は紫の角印。公出の青・年休の赤・公休の緑と色の系統を分ける。 */
+.stamp-sub {
+  color:#b07cff; border: 5px solid #b07cff; border-radius: 8px;
+  font-size: 38px; padding: 4px 20px; letter-spacing: 8px; text-indent: 8px;
 }
 body.light .stamp { opacity: 0.28; }
 
@@ -2980,10 +2986,12 @@ function otLeaveHtml(m,d,dtLabel,r){
   }else{
     next='<div class="today-next">次の出勤は分かりませんでした</div>';
   }
-  return '<div class="today-head"><span class="leave-tag">年休</span> '
+  return '<div class="off-wrap">'
+       + stampHtml(toISO(new Date()), true)
+       + '<div class="today-head"><span class="leave-tag">年休</span> '
        + m+'/'+d+'（'+dtLabel+'）</div>'
        + (r && r.note ? '<div class="today-note">'+escapeHtml(r.note)+'</div>' : '')
-       + next;
+       + next + '</div>';
 }
 
 /* その日に時間外の登録があれば返す */
@@ -3029,7 +3037,9 @@ function otTodayHtml(v,m,d,dtLabel,r){
   const badge = isKyuDay
     ? '<span class="today-badge kyu">🔵 公休出勤</span>'
     : '<span class="today-badge sub">⏱ 代走・振替あり</span>';
-  let h='<div class="today-head"><b>'+m+'/'+d+'（'+dtLabel+'）</b>'+badge+'</div>';
+  let h='<div class="off-wrap">'
+      + stampHtml(toISO(new Date()), !slot0)
+      + '<div class="today-head"><b>'+m+'/'+d+'（'+dtLabel+'）</b>'+badge+'</div>';
 
   /* --- 実際に出るほう（大きく・目立たせる） --- */
   /* 何が振り替わったのかを、ひとことで言う */
@@ -3066,7 +3076,7 @@ function otTodayHtml(v,m,d,dtLabel,r){
 
   h+='<div class="today-note">⏱ 時間外 '+otFmt(r.min)
     +(r.note?' ／ '+escapeHtml(r.note):'')+'</div>';
-  return h;
+  return h+'</div>';
 }
 
 /* ==== 今日の勤務をカード画像にする ====
@@ -3667,6 +3677,7 @@ function stampHtml(iso, offDay){
   let cls='', txt='';
   if(otIsLeave(r)){ cls='stamp-leave'; txt='年休'; }
   else if(otIsKyu(r)){ cls='stamp-kyu'; txt='公出'; }
+  else if(r && r.adds && r.adds.length){ cls='stamp-sub'; txt='代走'; }
   else if(offDay){ cls='stamp-off'; txt='公 休'; }   // ふつうの公休にも押す
   else return '';
   /* 日付から傾きを決める。同じ日はいつ見ても同じ、隣の日とは違う傾きになる。
