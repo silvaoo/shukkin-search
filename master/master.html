@@ -759,7 +759,7 @@ input[type="date"] {
   font-family: 'Noto Sans JP', sans-serif;
   pointer-events: none;          /* 下のボタンを押せるようにする */
   white-space: nowrap; z-index: 3;
-  opacity: 0.62;                 /* 下の文字が透けつつ、はっきり読める濃さ */
+  opacity: 0.30;                 /* 背景の文字が読める濃さ（実機で確かめて決めた） */
   display: flex; align-items: center; justify-content: center;
 }
 /* 公出は角印（四角） */
@@ -773,7 +773,20 @@ input[type="date"] {
   width: 132px; height: 132px; padding: 0;
   letter-spacing: 2px; text-indent: 2px;
 }
-body.light .stamp { opacity: 0.55; }
+/* 公休は緑の角印。ひとまわり大きくして目立たせる。 */
+.off-wrap{ position:relative; overflow:hidden; padding:4px 0; }
+.off-line{ position:relative; z-index:1; }
+.until-next{ margin-top:10px; padding:11px; border-radius:10px;
+  background:rgba(0,255,136,.08); border:1px solid rgba(0,255,136,.45);
+  text-align:center; font-size:15px; font-weight:800; color:var(--green);
+  position:relative; z-index:1; }
+.until-next b{ font-size:20px; }
+
+.stamp-off {
+  color:#00ff88; border: 6px solid #00ff88; border-radius: 10px;
+  font-size: 54px; padding: 6px 26px; letter-spacing: 10px; text-indent: 10px;
+}
+body.light .stamp { opacity: 0.28; }
 
 /* ==== C案: 期間の合計労働時間 ==== */
 .res-total {
@@ -2337,7 +2350,7 @@ function updateTodayPreview(){
     if(otIsLeave(otRec2)){ box.innerHTML=otLeaveHtml(m,d,dtLabel,otRec2); return; }
     const otOff=otForDate(today);
     if(otOff){ box.innerHTML=otTodayHtml(v,m,d,dtLabel,otOff); return; }
-    box.innerHTML=`<b>${v}番ダイヤ</b> → ${m}/${d}（${dtLabel}）は <span class="ok-text">🎉 公休</span> です`;
+    box.innerHTML=offDayHtml(v,m,d,dtLabel);
     return;
   }
   const slot=rec[dt];
@@ -2926,6 +2939,35 @@ function nextWorkDay(from){
   return null;
 }
 
+/* 公休の日の表示。印鑑を押して、次の出勤までの残り時間も出す。 */
+function offDayHtml(v,m,d,dtLabel){
+  const nx=nextWorkDay(new Date());
+  let h='<div class="off-wrap">'
+    + stampHtml(toISO(new Date()), true)
+    + `<div class="off-line"><b>${v}番ダイヤ</b> → ${m}/${d}（${dtLabel}）は `
+    + '<span class="ok-text">🎉 公休</span> です</div>';
+  if(nx){
+    const nm=nx.date.getMonth()+1, nd=nx.date.getDate(), nw=DW[nx.date.getDay()];
+    h+='<div class="today-next">次の出勤　<b>'+nm+'/'+nd+'（'+nw+'）'+nx.dial+'番</b>　'
+      + String(nx.slot.o) + '（労働 ' + (nx.slot.w||'-') + '）</div>'
+      + untilNextHtml(nx);
+  }
+  return h+'</div>';
+}
+
+/* 次の出勤まであと何時間か。1日以上なら日数から出す。 */
+function untilNextHtml(nx){
+  if(!nx||!nx.slot) return '';
+  const mm=String(nx.slot.o).match(/(\d{1,2}):(\d{2})/);
+  if(!mm) return '';
+  const t=new Date(nx.date);
+  t.setHours(parseInt(mm[1],10), parseInt(mm[2],10), 0, 0);
+  const diff=Math.max(0, Math.floor((t-new Date())/60000));
+  const dd=Math.floor(diff/1440), hh=Math.floor((diff%1440)/60), mi=diff%60;
+  const txt = dd>0 ? (dd+'日 '+hh+'時間'+mi+'分') : (hh+'時間'+mi+'分');
+  return '<div class="until-next">🛏 次の出勤まで <b>'+txt+'</b></div>';
+}
+
 /* 年休の日の表示。勤務時間は出さず、次の出勤を案内する。 */
 function otLeaveHtml(m,d,dtLabel,r){
   const nx=nextWorkDay(new Date());
@@ -2933,7 +2975,8 @@ function otLeaveHtml(m,d,dtLabel,r){
   if(nx){
     const nm=nx.date.getMonth()+1, nd=nx.date.getDate(), nw=DW[nx.date.getDay()];
     next='<div class="today-next">次の出勤　<b>'+nm+'/'+nd+'（'+nw+'）'+nx.dial+'番</b>　'
-       + String(nx.slot.o) + '（労働 ' + (nx.slot.w||'-') + '）</div>';
+       + String(nx.slot.o) + '（労働 ' + (nx.slot.w||'-') + '）</div>'
+       + untilNextHtml(nx);
   }else{
     next='<div class="today-next">次の出勤は分かりませんでした</div>';
   }
@@ -3619,12 +3662,12 @@ function realDutyHtml(iso){
   return h+'</div>';
 }
 
-function stampHtml(iso){
+function stampHtml(iso, offDay){
   const r=otLoad()[iso];
-  if(!r) return '';
   let cls='', txt='';
   if(otIsLeave(r)){ cls='stamp-leave'; txt='年休'; }
   else if(otIsKyu(r)){ cls='stamp-kyu'; txt='公出'; }
+  else if(offDay){ cls='stamp-off'; txt='公 休'; }   // ふつうの公休にも押す
   else return '';
   /* 日付から傾きを決める。同じ日はいつ見ても同じ、隣の日とは違う傾きになる。
      右にも左にも倒れるようにして、押し方の雑さを出す。 */
@@ -5972,7 +6015,7 @@ function render(rows){
     }
 
     html+=`<div class="day-card${longClass}">
-      ${stampHtml(r.iso)}
+      ${stampHtml(r.iso, !r.slot)}
       <div class="day-header">
         <div class="${dateClass}">${r.m}/${r.d}（${r.dw}）${r.hol?'🎌':''}${longBadge}</div>
         <div class="${badgeClass}">${badgeText}</div>
