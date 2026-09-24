@@ -6898,15 +6898,41 @@ function loadChangeLog(){
    画像は images/genpage-1.jpg から順に。枚数は {{PAGES}} 枚（アプリごとに違う）。
    PDFは pdf/ に固定名で置く決まり。実際に有る時だけボタンを出すので、
    ダイヤ改正のときは同じ名前で上書きするだけでよい。 */
-const SRC_PAGES = {{PAGES}};
+const SRC_PAGES  = {{PAGES}};
+const SRC_PAGES2 = {{PAGES2}};   // ダイヤ改正後の枚数（無ければ 0）
 function buildSourceImages(){
   const box=document.getElementById('srcScroll');
-  if(!box || box._built) return;
-  box._built=true;
+  if(!box) return;
+  /* ダイヤ改正の日を過ぎていれば、新しい画像に切り替える。
+     日付が変わっても作り直せるよう、その日の分だけ覚えておく。 */
+  const rev = (NEXT_REV && SRC_PAGES2 && toISO(new Date()) >= NEXT_REV);
+  const tag = (rev ? '1001' : 'now') + '-' + cacheDay();
+  if(box._built === tag) return;
+  box._built = tag;
+
+  let pages, base, name;
+  if(IS_MULTI){
+    /* スペシャル検索くんは、選んだダイヤの画像を元のアプリから借りて出す。
+       枚数はダイヤごとに違うので、多めに並べて、無い分は自動で消す。 */
+    const dia = ALL_DIAS.find(function(x){ return x.code===CUR_DIA; });
+    if(!dia){ box.innerHTML=''; return; }
+    base  = '../' + dia.repo + '/images/';
+    pages = 4;                                  // 最大4枚まで試す
+    /* 北大和Ｂ・Ｃは2026-10-01改正。スペシャル検索くんは公開前なので
+       日付に関係なく新しい出退勤表を出す。 */
+    const newPage = (CUR_DIA==='ba' || CUR_DIA==='c');
+    name  = function(i){ return newPage ? ('genpage-1001-'+i) : ('genpage-'+i); };
+    box._built = tag + '-' + CUR_DIA;           // ダイヤを変えたら作り直す
+  }else{
+    base  = 'images/';
+    pages = rev ? SRC_PAGES2 : SRC_PAGES;
+    name  = function(i){ return rev ? ('genpage-1001-'+i) : ('genpage-'+i); };
+  }
   let html='';
-  for(let i=1;i<=SRC_PAGES;i++){
-    html += '<img class="src-page" id="srcImg'+i+'" src="images/genpage-'+i+'.jpg"'
-          + ' alt="{{DIA_FULL}}ダイヤ 出退勤表 '+i+'枚目">';
+  for(let i=1;i<=pages;i++){
+    html += '<img class="src-page" id="srcImg'+i+'" src="'+base+name(i)+'.jpg?v='+cacheDay()+'"'
+          + ' alt="出退勤表 '+i+'枚目"'
+          + ' onerror="this.remove()">';        // 無い枚数は静かに消す
   }
   box.innerHTML=html;
   // 1枚目だけは従来どおり srcImg でも掴めるようにしておく

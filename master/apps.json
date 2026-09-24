@@ -31,7 +31,8 @@
     "SW_DIA_LINE": "    './dia-a.json',        // ダイヤのデータ。圏外でも使えるよう控えておく",
     "CARD_NAME": "学園前Ａダイヤ",
     "NEXT_REV": "",
-    "NEXT_JSON": ""
+    "NEXT_JSON": "",
+    "PAGES2": "0"
   },
   "shukkin-search-c": {
     "ID": "c",
@@ -65,7 +66,8 @@
     "SW_DIA_LINE": "    './dia-c.json',        // ダイヤのデータ。圏外でも使えるよう控えておく\n    './dia-c-1001.json',   // 2026-10-01改正の新ダイヤ",
     "CARD_NAME": "北大和Ｃダイヤ",
     "NEXT_REV": "2026-10-01",
-    "NEXT_JSON": "./dia-c-1001.json"
+    "NEXT_JSON": "./dia-c-1001.json",
+    "PAGES2": "1"
   },
   "shukkin-search-yobi": {
     "ID": "yobi",
@@ -99,7 +101,8 @@
     "SW_DIA_LINE": "    './dia-yobi.json',        // ダイヤのデータ。圏外でも使えるよう控えておく",
     "CARD_NAME": "予備ダイヤ",
     "NEXT_REV": "",
-    "NEXT_JSON": ""
+    "NEXT_JSON": "",
+    "PAGES2": "0"
   },
   "shukkin-search-ba": {
     "ID": "ba",
@@ -133,7 +136,8 @@
     "SW_DIA_LINE": "    './dia-ba.json',        // ダイヤのデータ。圏外でも使えるよう控えておく\n    './dia-ba-1001.json',   // 2026-10-01改正の新ダイヤ",
     "CARD_NAME": "北大和Ｂダイヤ",
     "NEXT_REV": "2026-10-01",
-    "NEXT_JSON": "./dia-ba-1001.json"
+    "NEXT_JSON": "./dia-ba-1001.json",
+    "PAGES2": "2"
   },
   "shukkin-search-ikoma": {
     "ID": "ikoma",
@@ -167,7 +171,8 @@
     "SW_DIA_LINE": "    './dia-ikoma.json',        // ダイヤのデータ。圏外でも使えるよう控えておく",
     "CARD_NAME": "生駒ダイヤ",
     "NEXT_REV": "",
-    "NEXT_JSON": ""
+    "NEXT_JSON": "",
+    "PAGES2": "0"
   },
   "shukkin-search-all": {
     "ID": "all",
@@ -201,6 +206,7 @@
     "SW_DIA_LINE": "    '../shukkin-search/dia-a.json',\n    '../shukkin-search-ikoma/dia-ikoma.json',\n    '../shukkin-search-ba/dia-ba-1001.json',\n    '../shukkin-search-c/dia-c-1001.json',\n    '../shukkin-search-yobi/dia-yobi.json',\n    './pdf/kinmu-keitou-ba.pdf',\n    './pdf/kinmu-keitou-c.pdf',",
     "CARD_NAME": "全ダイヤ",
     "NEXT_REV": "",
-    "NEXT_JSON": ""
+    "NEXT_JSON": "",
+    "PAGES2": "0"
   }
 }
