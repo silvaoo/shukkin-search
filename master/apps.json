@@ -29,7 +29,9 @@
     "QUICK2_LABEL": "9日後",
     "QUICK2_DAYS": "10",
     "SW_DIA_LINE": "    './dia-a.json',        // ダイヤのデータ。圏外でも使えるよう控えておく",
-    "CARD_NAME": "学園前Ａダイヤ"
+    "CARD_NAME": "学園前Ａダイヤ",
+    "NEXT_REV": "",
+    "NEXT_JSON": ""
   },
   "shukkin-search-c": {
     "ID": "c",
@@ -60,8 +62,10 @@
     "MULTI": "0",
     "QUICK2_LABEL": "9日後",
     "QUICK2_DAYS": "10",
-    "SW_DIA_LINE": "    './dia-c.json',        // ダイヤのデータ。圏外でも使えるよう控えておく",
-    "CARD_NAME": "北大和Ｃダイヤ"
+    "SW_DIA_LINE": "    './dia-c.json',        // ダイヤのデータ。圏外でも使えるよう控えておく\n    './dia-c-1001.json',   // 2026-10-01改正の新ダイヤ",
+    "CARD_NAME": "北大和Ｃダイヤ",
+    "NEXT_REV": "2026-10-01",
+    "NEXT_JSON": "./dia-c-1001.json"
   },
   "shukkin-search-yobi": {
     "ID": "yobi",
@@ -93,7 +97,9 @@
     "QUICK2_LABEL": "9日後",
     "QUICK2_DAYS": "10",
     "SW_DIA_LINE": "    './dia-yobi.json',        // ダイヤのデータ。圏外でも使えるよう控えておく",
-    "CARD_NAME": "予備ダイヤ"
+    "CARD_NAME": "予備ダイヤ",
+    "NEXT_REV": "",
+    "NEXT_JSON": ""
   },
   "shukkin-search-ba": {
     "ID": "ba",
@@ -124,8 +130,10 @@
     "MULTI": "0",
     "QUICK2_LABEL": "9日後",
     "QUICK2_DAYS": "10",
-    "SW_DIA_LINE": "    './dia-ba.json',        // ダイヤのデータ。圏外でも使えるよう控えておく",
-    "CARD_NAME": "北大和Ｂダイヤ"
+    "SW_DIA_LINE": "    './dia-ba.json',        // ダイヤのデータ。圏外でも使えるよう控えておく\n    './dia-ba-1001.json',   // 2026-10-01改正の新ダイヤ",
+    "CARD_NAME": "北大和Ｂダイヤ",
+    "NEXT_REV": "2026-10-01",
+    "NEXT_JSON": "./dia-ba-1001.json"
   },
   "shukkin-search-ikoma": {
     "ID": "ikoma",
@@ -157,7 +165,9 @@
     "QUICK2_LABEL": "9日後",
     "QUICK2_DAYS": "10",
     "SW_DIA_LINE": "    './dia-ikoma.json',        // ダイヤのデータ。圏外でも使えるよう控えておく",
-    "CARD_NAME": "生駒ダイヤ"
+    "CARD_NAME": "生駒ダイヤ",
+    "NEXT_REV": "",
+    "NEXT_JSON": ""
   },
   "shukkin-search-all": {
     "ID": "all",
@@ -189,6 +199,8 @@
     "QUICK2_LABEL": "9日後",
     "QUICK2_DAYS": "10",
     "SW_DIA_LINE": "    '../shukkin-search/dia-a.json',\n    '../shukkin-search-ikoma/dia-ikoma.json',\n    '../shukkin-search-ba/dia-ba.json',\n    '../shukkin-search-c/dia-c.json',\n    '../shukkin-search-yobi/dia-yobi.json',",
-    "CARD_NAME": "全ダイヤ"
+    "CARD_NAME": "全ダイヤ",
+    "NEXT_REV": "",
+    "NEXT_JSON": ""
   }
 }

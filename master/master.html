@@ -2061,6 +2061,16 @@ let HOLIDAYS=new Set();   // 中身は dia-{{ID}}.json から入れる
    読み込みに失敗するとアプリが使えないので、
    通信できないときのために、いったん端末に控えておく。 */
 const DIA_JSON = './dia-{{ID}}.json';
+/* ダイヤ改正で、決まった日から自動で新しいデータに切り替える。
+   改正日より前は今までのデータ、当日からは新しいデータを読む。
+   切り替え忘れが起きず、改正前に新ダイヤが見えてしまうこともない。
+   apps.json の NEXT_REV / NEXT_JSON で指定する。空なら何もしない。 */
+const NEXT_REV  = '{{NEXT_REV}}';    // 例 2026-10-01
+const NEXT_JSON = '{{NEXT_JSON}}';   // 例 ./dia-ba-1001.json
+function diaJsonUrl(){
+  if(NEXT_REV && NEXT_JSON && toISO(new Date()) >= NEXT_REV) return NEXT_JSON;
+  return DIA_JSON;
+}
 const DIA_CACHE_KEY = '{{ID}}-dia-cache';
 
 function applyDiaData(d){
@@ -2089,7 +2099,7 @@ async function loadDiaData(){
   }catch(e){}
 
   try{
-    const res = await fetch(DIA_JSON + '?v=' + cacheDay());
+    const res = await fetch(diaJsonUrl() + '?v=' + cacheDay());
     if(res.ok){
       const d = await res.json();
       applyDiaData(d);
@@ -2108,8 +2118,9 @@ const IS_MULTI = ('{{MULTI}}' === '1');
 const ALL_DIAS = [
   { code:'a',     name:'学園前Ａ', repo:'shukkin-search',       url:'../shukkin-search/dia-a.json' },
   { code:'ikoma', name:'生駒',     repo:'shukkin-search-ikoma', url:'../shukkin-search-ikoma/dia-ikoma.json' },
-  { code:'ba',    name:'北大和Ｂ', repo:'shukkin-search-ba',    url:'../shukkin-search-ba/dia-ba.json' },
-  { code:'c',     name:'北大和Ｃ', repo:'shukkin-search-c',     url:'../shukkin-search-c/dia-c.json' },
+  /* 北大和ＢとＣは2026-10-01改正。スペシャル検索くんは公開前なので先に新ダイヤを見る。 */
+  { code:'ba',    name:'北大和Ｂ', repo:'shukkin-search-ba',    url:'../shukkin-search-ba/dia-ba-1001.json' },
+  { code:'c',     name:'北大和Ｃ', repo:'shukkin-search-c',     url:'../shukkin-search-c/dia-c-1001.json' },
   { code:'yobi',  name:'予備',     repo:'shukkin-search-yobi',  url:'../shukkin-search-yobi/dia-yobi.json' }
 ];
 const ALL_SEL_KEY = '{{ID}}-sel-dia';   // 最後に選んだダイヤ
