@@ -6921,11 +6921,16 @@ async function showPdfIfExists(id, urls){
   const el=document.getElementById(id);
   if(!el) return;
   el.style.display='none';        // ダイヤを切り替えたとき、前の表示を必ず消す
+  /* 開く時に日付を付ける。
+     ダイヤ改正で資料を差し替えたとき、端末に残った古い資料が
+     出続けてしまうのを防ぐ。日が変われば別のものとして取り直される。
+     利用者に「キャッシュを消してください」と言わずに済ませるため。 */
+  const stamp = '?v=' + cacheDay();
   const list = Array.isArray(urls) ? urls : [urls];
   for(const u of list){
     try{
-      const r = await fetch(u,{method:'HEAD'});
-      if(r.ok){ el.href = u; el.style.display='block'; return; }
+      const r = await fetch(u + stamp, {method:'HEAD', cache:'no-store'});
+      if(r.ok){ el.href = u + stamp; el.style.display='block'; return; }
     }catch(e){}
   }
 }

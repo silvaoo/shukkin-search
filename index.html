@@ -4026,7 +4026,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v196';
+const APP_VERSION   = 'v197';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4248,7 +4248,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.17';
+const APP_LABEL = 'バージョン 3.18';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -6921,11 +6921,16 @@ async function showPdfIfExists(id, urls){
   const el=document.getElementById(id);
   if(!el) return;
   el.style.display='none';        // ダイヤを切り替えたとき、前の表示を必ず消す
+  /* 開く時に日付を付ける。
+     ダイヤ改正で資料を差し替えたとき、端末に残った古い資料が
+     出続けてしまうのを防ぐ。日が変われば別のものとして取り直される。
+     利用者に「キャッシュを消してください」と言わずに済ませるため。 */
+  const stamp = '?v=' + cacheDay();
   const list = Array.isArray(urls) ? urls : [urls];
   for(const u of list){
     try{
-      const r = await fetch(u,{method:'HEAD'});
-      if(r.ok){ el.href = u; el.style.display='block'; return; }
+      const r = await fetch(u + stamp, {method:'HEAD', cache:'no-store'});
+      if(r.ok){ el.href = u + stamp; el.style.display='block'; return; }
     }catch(e){}
   }
 }
