@@ -6942,8 +6942,14 @@ function initSourceView(){
   // 全ダイヤ版のときだけ、自分が持っている控えを2番目の候補にする
   const spare = IS_MULTI ? ['./pdf/shift-table-'+CUR_DIA+'.pdf'] : [];
   const spare2= IS_MULTI ? ['./pdf/kinmu-keitou-'+CUR_DIA+'.pdf'] : [];
-  showPdfIfExists('pdfShift',  [b+'pdf/shift-table.pdf'].concat(spare));
-  showPdfIfExists('pdfKeitou', [b+'pdf/kinmu-keitou.pdf'].concat(spare2));
+  /* ダイヤ改正の日を過ぎていれば、新しい資料を先に探す。
+     showPdfIfExists は先に見つかったものを使うので、先頭に置けば切り替わる。
+     まだ改正前、または新しい資料が無いアプリでは、これまでの資料が出る。 */
+  const revPdf = (NEXT_REV && toISO(new Date()) >= NEXT_REV) ? '-1001' : '';
+  const newShift  = revPdf ? [b+'pdf/shift-table'+revPdf+'.pdf'] : [];
+  const newKeitou = revPdf ? [b+'pdf/kinmu-keitou'+revPdf+'.pdf'] : [];
+  showPdfIfExists('pdfShift',  newShift.concat([b+'pdf/shift-table.pdf']).concat(spare));
+  showPdfIfExists('pdfKeitou', newKeitou.concat([b+'pdf/kinmu-keitou.pdf']).concat(spare2));
   // どのダイヤの資料かを見出しに出す（全ダイヤ版だけ）
   const t = document.getElementById('srcDiaName');
   if(t){
