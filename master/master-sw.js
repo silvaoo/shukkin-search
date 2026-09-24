@@ -56,6 +56,23 @@ self.addEventListener('fetch', (event) => {
     // Service Worker本体(sw.js / firebase-messaging-sw.js)はキャッシュしない。
     // 古い版が残ると、更新したのに反映されないという分かりにくい不具合になるため。
     if (/-?sw\.js$/.test(new URL(event.request.url).pathname)) return;
+    // PDFは毎回ネットワークを先に見る。
+    // ダイヤ改正で差し替えても、端末に残った古い資料が出続けてしまうため。
+    // 圏外のときだけ、控えてあるものを使う。
+    if (/\.pdf$/i.test(new URL(event.request.url).pathname)) {
+        event.respondWith(
+            fetch(event.request)
+                .then((res) => {
+                    if (res && res.status === 200) {
+                        const c = res.clone();
+                        caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, c));
+                    }
+                    return res;
+                })
+                .catch(() => caches.match(event.request))
+        );
+        return;
+    }
     event.respondWith(
         caches.match(event.request).then((cached) => {
             const networkFetch = fetch(event.request)
