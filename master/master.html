@@ -1157,6 +1157,12 @@ body.multi .only-single{ display:none !important; }
 .hole-bydia{ font-size:12px; color:var(--text); margin-bottom:8px;
   padding:8px 10px; border-radius:9px; background:var(--bg-card2);
   border:1px solid var(--border); line-height:1.7; }
+.hole-widen{ width:100%; padding:12px; margin-bottom:10px; border-radius:10px;
+  border:1px dashed var(--note); background:rgba(255,212,121,.08);
+  color:var(--note); font-size:13.5px; font-weight:bold; cursor:pointer;
+  font-family:'Noto Sans JP',sans-serif; }
+.hole-widen.narrow{ border-color:var(--border); color:var(--dim);
+  background:transparent; }
 .hole-ng{ font-size:11.5px; color:var(--dim); margin-bottom:8px; line-height:1.7;
   padding:7px 9px; border-radius:8px; background:rgba(128,128,160,.10); }
 .hole-ot{ font-size:12.5px; font-weight:800; color:var(--note); margin-top:3px; }
@@ -2420,10 +2426,29 @@ function rTogglePick(code){
 function rIsPicked(code){ return !!rPick[code]; }
 function rSetMode(m){
   rMode=m;
-  /* 穴埋めは他のダイヤから助っ人を探すのが目的なので、
-     開いたときは全ダイヤを対象にしておく。 */
-  if(m==='hole') ALL_DIAS.forEach(function(d){ rPick[d.code]=true; });
+  /* 穴埋めは、ふだん同じダイヤの中から選ぶ。
+     予備は全ダイヤ走れるので最初から入れておく。
+     他の営業所へ広げたいときは「ほかのダイヤにも広げる」を押す。 */
+  if(m==='hole') rHoleNarrow();
   buildRoster();
+}
+/* 同じダイヤ＋予備だけに絞る */
+function rHoleNarrow(){
+  rPick={};
+  if(rHoleDia) rPick[rHoleDia]=true;
+  rPick['yobi']=true;
+}
+/* 全ダイヤに広げる */
+function rHoleWiden(){
+  ALL_DIAS.forEach(function(d){ rPick[d.code]=true; });
+  buildRoster();
+}
+/* いま同じダイヤ＋予備だけに絞られているか */
+function rHoleIsNarrow(){
+  return ALL_DIAS.every(function(d){
+    const on=!!rPick[d.code];
+    return (d.code===rHoleDia || d.code==='yobi') ? on : !on;
+  });
 }
 function rSetSort(k){ if(rSort===k) rAsc=!rAsc; else { rSort=k; rAsc=true; } buildRoster(); }
 
@@ -2586,7 +2611,12 @@ function fitOpen(code, num){
 /* 穴埋めの入力（どのダイヤのどこが空いたか） */
 let rHoleDia='', rHoleNum='', rHolePart='all';
 
-function rSetHoleDia(c){ rHoleDia=c; buildRoster(); }
+function rSetHoleDia(c){
+  const wasNarrow = rHoleIsNarrow();
+  rHoleDia=c;
+  if(wasNarrow) rHoleNarrow();   // 絞ったままなら、新しいダイヤに合わせ直す
+  buildRoster();
+}
 function rSetHolePart(p){
   rHolePart=p;
   // 選んだ印を付け替えてから、結果だけ差し替える（入力欄はそのまま）
@@ -2794,6 +2824,15 @@ function holeResultHtml(){
   h+='<div class="hole-count">'+cands.length+'番が候補です　'
     +'<span class="hole-hint">タップすると、はめ込んだ結果が見られます</span></div>';
   if(diaList) h+='<div class="hole-bydia">'+diaList+'</div>';
+  /* 足りないときに他の営業所へ広げられるようにする。
+     ふだんは同じダイヤ＋予備だけで足りるので、押したときだけ広げる。 */
+  if(rHoleIsNarrow()){
+    h+='<button class="hole-widen" onclick="rHoleWiden()">'
+      +'🔎 ほかのダイヤにも広げて探す</button>';
+  }else{
+    h+='<button class="hole-widen narrow" onclick="rHoleNarrow();buildRoster();">'
+      +'↩ 同じダイヤと予備だけに戻す</button>';
+  }
   /* なぜ他の人が出ないのか分かるようにする。
      「公休ばかり出る」ときは、たいてい穴が長くて中間の人が入らない。 */
   const ngs=[];
