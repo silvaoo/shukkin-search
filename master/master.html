@@ -1154,6 +1154,9 @@ body.multi .only-single{ display:none !important; }
 .hole-target-s{ font-size:12.5px; font-weight:400; color:var(--dim); margin-top:3px; }
 .hole-count{ font-size:12.5px; color:var(--note); margin-bottom:6px; font-weight:bold; }
 .hole-hint{ font-size:11px; color:var(--dim); font-weight:400; }
+.hole-bydia{ font-size:12px; color:var(--text); margin-bottom:8px;
+  padding:8px 10px; border-radius:9px; background:var(--bg-card2);
+  border:1px solid var(--border); line-height:1.7; }
 .hole-ng{ font-size:11.5px; color:var(--dim); margin-bottom:8px; line-height:1.7;
   padding:7px 9px; border-radius:8px; background:rgba(128,128,160,.10); }
 .hole-ot{ font-size:12.5px; font-weight:800; color:var(--note); margin-top:3px; }
@@ -2415,7 +2418,13 @@ function rTogglePick(code){
   buildRoster();
 }
 function rIsPicked(code){ return !!rPick[code]; }
-function rSetMode(m){ rMode=m; buildRoster(); }
+function rSetMode(m){
+  rMode=m;
+  /* 穴埋めは他のダイヤから助っ人を探すのが目的なので、
+     開いたときは全ダイヤを対象にしておく。 */
+  if(m==='hole') ALL_DIAS.forEach(function(d){ rPick[d.code]=true; });
+  buildRoster();
+}
 function rSetSort(k){ if(rSort===k) rAsc=!rAsc; else { rSort=k; rAsc=true; } buildRoster(); }
 
 /* 並べ替え用に出勤時刻を分に直す。取れないものは末尾へ。 */
@@ -2777,8 +2786,14 @@ function holeResultHtml(){
       +'選ぶダイヤを増やすか、前半・後半に分けてみてください。</div>';
     return;
   }
+  /* どのダイヤから何人出せるか。他営業所の助っ人がいることに気づけるように。 */
+  const byDia={};
+  cands.forEach(function(c){ byDia[c.name]=(byDia[c.name]||0)+1; });
+  const diaList=ALL_DIAS.filter(function(d){ return byDia[d.name]; })
+    .map(function(d){ return d.name+' '+byDia[d.name]+'番'; }).join('　／　');
   h+='<div class="hole-count">'+cands.length+'番が候補です　'
     +'<span class="hole-hint">タップすると、はめ込んだ結果が見られます</span></div>';
+  if(diaList) h+='<div class="hole-bydia">'+diaList+'</div>';
   /* なぜ他の人が出ないのか分かるようにする。
      「公休ばかり出る」ときは、たいてい穴が長くて中間の人が入らない。 */
   const ngs=[];
