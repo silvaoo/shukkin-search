@@ -368,6 +368,7 @@ body {
 /* 画面の縦を目一杯使って、マスと文字を大きくする */
 .rescal-grid .cal-day {
   position: relative;            /* 公出・年休の印を中央に重ねるため */
+  background: #f4faf4;           /* 勤務表に近い薄い緑 */
   aspect-ratio: auto; min-height: 92px;
   flex-direction: column; justify-content: flex-start;
   gap: 0; padding: 4px 1px; border: 1px solid #e6e6ee;
@@ -377,10 +378,14 @@ body {
 .rescal-grid .rc-date { flex: none; }
 /* ==== 会社の勤務表に似せた並び ==== */
 .rescal-grid .cal-day{ align-items: stretch; padding: 0; overflow: hidden; }
-.rc-head{ display:flex; align-items:center; justify-content:space-between;
-  padding: 2px 3px 1px; border-bottom: 1px solid rgba(0,0,0,.18); }
-.rc-head .rc-date{ font-size: 13px; font-weight: 900; line-height: 1.1; }
-.rc-dno{ font-size: 9.5px; font-weight: 800; color: #1565c0; }
+.rc-head{ display:flex; align-items:baseline; justify-content:space-between;
+  gap:2px; padding: 2px 3px 1px; border-bottom: 1px solid rgba(0,0,0,.18);
+  background: #eaf5ea; }                 /* 勤務表に近い薄い緑 */
+.rc-head .rc-date{ font-size: 13px; font-weight: 900; line-height: 1.1;
+  flex: none; }
+/* 「◯番」は折り返さない。縦に積まれると読みにくいため。 */
+.rc-dno{ font-size: 9.5px; font-weight: 800; color: #1565c0;
+  white-space: nowrap; overflow: hidden; }
 .rescal-grid .rc-body{ flex:1; display:flex; flex-direction:column;
   justify-content:center; padding: 1px 2px 2px; gap:1px; }
 /* 通しの日は、出勤を左・退勤を右に置く */
@@ -388,8 +393,13 @@ body {
 .rc-in{ font-size: 10.5px; font-weight: 700; }
 .rc-out{ font-size: 10.5px; font-weight: 700; }
 /* 中間ダイヤは2行で */
-.rc-naka{ font-size: 8.5px; color:#c2185b; font-weight:800; line-height:1.2; }
-.rc-line{ font-size: 9px; line-height: 1.3; white-space: nowrap; }
+.rc-naka{ font-size: 8.5px; color:#c2185b; font-weight:800; line-height:1.2;
+  text-align:center; }
+/* 1行に2つの時刻を、左右に振り分けて置く */
+.rc-line{ font-size: 8.5px; line-height: 1.4; white-space: nowrap;
+  display:flex; justify-content:space-between; gap:1px;
+  font-variant-numeric: tabular-nums; letter-spacing:-0.2px; }
+.rc-line span{ overflow:hidden; }
 .rc-note2{ font-size: 8.5px; color:#6b4a10; line-height:1.25;
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .rc-off{ font-size: 12px; font-weight: 900; color:#e5484d; text-align:center; }
@@ -405,9 +415,10 @@ body {
 .rc-t { font-size: 12.5px; color: #1a1a2e; line-height: 1.3; letter-spacing: -0.4px; font-weight: 600; }
 .rc-off { font-size: 13px; font-weight: 800; color: #00915a; line-height: 1.5; }
 /* メモがある日は、ひと目で分かるようにはっきり出す */
-.rc-memo-mark { font-size: 10px; font-weight: 800; color: #fff;
-  background: #ff8c00; border-radius: 4px; margin-top: 2px; line-height: 1.5;
-  padding: 1px 3px; box-shadow: 0 0 0 1px rgba(255,140,0,.5); }
+.rc-memo-mark { font-size: 9px; font-weight: 800; color: #fff;
+  background: #ff8c00; border-radius: 4px; margin-top: 2px; line-height: 1.4;
+  padding: 1px 2px; white-space: nowrap; overflow: hidden;
+  text-overflow: clip; align-self: center; }
 .rescal-grid .cal-day.nodata { opacity: 0.3; }
 /* 今日の枠を太くする分、内側の余白を1px減らして日付の位置がズレないようにする */
 .rescal-grid .cal-day.today { border-color: #ff8c00; border-width: 2px; padding: 3px 0; }
@@ -6602,12 +6613,15 @@ function renderResultCal(){
         const st=sp[0].split('/').map(x=>x.trim());
         const en=(sp[1]||'').split('/').map(x=>x.trim());
         if(st.length===2 && en.length===2){
-          body=`<div class="rc-naka">中間解放</div>`
-             + `<div class="rc-line"><span>${st[0]}/${st[1]}</span></div>`
-             + `<div class="rc-line"><span>${en[0]}/${en[1]}</span></div>`;
+          /* 中間ダイヤは4つの時刻を2行×2に分ける。
+             「16:58/21:28」は11文字あり、マスの幅（約8文字）に入らないため。 */
+          body=`<div class="rc-naka">中間</div>`
+             + `<div class="rc-line"><span>${st[0]}</span><span>${st[1]}</span></div>`
+             + `<div class="rc-line"><span>${en[0]}</span><span>${en[1]}</span></div>`;
         }else if(st.length===1 && en.length===1){
-          body=`<div class="rc-row"><span class="rc-in">${st[0]}</span>`
-             + `<span class="rc-out">${en[0]}</span></div>`;
+          /* 日勤も2行にする。横に並べると狭いマスで時刻が切れるため。 */
+          body=`<div class="rc-line"><span>${st[0]}</span></div>`
+             + `<div class="rc-line"><span>${en[0]}</span></div>`;
         }else{
           body=`<div class="rc-line"><span>要確認</span></div>`;
         }
