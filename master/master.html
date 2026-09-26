@@ -2432,22 +2432,23 @@ function rSetMode(m){
   if(m==='hole') rHoleNarrow();
   buildRoster();
 }
-/* 同じダイヤ＋予備だけに絞る */
+/* 同じダイヤだけに絞る。
+   ふだんは同じダイヤの中から選ぶのが基本なので、
+   予備も含めて他のダイヤは、選んだときだけ候補に入れる。 */
 function rHoleNarrow(){
   rPick={};
   if(rHoleDia) rPick[rHoleDia]=true;
-  rPick['yobi']=true;
 }
 /* 全ダイヤに広げる */
 function rHoleWiden(){
   ALL_DIAS.forEach(function(d){ rPick[d.code]=true; });
   buildRoster();
 }
-/* いま同じダイヤ＋予備だけに絞られているか */
+/* いま同じダイヤだけに絞られているか */
 function rHoleIsNarrow(){
   return ALL_DIAS.every(function(d){
     const on=!!rPick[d.code];
-    return (d.code===rHoleDia || d.code==='yobi') ? on : !on;
+    return (d.code===rHoleDia) ? on : !on;
   });
 }
 function rSetSort(k){ if(rSort===k) rAsc=!rAsc; else { rSort=k; rAsc=true; } buildRoster(); }
@@ -2828,10 +2829,10 @@ function holeResultHtml(){
      ふだんは同じダイヤ＋予備だけで足りるので、押したときだけ広げる。 */
   if(rHoleIsNarrow()){
     h+='<button class="hole-widen" onclick="rHoleWiden()">'
-      +'🔎 ほかのダイヤにも広げて探す</button>';
+      +'🔎 予備や他のダイヤにも広げて探す</button>';
   }else{
     h+='<button class="hole-widen narrow" onclick="rHoleNarrow();buildRoster();">'
-      +'↩ 同じダイヤと予備だけに戻す</button>';
+      +'↩ 同じダイヤだけに戻す</button>';
   }
   /* なぜ他の人が出ないのか分かるようにする。
      「公休ばかり出る」ときは、たいてい穴が長くて中間の人が入らない。 */

@@ -2432,22 +2432,23 @@ function rSetMode(m){
   if(m==='hole') rHoleNarrow();
   buildRoster();
 }
-/* 同じダイヤ＋予備だけに絞る */
+/* 同じダイヤだけに絞る。
+   ふだんは同じダイヤの中から選ぶのが基本なので、
+   予備も含めて他のダイヤは、選んだときだけ候補に入れる。 */
 function rHoleNarrow(){
   rPick={};
   if(rHoleDia) rPick[rHoleDia]=true;
-  rPick['yobi']=true;
 }
 /* 全ダイヤに広げる */
 function rHoleWiden(){
   ALL_DIAS.forEach(function(d){ rPick[d.code]=true; });
   buildRoster();
 }
-/* いま同じダイヤ＋予備だけに絞られているか */
+/* いま同じダイヤだけに絞られているか */
 function rHoleIsNarrow(){
   return ALL_DIAS.every(function(d){
     const on=!!rPick[d.code];
-    return (d.code===rHoleDia || d.code==='yobi') ? on : !on;
+    return (d.code===rHoleDia) ? on : !on;
   });
 }
 function rSetSort(k){ if(rSort===k) rAsc=!rAsc; else { rSort=k; rAsc=true; } buildRoster(); }
@@ -2828,10 +2829,10 @@ function holeResultHtml(){
      ふだんは同じダイヤ＋予備だけで足りるので、押したときだけ広げる。 */
   if(rHoleIsNarrow()){
     h+='<button class="hole-widen" onclick="rHoleWiden()">'
-      +'🔎 ほかのダイヤにも広げて探す</button>';
+      +'🔎 予備や他のダイヤにも広げて探す</button>';
   }else{
     h+='<button class="hole-widen narrow" onclick="rHoleNarrow();buildRoster();">'
-      +'↩ 同じダイヤと予備だけに戻す</button>';
+      +'↩ 同じダイヤだけに戻す</button>';
   }
   /* なぜ他の人が出ないのか分かるようにする。
      「公休ばかり出る」ときは、たいてい穴が長くて中間の人が入らない。 */
@@ -4080,7 +4081,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v201';
+const APP_VERSION   = 'v202';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4302,7 +4303,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.22';
+const APP_LABEL = 'バージョン 3.23';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
