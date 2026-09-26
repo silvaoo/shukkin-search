@@ -1124,9 +1124,13 @@ body.multi .only-single{ display:none !important; }
 .rcd-ot{ width:100%; padding:12px; margin-top:12px; border:none; border-radius:10px;
   background:linear-gradient(135deg,{{SOON_A}},{{SOON_B}}); color:{{SOON_TX}};
   font-size:15px; font-weight:bold; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
-.rcd-memo{ width:100%; padding:12px; margin-top:8px; border-radius:10px;
-  border:1px dashed var(--border); background:transparent; color:var(--text);
-  font-size:15px; font-weight:bold; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
+/* メモのボタン。この画面は明るい背景なので、色を固定して使う。
+   var(--text) は暗い画面では白に近く、白地に白文字で読めなくなるため。 */
+.rcd-memo{ width:100%; padding:13px; margin-top:8px; border-radius:10px;
+  border:2px solid #1565c0; background:#e8f1fb; color:#0d47a1;
+  font-size:15.5px; font-weight:800; cursor:pointer;
+  font-family:'Noto Sans JP',sans-serif; }
+.rcd-memo:active{ background:#d3e4f7; }
 .ot-addrow{ width:100%; padding:11px; margin-top:8px; border-radius:9px;
   border:1px dashed var(--border); background:transparent; color:var(--note);
   font-size:13px; font-weight:bold; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
