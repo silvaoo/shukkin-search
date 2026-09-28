@@ -3036,9 +3036,8 @@ function nextWorkDay(from){
     const dt=dayType(d);
     // その日に別のダイヤで出ると登録してあれば、それを優先する
     if(rec && rec.adds && rec.adds.length){
-      const r0=DB[rec.adds[0].dial];
-      const s0=(r0&&r0[dt])?r0[dt]:null;
-      if(s0 && String(s0.o)!=='—') return {date:new Date(d), dial:rec.adds[0].dial, slot:s0};
+      const s0=otSlotOf(rec.adds[0].code||'{{ID}}', rec.adds[0].dial, d);
+      if(s0) return {date:new Date(d), dial:rec.adds[0].dial, slot:s0};
     }
     const r=DB[dial];
     const slot=(r&&r[dt])?r[dt]:null;
@@ -3120,8 +3119,9 @@ function otTodayHtml(v,m,d,dtLabel,r){
     real.push({dial:v, part:r.base, slot:slot0, mine:true});
   }
   (r.adds||[]).forEach(function(x){
-    const rec=DB[x.dial], sl=(rec&&rec[dt]&&String(rec[dt].o)!=='—')?rec[dt]:null;
-    real.push({dial:x.dial, part:x.part, slot:sl, mine:false});
+    const sl=otSlotOf(x.code||'{{ID}}', x.dial, new Date());
+    real.push({dial:x.dial, part:x.part, slot:sl, mine:false,
+               code:x.code||'{{ID}}'});
   });
 
   /* 出勤の早い順に並べ替える。朝いちばん早いものを先頭に。 */
@@ -3248,7 +3248,7 @@ function buildCard(){
       otList.push({dial:v, part:otRec.base, slot:slot});
     }
     otRec.adds.forEach(function(x){
-      const r2=DB[x.dial], s2=(r2&&r2[dt]&&String(r2[dt].o)!=='—')?r2[dt]:null;
+      const s2=otSlotOf(x.code||'{{ID}}', x.dial, (typeof date!=='undefined'?date:(typeof today!=='undefined'?today:new Date())));
       if(s2) otList.push({dial:x.dial, part:x.part, slot:s2});
     });
     otList.sort(function(a,b){
@@ -3414,7 +3414,7 @@ function handleSpeakToday(){
       list.push({dial:v, part:otRec.base, slot:base0});
     }
     otRec.adds.forEach(function(x){
-      const r2=DB[x.dial], s2=(r2&&r2[dt]&&String(r2[dt].o)!=='—')?r2[dt]:null;
+      const s2=otSlotOf(x.code||'{{ID}}', x.dial, (typeof date!=='undefined'?date:(typeof today!=='undefined'?today:new Date())));
       if(s2) list.push({dial:x.dial, part:x.part, slot:s2});
     });
     const partW={all:'', first:'の前半', second:'の後半'};
@@ -3720,9 +3720,8 @@ function realDutyHtml(iso){
     if(sl) list.push({dial:bd, part:r.base, slot:sl});
   }
   r.adds.forEach(function(x){
-    const rec=DB[x.dial];
-    const sl=(rec&&rec[dt]&&String(rec[dt].o)!=='—')?rec[dt]:null;
-    list.push({dial:x.dial, part:x.part, slot:sl});
+    const sl=otSlotOf(x.code||'{{ID}}', x.dial, d);
+    list.push({dial:x.dial, part:x.part, slot:sl, code:x.code||'{{ID}}'});
   });
   if(!list.length) return '';
 
@@ -3928,7 +3927,7 @@ function todayShiftPairs(v){
       }
     }
     rec0.adds.forEach(function(a){
-      const r2=DB[a.dial], s2=(r2&&r2[dt]&&String(r2[dt].o)!=='—')?r2[dt]:null;
+      const s2=otSlotOf(a.code||'{{ID}}', a.dial, (typeof date!=='undefined'?date:(typeof today!=='undefined'?today:new Date())));
       if(!s2) return;
       const pr=shiftPairsOf(s2.o);
       if(!pr) return;
@@ -4951,15 +4950,16 @@ function otCalc(date, base, adds, forceKyu){
   let addEval=0, addLabor=0, addHeld=0;
 
   for(const a of (adds||[])){
-    const rec=DB[a.dial];
-    const slot=(rec&&rec[dt])?rec[dt]:null;
-    if(!slot||String(slot.o)==='—'){
-      return {ok:false, msg:a.dial+'番は この日 公休か、時刻が確定していません'};
+    const code=a.code||'{{ID}}';
+    const slot=otSlotOf(code, a.dial, date);
+    if(!slot){
+      return {ok:false, msg:(code!=='{{ID}}'?otDiaName(code)+' ':'')
+                          +a.dial+'番は この日 公休か、時刻が確定していません'};
     }
     addEval  += otEval(slot, a.part);
     addLabor += otPart(slot.w, a.part);
     addHeld  += otHeldPart(slot.o, a.part);
-    rows.push({dial:a.dial, part:a.part, o:slot.o, w:slot.w});
+    rows.push({dial:a.dial, part:a.part, o:slot.o, w:slot.w, code:code});
   }
 
   // 公休の日は、番号が分からなくても（他営業所のダイヤなど）公出として扱える
@@ -5070,7 +5070,7 @@ function otDaySpan(date, rec){
       if(s0) list.push(s0.o);
     }
     rec.adds.forEach(function(x){
-      const r2=DB[x.dial], s2=(r2&&r2[dt]&&String(r2[dt].o)!=='—')?r2[dt]:null;
+      const s2=otSlotOf(x.code||'{{ID}}', x.dial, (typeof date!=='undefined'?date:(typeof today!=='undefined'?today:new Date())));
       if(s2) list.push(s2.o);
     });
   }
@@ -5125,7 +5125,7 @@ function limitTotals(periodStartIso, addIso, addMin){
         if(s0) held += otHeldPart(s0.o, rec.base);
       }
       rec.adds.forEach(function(x){
-        const r2=DB[x.dial], s2=(r2&&r2[dt]&&String(r2[dt].o)!=='—')?r2[dt]:null;
+        const s2=otSlotOf(x.code||'{{ID}}', x.dial, (typeof date!=='undefined'?date:(typeof today!=='undefined'?today:new Date())));
         if(s2) held += otHeldPart(s2.o, x.part);
       });
     }else{
@@ -5236,17 +5236,77 @@ function dpRender(){
   document.getElementById('dpGrid').innerHTML=h;
 }
 
+/* ==== 他のダイヤのデータ ====
+   予備の人が学園前を走ったり、学園前の人が生駒を走ったりする。
+   そういう日の時間外を入れられるよう、他のダイヤも読めるようにしておく。
+   自分の勤務の表示には一切使わない。時間外を入れるときだけ使う。 */
+const OTHER_DIAS = [
+  { code:'a',     name:'学園前Ａ', url:'../shukkin-search/dia-a.json' },
+  { code:'ikoma', name:'生駒',     url:'../shukkin-search-ikoma/dia-ikoma.json' },
+  { code:'ba',    name:'北大和Ｂ', url:'../shukkin-search-ba/dia-ba.json' },
+  { code:'c',     name:'北大和Ｃ', url:'../shukkin-search-c/dia-c.json' },
+  { code:'yobi',  name:'予備',     url:'../shukkin-search-yobi/dia-yobi.json' }
+];
+let OTHER_DB = {};          // code をキーに、読み込んだデータ
+const OTHER_KEY = '{{ID}}-other-dias';   // 圏外用の控え
+
+/* 他のダイヤを読む。自分のダイヤは手元のものを使う。 */
+async function loadOtherDias(){
+  // まず控えから読んで、すぐ使えるようにする
+  try{
+    const saved=JSON.parse(localStorage.getItem(OTHER_KEY)||'null');
+    if(saved) OTHER_DB=saved;
+  }catch(e){}
+  OTHER_DB['{{ID}}'] = {meta:{cycle:CUR_MAX}, dials:DB};   // 自分のぶん
+
+  for(const d of OTHER_DIAS){
+    if(d.code==='{{ID}}') continue;
+    try{
+      const r=await fetch(d.url+'?v='+cacheDay());
+      if(!r.ok) continue;
+      const j=await r.json();
+      if(j && j.dials) OTHER_DB[d.code]=j;
+    }catch(e){}
+  }
+  // 圏外でも選べるよう控えておく（自分のぶんは手元にあるので省く）
+  try{
+    const save={};
+    for(const k in OTHER_DB){ if(k!=='{{ID}}') save[k]=OTHER_DB[k]; }
+    localStorage.setItem(OTHER_KEY, JSON.stringify(save));
+  }catch(e){}
+}
+
+/* ある番号の、その日の勤務を取り出す。ダイヤをまたいで使える。 */
+function otSlotOf(code, num, date){
+  const j = (code==='{{ID}}') ? {dials:DB} : OTHER_DB[code];
+  if(!j || !j.dials) return null;
+  const rec=j.dials[String(num)];
+  const slot=(rec&&rec[dayType(date)])?rec[dayType(date)]:null;
+  return (slot && slot.o && String(slot.o)!=='—') ? slot : null;
+}
+/* そのダイヤの番号の上限 */
+function otMaxOf(code){
+  if(code==='{{ID}}') return CUR_MAX;
+  const j=OTHER_DB[code];
+  return (j&&j.meta&&j.meta.cycle)?j.meta.cycle:99;
+}
+/* ダイヤの名前 */
+function otDiaName(code){
+  const d=OTHER_DIAS.find(function(x){ return x.code===code; });
+  return d?d.name:code;
+}
+
 /* ==== 時間外の画面まわり ==== */
 let otFromMyPage=false;   // マイページから開いたか（閉じたらそこへ戻す）
 let otKind=null;          // 'work' 勤務の日 / 'kyu' 公休・指定公休 / 'leave' 年休
 let otBaseSel='all';      // 本来のダイヤをどう乗ったか
-let otAdds=[{dial:'',part:'all'}];   // 付いたものの一覧
+let otAdds=[{dial:'',part:'all',code:'{{ID}}'}];   // 付いたものの一覧
 let otEdited=false;
 let otLast=null;
 
 function openOt(iso){
   otBaseSel='all'; otEdited=false; otLast=null; otKind=null;  // null = まだ選んでいない
-  otAdds=[{dial:'',part:'all'}];
+  otAdds=[{dial:'',part:'all',code:'{{ID}}'}];
   otSetDateVal(iso || toISO(new Date()));
   document.getElementById('otNote').value = '';
   document.getElementById('otH').value=''; document.getElementById('otM').value='';
@@ -5345,9 +5405,15 @@ function otRenderAdds(){
   box.innerHTML = otAdds.map(function(r,i){
     const p=function(v,lb){ return '<button class="ot-part'+(r.part===v?' on':'')
       +'" onclick="otSetAddPart('+i+',\''+v+'\')">'+lb+'</button>'; };
+    const code = r.code || '{{ID}}';
+    const opts = OTHER_DIAS.filter(function(d){ return d.code==='{{ID}}' || OTHER_DB[d.code]; })
+      .map(function(d){
+        return '<option value="'+d.code+'"'+(code===d.code?' selected':'')+'>'+d.name+'</option>';
+      }).join('');
     return '<div class="ot-addrow-box">'
       +'<div class="ot-addrow-top">'
-        +'<input type="number" class="ot-in ot-dial" min="1" max="'+CUR_MAX+'" inputmode="numeric"'
+        +'<select class="ot-in ot-diasel" onchange="otSetAddCode('+i+',this.value)">'+opts+'</select>'
+        +'<input type="number" class="ot-in ot-dial" min="1" max="'+otMaxOf(code)+'" inputmode="numeric"'
         +' placeholder="番号" value="'+(r.dial||'')+'" oninput="otSetAddDial('+i+',this.value)">'
         +(otAdds.length>1?'<button class="ot-rowdel" onclick="otDelRow('+i+')">✕</button>':'')
       +'</div>'
@@ -5355,9 +5421,17 @@ function otRenderAdds(){
       +'</div>';
   }).join('');
 }
-function otAddRow(){ otAdds.push({dial:'',part:'all'}); otRenderAdds(); otPreview(); }
+function otAddRow(){ otAdds.push({code:'{{ID}}',dial:'',part:'all'}); otRenderAdds(); otPreview(); }
 function otDelRow(i){ otAdds.splice(i,1); otRenderAdds(); otPreview(); }
 function otSetAddDial(i,v){ otAdds[i].dial=v; otEdited=false; otPreview(); }
+/* 走ったダイヤを選び直す。番号の上限が変わるので入れ直してもらう。 */
+function otSetAddCode(i,v){
+  otAdds[i].code=v;
+  otAdds[i].dial='';
+  otEdited=false;
+  otRenderAdds();
+  otPreview();
+}
 function otSetAddPart(i,v){ otAdds[i].part=v; otEdited=false; otRenderAdds(); otPreview(); }
 
 /* 入力に合わせて計算し、結果を出す */
@@ -5394,8 +5468,10 @@ function otPreview(){
   const wrap=document.getElementById('otBaseWrap');
   if(wrap) wrap.style.display = bs ? 'block' : 'none';
 
-  const adds=otAdds.filter(function(r){ const n=parseInt(r.dial); return n>=1&&n<=CUR_MAX; })
-                   .map(function(r){ return {dial:parseInt(r.dial), part:r.part}; });
+  const adds=otAdds.filter(function(r){
+      const n=parseInt(r.dial);
+      return n>=1 && n<=otMaxOf(r.code||'{{ID}}');
+    }).map(function(r){ return {dial:parseInt(r.dial), part:r.part, code:r.code||'{{ID}}'}; });
   if(adds.length===0){ box.innerHTML='付いたダイヤ番号を入れてください'; otLast=null; return; }
 
   const r=otCalc(date, bs?otBaseSel:'none', adds, otKind==='kyu');
@@ -5455,7 +5531,8 @@ function otPreview(){
   box.innerHTML =
      '<div class="ot-sub">本来：'+r.baseLabel+'</div>'
     +r.rows.map(function(x){
-        return '<div class="ot-sub">＋ '+x.dial+'番 '+partLb[x.part]+' '+x.o+'（労働 '+x.w+'）</div>';
+        const nm=(x.code && x.code!=='{{ID}}') ? (otDiaName(x.code)+' ') : '';
+        return '<div class="ot-sub">＋ '+nm+x.dial+'番 '+partLb[x.part]+' '+x.o+'（労働 '+x.w+'）</div>';
       }).join('')
     +'<div class="ot-sub">'+r.how+'</div>'
     +'<div class="ot-big">時間外 '+(r.ot===null?'（手で入れてください）':otFmt(r.ot))+'</div>'
@@ -5472,8 +5549,10 @@ function otStore(){
   if(!iso){ showToast('日付を入れてください'); return; }
   const h=parseInt(document.getElementById('otH').value)||0;
   const mi=parseInt(document.getElementById('otM').value)||0;
-  const adds=otAdds.filter(function(r){ const n=parseInt(r.dial); return n>=1&&n<=CUR_MAX; })
-                   .map(function(r){ return {dial:parseInt(r.dial), part:r.part}; });
+  const adds=otAdds.filter(function(r){
+      const n=parseInt(r.dial);
+      return n>=1 && n<=otMaxOf(r.code||'{{ID}}');
+    }).map(function(r){ return {dial:parseInt(r.dial), part:r.part, code:r.code||'{{ID}}'}; });
   if(adds.length===0 && otKind==='work'){ showToast('付いたダイヤ番号を入れてください'); return; }
   const all=otLoad();
   all[iso]={
