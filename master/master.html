@@ -1137,7 +1137,10 @@ body.multi .only-single{ display:none !important; }
 .ot-addrow-box{ padding:10px; margin-bottom:8px; border-radius:10px;
   background:var(--bg-card2); border:1px solid var(--border); }
 .ot-addrow-top{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
-.ot-dial{ flex:1; }
+/* ダイヤの選択。中身に合わせて縮み、番号の欄を押し出さない。 */
+.ot-diasel{ flex:1; min-width:0; font-size:15px; padding:10px 8px; }
+/* 番号の欄。独立した行にして、必ず見えるようにする。 */
+.ot-dial{ width:100%; margin-bottom:8px; }
 .ot-rowdel{ background:none; border:none; color:var(--dim); font-size:18px;
   cursor:pointer; padding:2px 8px; }
 
@@ -5425,13 +5428,16 @@ function otRenderAdds(){
       .map(function(d){
         return '<option value="'+d.code+'"'+(code===d.code?' selected':'')+'>'+d.name+'</option>';
       }).join('');
+    /* ダイヤの選択と番号は上下に分ける。
+       横に3つ並べると、狭い画面で番号の欄が押し出されて見えなくなる。 */
     return '<div class="ot-addrow-box">'
       +'<div class="ot-addrow-top">'
         +'<select class="ot-in ot-diasel" onchange="otSetAddCode('+i+',this.value)">'+opts+'</select>'
-        +'<input type="number" class="ot-in ot-dial" min="1" max="'+otMaxOf(code)+'" inputmode="numeric"'
-        +' placeholder="番号" value="'+(r.dial||'')+'" oninput="otSetAddDial('+i+',this.value)">'
         +(otAdds.length>1?'<button class="ot-rowdel" onclick="otDelRow('+i+')">✕</button>':'')
       +'</div>'
+      +'<input type="number" class="ot-in ot-dial" min="1" max="'+otMaxOf(code)+'" inputmode="numeric"'
+      +' placeholder="'+otDiaName(code)+'の番号（1〜'+otMaxOf(code)+'）" value="'+(r.dial||'')+'"'
+      +' oninput="otSetAddDial('+i+',this.value)">'
       +'<div class="ot-parts">'+p('all','まるごと')+p('first','前半だけ')+p('second','後半だけ')+'</div>'
       +'</div>';
   }).join('');
