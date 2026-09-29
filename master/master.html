@@ -5251,7 +5251,10 @@ let OTHER_DB = {};          // code をキーに、読み込んだデータ
 const OTHER_KEY = '{{ID}}-other-dias';   // 圏外用の控え
 
 /* 他のダイヤを読む。自分のダイヤは手元のものを使う。 */
+let _otherLoading=false, _otherDone=false;
 async function loadOtherDias(){
+  if(_otherLoading || _otherDone) return;   // 二重に読まない
+  _otherLoading=true;
   // まず控えから読んで、すぐ使えるようにする
   try{
     const saved=JSON.parse(localStorage.getItem(OTHER_KEY)||'null');
@@ -5274,9 +5277,16 @@ async function loadOtherDias(){
     for(const k in OTHER_DB){ if(k!=='{{ID}}') save[k]=OTHER_DB[k]; }
     localStorage.setItem(OTHER_KEY, JSON.stringify(save));
   }catch(e){}
-  // 読み終わる前に時間外の画面を開いていたら、選べるように描き直す
+  _otherLoading=false; _otherDone=true;
+  /* 読み終わったとき画面が開いていれば描き直す。
+     ただし番号を入力中なら触らない。作り直すとカーソルが外れて
+     1文字しか打てなくなるため。 */
   const m=document.getElementById('otModal');
-  if(m && m.classList.contains('active')) otRenderAdds();
+  if(m && m.classList.contains('active')){
+    const a=document.activeElement;
+    const typing = a && a.classList && a.classList.contains('ot-dial');
+    if(!typing) otRenderAdds();
+  }
 }
 
 /* ある番号の、その日の勤務を取り出す。ダイヤをまたいで使える。 */
@@ -5437,7 +5447,19 @@ function otSetAddCode(i,v){
   otRenderAdds();
   otPreview();
 }
-function otSetAddPart(i,v){ otAdds[i].part=v; otEdited=false; otRenderAdds(); otPreview(); }
+function otSetAddPart(i,v){
+  otAdds[i].part=v; otEdited=false;
+  /* 選んだ印だけ付け替える。作り直すと、打ちかけの番号でカーソルが外れるため。 */
+  const boxes=document.querySelectorAll('#otAddList .ot-addrow-box');
+  if(boxes[i]){
+    boxes[i].querySelectorAll('.ot-part').forEach(function(b,j){
+      b.classList.toggle('on', ['all','first','second'][j]===v);
+    });
+  }else{
+    otRenderAdds();
+  }
+  otPreview();
+}
 
 /* 入力に合わせて計算し、結果を出す */
 function otPreview(){
