@@ -5274,6 +5274,9 @@ async function loadOtherDias(){
     for(const k in OTHER_DB){ if(k!=='{{ID}}') save[k]=OTHER_DB[k]; }
     localStorage.setItem(OTHER_KEY, JSON.stringify(save));
   }catch(e){}
+  // 読み終わる前に時間外の画面を開いていたら、選べるように描き直す
+  const m=document.getElementById('otModal');
+  if(m && m.classList.contains('active')) otRenderAdds();
 }
 
 /* ある番号の、その日の勤務を取り出す。ダイヤをまたいで使える。 */
@@ -5305,6 +5308,8 @@ let otEdited=false;
 let otLast=null;
 
 function openOt(iso){
+  // 他のダイヤがまだ読めていなければ、ここで読みに行く
+  if(Object.keys(OTHER_DB).length<=1) loadOtherDias();
   otBaseSel='all'; otEdited=false; otLast=null; otKind=null;  // null = まだ選んでいない
   otAdds=[{dial:'',part:'all',code:'{{ID}}'}];
   otSetDateVal(iso || toISO(new Date()));
@@ -7274,6 +7279,10 @@ window.onload=async function(){
   }else{
     await loadDiaData();   // 先にダイヤのデータを読み込む
   }
+  /* 他のダイヤも読んでおく。時間外で別のダイヤを走った日を入れられるように。
+     自分のダイヤを読んだあとに呼ぶ（CUR_MAX と DB が要るため）。
+     待たずに進めるので、起動が遅くなることはない。 */
+  loadOtherDias();
   /* 前回どこかで画面のロックが残っていたら、必ず解除しておく。
      これが残っていると、開いた瞬間から操作できないように見える。 */
   document.body.style.overflow='';
