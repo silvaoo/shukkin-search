@@ -396,9 +396,11 @@ body {
 .rc-naka{ font-size: 8.5px; color:#c2185b; font-weight:800; line-height:1.2;
   text-align:center; }
 /* 1行に2つの時刻を、左右に振り分けて置く */
-.rc-line{ font-size: 8.5px; line-height: 1.4; white-space: nowrap;
+.rc-line{ font-size: 10px; line-height: 1.4; white-space: nowrap;
   display:flex; justify-content:space-between; gap:1px;
-  font-variant-numeric: tabular-nums; letter-spacing:-0.2px; }
+  font-variant-numeric: tabular-nums; }
+/* 1行に2つの時刻を入れる中間ダイヤだけ、小さくして端が切れないようにする */
+.rc-2up{ font-size: 7.5px; letter-spacing:-0.3px; gap:0; }
 .rc-line span{ overflow:hidden; }
 .rc-note2{ font-size: 8.5px; color:#6b4a10; line-height:1.25;
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -6730,10 +6732,10 @@ function renderResultCal(){
         const en=(sp[1]||'').split('/').map(x=>x.trim());
         if(st.length===2 && en.length===2){
           /* 中間ダイヤは4つの時刻を2行×2に分ける。
-             「16:58/21:28」は11文字あり、マスの幅（約8文字）に入らないため。 */
+             1行に2つ入るので、日勤より小さい字でないと端が切れる。 */
           body=`<div class="rc-naka">中間</div>`
-             + `<div class="rc-line"><span>${st[0]}</span><span>${st[1]}</span></div>`
-             + `<div class="rc-line"><span>${en[0]}</span><span>${en[1]}</span></div>`;
+             + `<div class="rc-line rc-2up"><span>${st[0]}</span><span>${st[1]}</span></div>`
+             + `<div class="rc-line rc-2up"><span>${en[0]}</span><span>${en[1]}</span></div>`;
         }else if(st.length===1 && en.length===1){
           /* 日勤も2行にする。横に並べると狭いマスで時刻が切れるため。 */
           body=`<div class="rc-line"><span>${st[0]}</span></div>`
