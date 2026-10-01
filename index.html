@@ -73,6 +73,10 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Noto Sans JP', sans-serif;
+  /* 文字の大きさを決めておく。指定が無いと端末まかせになり、
+     iPhoneは17px、Androidは16pxで出るため、iPhoneだけ大きく見えていた。
+     大きさを指定していない部分は、ここの値を引き継ぐ。 */
+  font-size: 15px;
   min-height: 100vh;
   padding: 14px 12px 50px;
   transition: background 0.3s, color 0.3s;
@@ -4144,7 +4148,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v214';
+const APP_VERSION   = 'v215';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4366,7 +4370,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.35';
+const APP_LABEL = 'バージョン 3.36';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');

@@ -73,6 +73,10 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Noto Sans JP', sans-serif;
+  /* 文字の大きさを決めておく。指定が無いと端末まかせになり、
+     iPhoneは17px、Androidは16pxで出るため、iPhoneだけ大きく見えていた。
+     大きさを指定していない部分は、ここの値を引き継ぐ。 */
+  font-size: 15px;
   min-height: 100vh;
   padding: 14px 12px 50px;
   transition: background 0.3s, color 0.3s;
