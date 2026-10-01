@@ -1742,6 +1742,7 @@ a.source-link:visited {
     <button class="notify-btn" id="notifyBtn" onclick="toggleNotify()">🔕 更新のお知らせ：オフ</button>
   </div>
   <div class="app-info" id="appInfo"></div>
+  <div class="app-info" id="diaInfo"></div>
   <div class="credit" style="margin-top:10px;">by AIタケタニ</div>
 </div>
 
@@ -2180,6 +2181,7 @@ function applyDiaData(d){
     BASE_DATE = new Date(p[0], p[1]-1, p[2]);
   }
   if(d.meta && d.meta.baseDial) BASE_DIAL = d.meta.baseDial;
+  try{ renderDiaInfo(); }catch(e){}
   // 改正日。これより前は今のデータで計算しても実際と違うので、ふりかえりで出さない
   REVISION_ISO = (d.meta && d.meta.revision) ? String(d.meta.revision) : '';
 }
@@ -4697,6 +4699,10 @@ function initSW(){
   });
   if(!('serviceWorker' in navigator))return;
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg)=>{
+    /* 起動のたびに、新しい sw.js が出ていないか必ず確かめる。
+       これが無いと、端末に入っている古い版がいつまでも使われ、
+       アプリを直しても届かないことがある（2026-10-01）。 */
+    try{ reg.update(); }catch(e){}
     reg.addEventListener('updatefound',()=>{
       const nw=reg.installing; if(!nw)return;
       nw.addEventListener('statechange',()=>{
@@ -5390,6 +5396,15 @@ function renderHeadRev(j){
     if(p.length===3) lb=p[0]+'年'+p[1]+'月'+p[2]+'日改正 ／ ';
   }
   el.textContent = lb + '1〜' + max + '番';
+}
+
+/* いま何を読み込んでいるかを、フッターの版表示の横に出す。
+   実機で確かめられないと、直したつもりで届いていないことに気づけない。 */
+function renderDiaInfo(){
+  const el=document.getElementById('diaInfo');
+  if(!el) return;
+  const n=Object.keys(DB).length;
+  el.textContent = n ? ('ダイヤ ' + (REVISION_ISO||'—') + '改正 ／ ' + n + '番') : 'ダイヤ 未取得';
 }
 
 /* ある番号の、その日の勤務を取り出す。ダイヤをまたいで使える。 */
