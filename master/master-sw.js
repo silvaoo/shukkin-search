@@ -32,7 +32,13 @@ self.addEventListener('install', (event) => {
             Promise.all(CACHE_FILES.map((f) => cache.add(f).catch(() => null)))
         )
     );
-    // ここでは skipWaiting() を呼ばない。
+    /* 新しい版をすぐ有効にする。
+       以前は待機させて、利用者がバナーを押すまで切り替えていなかった。
+       そのため index.html が古いまま控えから返され続け、
+       ダイヤ改正をしても端末に新しいコードが届かなかった（2026-10-01）。
+       更新のお知らせは別の仕組みで出しているので、待機させる必要はない。 */
+    self.skipWaiting();
+    // 以前の考え方（参考）:
     // 呼ぶと新しい版が即座に切り替わってしまい、更新バナーや通知を出す間がなくなるため。
     // 利用者がバナーをタップした時に SKIP_WAITING メッセージで切り替える。
 });
@@ -56,6 +62,24 @@ self.addEventListener('fetch', (event) => {
     // Service Worker本体(sw.js / firebase-messaging-sw.js)はキャッシュしない。
     // 古い版が残ると、更新したのに反映されないという分かりにくい不具合になるため。
     if (/-?sw\.js$/.test(new URL(event.request.url).pathname)) return;
+    /* 画面そのもの（HTML）は毎回ネットワークを先に見る。
+       控えを先に返すと、アプリを直しても古い画面が出続ける。
+       圏外のときだけ控えを使う。 */
+    const _p = new URL(event.request.url).pathname;
+    if (event.request.mode === 'navigate' || /\.html$/i.test(_p) || _p.endsWith('/')) {
+        event.respondWith(
+            fetch(event.request)
+                .then((res) => {
+                    if (res && res.status === 200) {
+                        const c = res.clone();
+                        caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, c));
+                    }
+                    return res;
+                })
+                .catch(() => caches.match(event.request).then((c) => c || caches.match('./index.html')))
+        );
+        return;
+    }
     // ダイヤのデータも毎回ネットワークを先に見る。
     // 控えを先に返すと、ダイヤ改正をしても古いダイヤが出続けてしまう。
     // 圏外のときだけ、控えてあるものを使う。
