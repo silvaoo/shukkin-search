@@ -671,7 +671,7 @@ body.light #todayInput { background: #fff; }
 }
 
 /* ==== クイック検索 ==== */
-.quick-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.quick-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1fr); gap: 8px; }
 .qbtn {
   background: var(--bg-card2); border: 1px solid var(--blue); color: var(--blue);
   padding: 7px 6px; border-radius: 10px; cursor: pointer; font-size: 14px;
@@ -861,15 +861,23 @@ body.light .stamp { opacity: 0.28; }
   text-shadow: 0 0 10px rgba(255,140,0,0.4); line-height: 1; margin-bottom: 10px;
 }
 .day-dial span { font-size: 14px; color: var(--dim); font-family: 'Noto Sans JP', sans-serif; font-weight: 400; }
-.day-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.day-box { background: var(--bg-card2); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px 12px; }
+/* minmax(0,…) を付けないと、中身の長さに押されて枠からはみ出す。
+   iPhone のように幅が狭い端末で、中間ダイヤの時刻が画面外へ出ていた。 */
+.day-boxes { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; }
+.day-box { background: var(--bg-card2); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px; padding: 10px 12px; min-width: 0; overflow: hidden; }
 .day-box-label { font-size: 10px; color: var(--dim); margin-bottom: 4px; letter-spacing: 1px; }
 /* 出退勤の時間と労働時間は、生駒・北大和Bに合わせて本文と同じ書体にする。
    以前は英字用の書体を当てていたため、数字の形が他のダイヤと違って見えた。 */
-.day-box-val { font-size: 14px; color: var(--text); line-height: 1.5; }
+.day-box-val { font-size: 14px; color: var(--text); line-height: 1.5;
+  overflow-wrap: anywhere; }
 .day-box-val.holiday-val { color: var(--pink); font-family: 'Noto Sans JP', sans-serif; font-size: 17px; font-weight: 700; }
 /* 今日の表示だけBA風の枠付きカードにする(検索結果の.day-boxesには影響させない) */
-.today-boxes { grid-template-columns: 1.7fr 1fr; margin-top: 2px; }
+.today-boxes { grid-template-columns: minmax(0,1.7fr) minmax(0,1fr); margin-top: 2px; }
+/* 中間ダイヤは時刻が長い。
+   端末の文字サイズを大きくしている人だと、横に2つ並べると溢れる。
+   実際に iPhone ではみ出した（2026-10-01）。幅に関係なく上下に並べる。 */
+.today-boxes.has-split, .day-boxes.has-split{ grid-template-columns: minmax(0,1fr); }
 .today-boxes .day-box-val { font-weight: 700; }
 /* 出退勤の時間と労働時間は、今日のカードでも検索結果でも同じ大きさにする。
    以前は「今日のカードの中だけ」に効く書き方だったため、
@@ -934,7 +942,7 @@ body.multi .only-single{ display:none !important; }
 .rv-up{ color:#ff9e4a; font-weight:800; }
 .rv-down{ color:#4ad991; font-weight:800; }
 .rv-same{ color:var(--dim); }
-.rv-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:9px; }
+.rv-grid{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; margin-bottom:9px; }
 .rv-cell{ background:var(--bg-card); border:1px solid var(--border); border-radius:12px;
   padding:11px; text-align:center; }
 .rv-cell-lb{ font-size:11.5px; color:var(--dim); }
@@ -2433,7 +2441,7 @@ function updateTodayPreview(){
   const tcls=isSplit?'is-split':'is-day';
   const noteHtml=slot.n?`<div class="today-note">📌 ${slot.n}</div>`:'';
   box.innerHTML=`<div class="today-head"><b>${v}番ダイヤ</b> ／ ${m}/${d}（${dtLabel}）</div>
-    <div class="day-boxes today-boxes">
+    <div class="day-boxes today-boxes${isSplit?' has-split':''}">
       <div class="day-box"><div class="day-box-label">勤務時間</div><div class="day-box-val ${tcls}">${formatDisplayTime(slot.o)}</div></div>
       <div class="day-box"><div class="day-box-label">労働時間</div><div class="day-box-val ${tcls}">${formatDisplayLabor(slot.w)}</div></div>
     </div>${noteHtml}`;
@@ -6235,7 +6243,7 @@ function render(rows){
       const rcls=slot.o.includes('/')?'is-split':'is-day';
       const teiireLabel=TEIIRE[r.dn]?`<div class="teiire-label">🔧 ${TEIIRE[r.dn]}</div>`:'';
       const noteHtml=slot.n?`<div class="day-note">📌 ${slot.n}</div>`:'';
-      bodyHtml=`${teiireLabel}<div class="day-boxes">
+      bodyHtml=`${teiireLabel}<div class="day-boxes${rcls==='is-split'?' has-split':''}">
         <div class="day-box"><div class="day-box-label">勤務時間</div><div class="day-box-val ${rcls}">${formatDisplayTime(slot.o)}</div></div>
         <div class="day-box"><div class="day-box-label">労働時間</div><div class="day-box-val ${rcls}">${formatDisplayLabor(slot.w)}</div></div>
       </div>${noteHtml}`;
