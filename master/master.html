@@ -873,24 +873,26 @@ body.light .stamp { opacity: 0.28; }
   text-shadow: 0 0 10px rgba(255,140,0,0.4); line-height: 1; margin-bottom: 10px;
 }
 .day-dial span { font-size: 14px; color: var(--dim); font-family: 'Noto Sans JP', sans-serif; font-weight: 400; }
-/* minmax(0,…) を付けないと、中身の長さに押されて枠からはみ出す。
-   iPhone のように幅が狭い端末で、中間ダイヤの時刻が画面外へ出ていた。 */
-.day-boxes { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; }
+/* 勤務時間と労働時間は、必ず上下に並べる。
+   横に2つ並べると、端末や文字サイズの設定で時刻の後ろが切れる。
+   実機（iPhone）で「8:30〜19:45」が途中までしか出なかった。 */
+.day-boxes { display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; }
 .day-box { background: var(--bg-card2); border: 1px solid rgba(255,255,255,0.06);
   border-radius: 10px; padding: 10px 12px; min-width: 0; overflow: hidden; }
-.day-box-label { font-size: 10px; color: var(--dim); margin-bottom: 4px; letter-spacing: 1px; }
+/* 「労働時間」が「労働時」「間」に割れていたので、折り返さないようにする */
+.day-box-label { font-size: 10px; color: var(--dim); margin-bottom: 4px;
+  letter-spacing: 1px; white-space: nowrap; }
 /* 出退勤の時間と労働時間は、生駒・北大和Bに合わせて本文と同じ書体にする。
    以前は英字用の書体を当てていたため、数字の形が他のダイヤと違って見えた。 */
 .day-box-val { font-size: 14px; color: var(--text); line-height: 1.5;
-  overflow-wrap: anywhere; }
+  overflow-wrap: anywhere; white-space: normal; }
 .day-box-val.holiday-val { color: var(--pink); font-family: 'Noto Sans JP', sans-serif; font-size: 17px; font-weight: 700; }
 /* 今日の表示だけBA風の枠付きカードにする(検索結果の.day-boxesには影響させない) */
-/* 今日のカードは勤務時間と労働時間を横に並べる。
-   中間ダイヤのときだけ下の指定で上下になる。 */
-.today-boxes { grid-template-columns: minmax(0,1.7fr) minmax(0,1fr); margin-top: 2px; }
-/* 中間ダイヤは時刻が4つあって長いので、上下に並べる。
-   日勤は短いので横2つのままでよい。 */
-.today-boxes.has-split, .day-boxes.has-split{ grid-template-columns: minmax(0,1fr); }
+/* 勤務時間と労働時間は、必ず上下に並べる。
+   横に2つ並べると、端末や設定によって時刻の後ろが切れる。
+   実機（iPhone）で「8:30〜19:45」が「8:30〜19」までしか出なかった。
+   幅をまるごと使えば、どんな文字の大きさでも切れない。 */
+.today-boxes { grid-template-columns: minmax(0,1fr); margin-top: 2px; }
 .today-boxes .day-box-val { font-weight: 700; }
 /* 出退勤の時間と労働時間は、今日のカードでも検索結果でも同じ大きさにする。
    以前は「今日のカードの中だけ」に効く書き方だったため、
