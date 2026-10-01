@@ -2181,9 +2181,12 @@ function applyDiaData(d){
     BASE_DATE = new Date(p[0], p[1]-1, p[2]);
   }
   if(d.meta && d.meta.baseDial) BASE_DIAL = d.meta.baseDial;
-  try{ renderDiaInfo(); }catch(e){}
   // 改正日。これより前は今のデータで計算しても実際と違うので、ふりかえりで出さない
   REVISION_ISO = (d.meta && d.meta.revision) ? String(d.meta.revision) : '';
+  if(d.meta && d.meta.cycle) CUR_MAX = d.meta.cycle;   // 番号の上限も合わせる
+  // 画面の表示は、値をすべて入れ終わってから更新する
+  try{ renderHeadRev(d); }catch(e){}
+  try{ renderDiaInfo(); }catch(e){}
 }
 
 /* キャッシュ避けに付ける値。開くたびに変えると、同じ日に何度開いても
