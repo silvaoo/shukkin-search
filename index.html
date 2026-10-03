@@ -1672,7 +1672,6 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
   </div>
 </div>
   <h1><img class="mascot-icon" src="mascot.png" alt="出退勤検索くん">出退勤検索くん</h1>
-  <p id="headRev">—</p>
   <button class="mode-btn" id="modeBtn" onclick="toggleDispPop(event)" aria-label="表示の設定">🌙/☀️ Aa</button>
   <!-- 表示の設定。昼夜の切替と文字の大きさをまとめる -->
   <div class="disp-pop" id="dispPop" onclick="event.stopPropagation()">
@@ -4295,7 +4294,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v224';
+const APP_VERSION   = 'v225';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4517,7 +4516,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.45';
+const APP_LABEL = 'バージョン 3.46';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -5479,6 +5478,9 @@ async function loadOtherDias(){
 /* 見出しの「◯年◯月◯日改正 ／ 1〜◯番」を、読み込んだデータから出す。
    以前は決め打ちの文字列だったため、ダイヤ改正をしても古い日付のままで、
    番号の範囲も全アプリ「1〜92番」と誤って出ていた（2026-10-01 修正）。 */
+/* ページ上の「◯年◯月◯日改正 ／ 1〜◯番」。
+   2026-10-03 に表示をやめた（フッターと同じことが2か所に出ていたため）。
+   要素が無いので何もしないが、戻すときのために残しておく。 */
 function renderHeadRev(j){
   const el=document.getElementById('headRev');
   if(!el) return;

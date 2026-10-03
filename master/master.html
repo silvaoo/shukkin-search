@@ -1672,7 +1672,6 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
   </div>
 </div>
   <h1><img class="mascot-icon" src="mascot.png" alt="出退勤検索くん">出退勤検索くん</h1>
-  <p id="headRev">—</p>
   <button class="mode-btn" id="modeBtn" onclick="toggleDispPop(event)" aria-label="表示の設定">🌙/☀️ Aa</button>
   <!-- 表示の設定。昼夜の切替と文字の大きさをまとめる -->
   <div class="disp-pop" id="dispPop" onclick="event.stopPropagation()">
@@ -5479,6 +5478,9 @@ async function loadOtherDias(){
 /* 見出しの「◯年◯月◯日改正 ／ 1〜◯番」を、読み込んだデータから出す。
    以前は決め打ちの文字列だったため、ダイヤ改正をしても古い日付のままで、
    番号の範囲も全アプリ「1〜92番」と誤って出ていた（2026-10-01 修正）。 */
+/* ページ上の「◯年◯月◯日改正 ／ 1〜◯番」。
+   2026-10-03 に表示をやめた（フッターと同じことが2か所に出ていたため）。
+   要素が無いので何もしないが、戻すときのために残しておく。 */
 function renderHeadRev(j){
   const el=document.getElementById('headRev');
   if(!el) return;
