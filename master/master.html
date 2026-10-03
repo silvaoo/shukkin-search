@@ -199,14 +199,24 @@ body {
   overflow: hidden;
   box-shadow: 0 0 20px rgba(255,140,0,0.08);
 }
-/* ==== 文字の大きさ ==== */
-.fs-row { display: inline-flex; align-items: center; gap: 8px;
-  background: var(--bg-card2); border: 1px solid var(--border); border-radius: 8px;
-  padding: 5px 8px; color: var(--dim); font-size: 12px; font-weight: 700; }
-.fs-row button { min-width: 40px; padding: 5px 8px; border-radius: 6px;
-  border: 1px solid var(--border); background: var(--bg-card); color: var(--text);
-  font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit; }
-.fs-row b { min-width: 42px; text-align: center; color: var(--cyan); }
+/* ==== 表示の設定（右上のボタンから開く小窓） ====
+   昼夜と文字の大きさをまとめる。文字を大きくしすぎても操作できるよう、
+   この小窓だけは倍率を掛けず、いつも同じ大きさで出す。 */
+.disp-pop { display: none; position: absolute; top: calc(100% + 2px); right: 0; z-index: 9000;
+  background: var(--bg-card); border: 1px solid var(--cyan); border-radius: 12px;
+  padding: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.45); text-align: left; }
+.disp-pop.open { display: block; }
+.dsp-row { display: flex; align-items: center; gap: 6px; }
+.dsp-row + .dsp-row { margin-top: 8px; }
+.dsp-mode { flex: 1; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg-card2); color: var(--dim); font-size: 13px; font-weight: 800;
+  cursor: pointer; font-family: inherit; white-space: nowrap; }
+.dsp-mode.on { color: var(--cyan); border-color: var(--cyan); }
+.dsp-lb { font-size: 12px; color: var(--dim); font-weight: 700; white-space: nowrap; }
+.dsp-fs { min-width: 38px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg-card2); color: var(--text); font-size: 13px; font-weight: 800;
+  cursor: pointer; font-family: inherit; }
+.disp-pop b { min-width: 42px; text-align: center; color: var(--cyan); font-size: 13px; }
 
 /* ==== 更新のお知らせ切替ボタン ==== */
 .notify-btn {
@@ -1659,7 +1669,20 @@ a.source-link:visited {
 </div>
   <h1><img class="mascot-icon" src="mascot.png" alt="出退勤検索くん">出退勤検索くん</h1>
   <p id="headRev">—</p>
-  <button class="mode-btn" onclick="toggleMode()">🌙/☀️</button>
+  <button class="mode-btn" id="modeBtn" onclick="toggleDispPop(event)" aria-label="表示の設定">🌙/☀️ Aa</button>
+  <!-- 表示の設定。昼夜の切替と文字の大きさをまとめる -->
+  <div class="disp-pop" id="dispPop" onclick="event.stopPropagation()">
+    <div class="dsp-row">
+      <button class="dsp-mode" id="dpDark"  onclick="setMode(false)">🌙 夜</button>
+      <button class="dsp-mode" id="dpLight" onclick="setMode(true)">☀️ 昼</button>
+    </div>
+    <div class="dsp-row">
+      <span class="dsp-lb">文字</span>
+      <button class="dsp-fs" onclick="fsStep(-1)" aria-label="小さく">A−</button>
+      <b id="fsVal">100%</b>
+      <button class="dsp-fs" onclick="fsStep(1)" aria-label="大きく">A＋</button>
+    </div>
+  </div>
 </div>
 
 <!-- ホーム画面インストールの案内バナー(インストール可能な時だけ表示) -->
@@ -1800,13 +1823,6 @@ a.source-link:visited {
   <div id="pushBox" class="only-single" style="margin-top:12px;"></div>
   <div style="margin-top:10px;">
     <button class="notify-btn" id="notifyBtn" onclick="toggleNotify()">🔕 更新のお知らせ：オフ</button>
-  </div>
-  <div style="margin-top:10px;">
-    <span class="fs-row">🔠 文字の大きさ
-      <button onclick="fsStep(-1)" aria-label="小さく">A−</button>
-      <b id="fsVal">100%</b>
-      <button onclick="fsStep(1)" aria-label="大きく">A＋</button>
-    </span>
   </div>
   <div class="app-info" id="appInfo"></div>
   <div class="app-info" id="diaInfo"></div>
@@ -7284,7 +7300,33 @@ function showToast(msg){
 }
 
 /* ==== ダーク/ライトモード切替 ==== */
-function toggleMode(){document.body.classList.toggle('light');}
+function toggleMode(){document.body.classList.toggle('light'); dpShow();}
+/* 昼夜を指定して切り替える。light=true で昼 */
+function setMode(light){
+  document.body.classList.toggle('light', !!light);
+  dpShow();
+}
+/* 小窓の中の表示を今の状態に合わせる */
+function dpShow(){
+  const light=document.body.classList.contains('light');
+  const d=document.getElementById('dpDark'), l=document.getElementById('dpLight');
+  if(d) d.classList.toggle('on', !light);
+  if(l) l.classList.toggle('on', light);
+  fsShow();
+}
+/* 右上のボタンで小窓を開け閉めする */
+function toggleDispPop(ev){
+  if(ev) ev.stopPropagation();
+  const p=document.getElementById('dispPop');
+  if(!p) return;
+  p.classList.toggle('open');
+  dpShow();
+}
+/* 小窓の外を押したら閉じる */
+document.addEventListener('click', function(){
+  const p=document.getElementById('dispPop');
+  if(p) p.classList.remove('open');
+});
 
 /* ==== アプリ共有 ====
    Androidの共有シートにはLINEが並ぶのでそのまま使う。
@@ -7398,6 +7440,9 @@ function fitTitle(){
   const hd=h.parentNode;
   h.style.fontSize='';
   hd.classList.remove('title-wide');
+  /* 中央寄せのままだと、はみ出しが左右に分かれて長さを正しく測れない。
+     測る間だけ左寄せにする（左にはみ出すと鹿くんの絵が欠けていた） */
+  h.style.textAlign='left';
   /* ボタンの間に入れると7割より小さくなるなら、下の段に移す */
   if(h.clientWidth>0 && h.scrollWidth > h.clientWidth/0.7){
     hd.classList.add('title-wide');
@@ -7406,6 +7451,7 @@ function fitTitle(){
     const fs=parseFloat(getComputedStyle(h).fontSize);
     h.style.fontSize=(fs*h.clientWidth/h.scrollWidth*0.97).toFixed(2)+'px';
   }
+  h.style.textAlign='';
 }
 window.addEventListener('resize', fitTitle);
 window.addEventListener('load', function(){ fsShow(); fitTitle(); });
