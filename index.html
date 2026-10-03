@@ -1625,6 +1625,10 @@ a.source-link:visited {
 </style>
 </head>
 <body>
+<script>
+/* 昼夜。保存してあれば、画面を描く前に当てる（一瞬夜の色が出ないように） */
+try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('light'); }catch(e){}
+</script>
 <div id="ptr-indicator"><div class="ptr-spinner"></div><span class="ptr-text">引っ張って更新</span></div>
 
 <!-- 起動スプラッシュ：OSの「学A」アイコン表示に続けて、アイコン＋鹿くんを一瞬見せる。タップで即スキップ -->
@@ -4291,7 +4295,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v223';
+const APP_VERSION   = 'v224';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4513,7 +4517,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.44';
+const APP_LABEL = 'バージョン 3.45';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -7300,10 +7304,15 @@ function showToast(msg){
 }
 
 /* ==== ダーク/ライトモード切替 ==== */
-function toggleMode(){document.body.classList.toggle('light'); dpShow();}
+/* 昼夜を覚えておく。次に開いたときも同じにする */
+function modeSave(){
+  try{ localStorage.setItem('a-theme', document.body.classList.contains('light') ? 'light' : 'dark'); }catch(e){}
+}
+function toggleMode(){document.body.classList.toggle('light'); modeSave(); dpShow();}
 /* 昼夜を指定して切り替える。light=true で昼 */
 function setMode(light){
   document.body.classList.toggle('light', !!light);
+  modeSave();
   dpShow();
 }
 /* 小窓の中の表示を今の状態に合わせる */

@@ -55,6 +55,41 @@ for tpl, out in TEMPLATES:
         sys.exit(1)
     src[tpl] = io.open(path, encoding="utf-8").read()
 
+# 文字の大きさの設定が効かない書き方を探す。
+# 2026-10-03 から、文字の大きさは calc(14px * var(--fs, 1)) の形で書く決まり。
+# ふつうに 14px と書くと、その文字だけ「文字の大きさ」で変わらなくなる。
+# ただし次は、わざと固定にしているので見逃す。
+#   入力欄 … iPhoneは16px未満の入力欄を押すと画面を勝手に拡大するため
+#   右上の「表示の設定」の小窓 … 文字を大きくしすぎても操作できるように
+#   カレンダーのマス … var(--u) で別に合わせている
+def check_font_px(text):
+    px = re.compile(r"font-size:\s*[0-9.]+px")
+    ok_sel = re.compile(r"(^|[\s,>+~(])(input|textarea|select)\b|#\w*Input|-input\b|disp-pop|dsp-|rescal-grid", re.I)
+    bad = []
+    def line_of(pos):
+        return text.count("\n", 0, pos) + 1
+    # CSS の中
+    for sm in re.finditer(r"<style>(.*?)</style>", text, re.S):
+        css = re.sub(r"\{\{[A-Z0-9_]+\}\}", "XX", sm.group(1))
+        base = sm.start(1)
+        for rm in re.finditer(r"([^{}]+)\{([^{}]*)\}", css):
+            if ok_sel.search(rm.group(1).strip()):
+                continue
+            for fm in px.finditer(rm.group(2)):
+                bad.append(line_of(base + rm.start(2) + fm.start()))
+    # style属性やJSの中。入力欄のタグは見逃す
+    rest = re.sub(r"<style>.*?</style>", lambda m: "\n" * m.group(0).count("\n"), text, flags=re.S)
+    rest = re.sub(r"<(input|textarea|select)\b[^>]*>", lambda m: "\n" * m.group(0).count("\n"), rest)
+    for fm in px.finditer(rest):
+        bad.append(line_of(fm.start()))
+    return sorted(set(bad))
+
+bad = check_font_px(src["master.html"])
+if bad:
+    print("!! 文字の大きさに倍率が付いていません。master.html の行:", bad)
+    print("   font-size: 14px ではなく font-size: calc(14px * var(--fs, 1)) と書いてください")
+    sys.exit(1)
+
 for repo, cfg in apps.items():
     cfg = dict(cfg)
     cfg["REPO"] = repo
