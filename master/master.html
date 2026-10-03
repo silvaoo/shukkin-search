@@ -4855,7 +4855,8 @@ function hissSound(){
 /* =====================================================
    お知らせバナー
    一覧は全アプリ共通の news.json(学園前Aのリポジトリに1つだけ置いてある)を読む。
-   急告を出す時は news.json に1行足すだけで、5アプリすべてに反映される。
+   急告を出す時は news.json に1行足すだけで、6アプリすべてに反映される。
+   until（YYYY-MM-DD）があれば、その日を過ぎたものは出さない（2026-10-03〜）。
    画像そのものはGoogleドライブの共有フォルダに置いたものを表示する。
    ===================================================== */
 const NEWS_LIST_URL = 'https://silvaoo.github.io/shukkin-search/news.json';
@@ -4904,7 +4905,12 @@ async function loadNews(){
     const res=await fetch(NEWS_LIST_URL+'?_='+Date.now(),{cache:'no-store'});
     if(!res.ok)return;
     const data=await res.json();
-    NEWS_ITEMS=Array.isArray(data.items)?data.items.filter(x=>x&&x.fileId):[];
+    /* 掲載期限。お知らせ送信アプリで「いつまで出すか」を決めたものは、
+       その日の終わりまで出して、次の日から出さない。期限なしはずっと出す。 */
+    const nd=new Date();
+    const today=nd.getFullYear()+'-'+String(nd.getMonth()+1).padStart(2,'0')+'-'+String(nd.getDate()).padStart(2,'0');
+    NEWS_ITEMS=Array.isArray(data.items)
+      ? data.items.filter(x=>x&&x.fileId&&(!x.until||String(x.until)>=today)) : [];
     if(NEWS_ITEMS.length>0){
       const b=document.getElementById('news-banner');
       if(b)b.style.display='';

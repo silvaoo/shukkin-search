@@ -14,8 +14,13 @@ const PROJECT_ID = 'shukkin-notify';
 const FS_ROOT = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 const APP_NAMES = {
-  a: '学園前Ａ', ikoma: '生駒', ba: '北大和Ｂ', c: '北大和Ｃ', yobi: '予備'
+  a: '学園前Ａ', ikoma: '生駒', ba: '北大和Ｂ', c: '北大和Ｃ', yobi: '予備',
+  all: 'スペシャル'
 };
+/* スペシャル検索くんは、通知の登録で自分を「all」と名乗っている。
+   ところが送り先の指定では「all」は「全員」の合言葉なので、
+   スペシャル検索くんだけに送るときは「special」と書いてもらい、ここで「all」に直す。 */
+const APP_ALIAS = { special: 'all' };
 
 /* ---------- Google の認証 ---------- */
 async function getAccessToken(sa) {
@@ -106,11 +111,12 @@ async function sendOne(at, token, title, body) {
   if (!appsRaw || appsRaw.toLowerCase() === 'all') {
     apps = Object.keys(APP_NAMES);
   } else {
-    apps = appsRaw.split(/[,\s]+/).map((x) => x.trim()).filter(Boolean);
+    apps = appsRaw.split(/[,\s]+/).map((x) => x.trim()).filter(Boolean)
+                  .map((x) => APP_ALIAS[x] || x);
     const bad = apps.filter((a) => !APP_NAMES[a]);
     if (bad.length) {
       throw new Error('知らないダイヤ名です: ' + bad.join(',')
-        + '\n  使えるのは: ' + Object.keys(APP_NAMES).join(' / ') + ' / all');
+        + '\n  使えるのは: a / ikoma / ba / c / yobi / special（スペシャル） / all（全員）');
     }
   }
 
