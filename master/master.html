@@ -5499,6 +5499,9 @@ function renderHeadRev(j){
 function renderDiaInfo(){
   const el=document.getElementById('diaInfo');
   if(!el) return;
+  /* スペシャル検索くんは全ダイヤを扱うので、1つのダイヤの改正日は出さない。
+     出すと学園前Ａの内容が出て、全ダイヤの情報のように見えてしまう。 */
+  if('{{ID}}'==='all'){ el.style.display='none'; return; }
   const n=Object.keys(DB).length;
   el.textContent = n ? ('ダイヤ ' + (REVISION_ISO||'—') + '改正 ／ ' + n + '番') : 'ダイヤ 未取得';
 }
