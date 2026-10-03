@@ -753,6 +753,17 @@ input[type="date"] {
 .rescal-grid .rc-memo-mark{ font-size: calc(9px * var(--u)); }
 .rescal-grid .rc-stamp{ font-size: calc(11px * var(--u)); }
 .rescal-grid .rc-stamp.leave{ width: calc(38px * var(--u)); height: calc(38px * var(--u)); }
+/* 代走・公出を登録した日は、実際に出る時刻を出す。札の色は印鑑に合わせる */
+.rescal-grid .rc-subl{ font-size: calc(8.5px * var(--u)); font-weight:800;
+  line-height:1.2; text-align:center; }
+.rescal-grid .rc-subl.sub{ color:#7b3fd6; }
+.rescal-grid .rc-subl.kyu{ color:#1f6fd1; }
+.rc-stamp.sub  { color:#b07cff; border:2px solid #b07cff;
+  border-radius:4px; padding:1px 4px; letter-spacing:1px; }
+.rescal-grid .cal-day.has-sub  { border-color: rgba(176,124,255,.7); }
+/* 印鑑は時刻の後ろに薄く押す。上に重なると時刻が読めなくなるため */
+.rescal-grid .rc-stamp{ opacity:.38; z-index:0; }
+.rescal-grid .rc-head, .rescal-grid .rc-body{ position:relative; z-index:1; }
 
 .real-duty{ margin:10px 0 6px; padding:12px; border-radius:11px;
   background:rgba(255,159,74,.16); border:2px solid var(--orange);
@@ -4225,7 +4236,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v220';
+const APP_VERSION   = 'v221';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4447,7 +4458,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.41';
+const APP_LABEL = 'バージョン 3.42';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -5391,6 +5402,10 @@ async function loadOtherDias(){
     localStorage.setItem(OTHER_KEY, JSON.stringify(save));
   }catch(e){}
   _otherLoading=false; _otherDone=true;
+  /* 他のダイヤの代走は、読み終わるまで時刻が分からない。
+     カレンダーが開いていれば描き直す。カレンダーには入力欄が無いので作り直してよい。 */
+  const rcm=document.getElementById('resCalModal');
+  if(rcm && rcm.classList.contains('active')) renderResultCal();
   /* 読み終わったとき画面が開いていれば描き直す。
      ただし番号を入力中なら触らない。作り直すとカーソルが外れて
      1文字しか打てなくなるため。 */
@@ -6824,6 +6839,46 @@ function rcMakeRow(date){
           m:date.getMonth()+1, d:date.getDate(), dw:DW[date.getDay()]};
 }
 
+/* 代走・公出を登録した日に、実際に出るものを並べる。
+   本来のダイヤに乗る分と、付いた分の両方。年休や登録なしの日は null。 */
+function rcRealList(rec, date){
+  if(!rec || otIsLeave(rec) || !rec.adds || !rec.adds.length) return null;
+  const dt=dayType(date);
+  const list=[];
+  if(rec.base!=='none'){
+    const bd=otBaseDial(date);
+    const b=(bd!==null)?DB[bd]:null;
+    const sl=(b&&b[dt]&&String(b[dt].o)!=='—')?b[dt]:null;
+    if(sl) list.push({dial:bd, part:rec.base, slot:sl});
+  }
+  rec.adds.forEach(function(x){
+    if(x.dial===''||x.dial==null) return;
+    list.push({dial:x.dial, part:x.part,
+               slot:otSlotOf(x.code||'a', x.dial, date)});
+  });
+  return list.length ? list : null;
+}
+/* 1つの勤務から、乗る部分の時刻を取り出す。
+   中間ダイヤは 前半=出勤〜解放開始、後半=解放終了〜退勤。 */
+function rcSegs(slot, part){
+  const sp=String(slot.o).split('〜');
+  const st=sp[0].split('/').map(function(x){ return x.trim(); });
+  const en=(sp[1]||'').split('/').map(function(x){ return x.trim(); });
+  if(st.length===2 && en.length===2){
+    const a={s:st[0], e:st[1]}, b={s:en[0], e:en[1]};
+    if(part==='first')  return [a];
+    if(part==='second') return [b];
+    return [a,b];
+  }
+  if(st.length===1 && en.length===1 && st[0] && en[0]) return [{s:st[0], e:en[0]}];
+  return [];
+}
+/* 時刻を分に直す。並べ替え用。24:30 のような深夜もそのまま数える */
+function rcMin(hm){
+  const m=String(hm).match(/(\d{1,2}):(\d{2})/);
+  return m ? parseInt(m[1],10)*60+parseInt(m[2],10) : 99999;
+}
+
 function renderResultCal(){
   const rows=window._lastRows||[];
   const y=_rcYM.getFullYear(), m=_rcYM.getMonth()+1;
@@ -6853,7 +6908,35 @@ function renderResultCal(){
     if(!r)cls+=' nodata';
 
     let body='';
-    if(r){
+    const stRec=otLoad()[iso];
+    const real=r ? rcRealList(stRec, dt) : null;     // 代走・公出で実際に出るもの
+    let dnTxt = (r&&r.dn) ? r.dn+'番' : '';
+    if(real){
+      /* 番号は実際に乗るものを並べる（例 20+6番） */
+      dnTxt = real.map(function(x){ return x.dial; }).join('+') + '番';
+      const baseOff = !r.rec || !r.slot;
+      const isKyu = otIsKyu(stRec) || baseOff;
+      let segs=[], unknown=false;
+      real.forEach(function(x){
+        if(!x.slot){ unknown=true; return; }
+        rcSegs(x.slot, x.part).forEach(function(s){ segs.push(s); });
+      });
+      segs.sort(function(a,b){ return rcMin(a.s)-rcMin(b.s); });
+      body = isKyu ? `<div class="rc-subl kyu">公出</div>` : `<div class="rc-subl sub">代走</div>`;
+      if(segs.length===1){
+        body+=`<div class="rc-line"><span>${segs[0].s}</span></div>`
+            + `<div class="rc-line"><span>${segs[0].e}</span></div>`;
+      }else if(segs.length===2){
+        /* 2つに分かれる日は、中間ダイヤと同じく1行に1つずつ */
+        body+=`<div class="rc-line rc-2up"><span>${segs[0].s}</span><span>${segs[0].e}</span></div>`
+            + `<div class="rc-line rc-2up"><span>${segs[1].s}</span><span>${segs[1].e}</span></div>`;
+      }else if(segs.length>2){
+        /* 3つ以上は狭いマスに入らないので、最初の出勤と最後の退勤だけ */
+        body+=`<div class="rc-line"><span>${segs[0].s}</span></div>`
+            + `<div class="rc-line"><span>${segs[segs.length-1].e}</span></div>`;
+      }
+      if(unknown || !segs.length) body+=`<div class="rc-note2">時刻を確認</div>`;
+    }else if(r){
       const off = !r.rec || !r.slot;                        // 公休
       /* 会社の勤務表と同じ並びにする。
          日付とダイヤ番号を上の段に、出勤を左下、退勤を右下に置く。
@@ -6886,17 +6969,20 @@ function renderResultCal(){
         body+=`<div class="rc-memo-mark">${hasTxt?'📝 メモ':''}${hasImg?' 📷':''}</div>`;
       }
     }
-    const stRec=otLoad()[iso];
-    const stCls = otIsLeave(stRec) ? ' has-leave' : (otIsKyu(stRec) ? ' has-kyu' : '');
+    const isSub = !!(real && !otIsKyu(stRec) && r && r.rec && r.slot);
+    const stCls = otIsLeave(stRec) ? ' has-leave'
+                : (otIsKyu(stRec) ? ' has-kyu' : (isSub ? ' has-sub' : ''));
     const sh=stampHash(parseInt(iso.replace(/-/g,''),10));
     const sdeg=((sh%2===0)?1:-1)*(7+(sh%13));
     const stMark = otIsLeave(stRec)
       ? `<span class="rc-stamp leave" style="transform:translate(-50%,-50%) rotate(${sdeg}deg)">年休</span>`
       : (otIsKyu(stRec)
-      ? `<span class="rc-stamp kyu" style="transform:translate(-50%,-50%) rotate(${sdeg}deg)">公出</span>` : '');
+      ? `<span class="rc-stamp kyu" style="transform:translate(-50%,-50%) rotate(${sdeg}deg)">公出</span>`
+      : (isSub
+      ? `<span class="rc-stamp sub" style="transform:translate(-50%,-50%) rotate(${sdeg}deg)">代走</span>` : ''));
     html+=`<div class="${cls}${stCls}"${r?` onclick="openRcDetail('${iso}')"`:''}>`
         + `<div class="rc-head"><span class="rc-date">${d}</span>`
-        + `<span class="rc-dno">${r&&r.dn?r.dn+'番':''}</span></div>`
+        + `<span class="rc-dno">${dnTxt}</span></div>`
         + stMark
         + `<div class="rc-body">${body}</div></div>`;
   }
@@ -6919,7 +7005,7 @@ function rcFit(){
   const inner=modal.querySelector('.cal-inner');
 
   // 前回の調整を外してから測る
-  g.querySelectorAll('.rc-line').forEach(function(el){ el.style.fontSize=''; });
+  g.querySelectorAll('.rc-line,.rc-dno').forEach(function(el){ el.style.fontSize=''; });
 
   // 1. 幅から倍率
   const cw=cells[0].getBoundingClientRect().width;
@@ -6946,6 +7032,13 @@ function rcFit(){
     g.style.setProperty('--u', u.toFixed(3));
   }
 
+  // 番号の欄も、はみ出すときだけ縮める
+  g.querySelectorAll('.rc-dno').forEach(function(el){
+    if(el.clientWidth>0 && el.scrollWidth>el.clientWidth){
+      const fs=parseFloat(getComputedStyle(el).fontSize);
+      el.style.fontSize=(fs*el.clientWidth/el.scrollWidth*0.96).toFixed(2)+'px';
+    }
+  });
   // 4. 横にはみ出す時刻の行だけ縮める
   g.querySelectorAll('.rc-line').forEach(function(el){
     const spans=el.querySelectorAll('span');
