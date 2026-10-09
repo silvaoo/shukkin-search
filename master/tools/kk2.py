@@ -106,8 +106,9 @@ def parse_page(pg):
             if int(em) > 59: em = c1['text']
             sc = [c for c in SC if abs(c['x0'] - c0['x0']) < 3.0]
             ec = [c for c in EC if abs(c['x1'] - c1['x1']) < 3.0 or abs(c['x0'] - (p2 or c1)['x0']) < 3.0]
-            f = run(min(sc, key=lambda c: abs(c['x0'] - c0['x0'])), SC) if sc else ''
-            t = run(min(ec, key=lambda c: abs(c['x1'] - c1['x1'])), EC) if ec else ''
+            # 場所は1文字。短い便が並ぶと隣の便の場所とくっつくので、いちばん近い1文字だけ取る
+            f = min(sc, key=lambda c: abs(c['x0'] - c0['x0']))['text'] if sc else ''
+            t = min(ec, key=lambda c: abs(c['x1'] - c1['x1']))['text'] if ec else ''
             d = pick(int(sm), b['x0']); a = pick(int(em), b['x1'])
             if a < d: a += 60
             it = {'d': '%d:%02d' % divmod(d, 60), 'f': f, 'a': '%d:%02d' % divmod(a, 60), 't': t}
