@@ -341,8 +341,8 @@ body {
 /* ==== 今日のナビ ==== */
 .nav-btn { background: rgba(255,170,0,0.10); color: var(--orange); border-color: rgba(255,170,0,0.35); }
 .nav-inner { color:#1a1a2e; }
-.nav-alt { display:flex; gap:6px; margin:4px 0 10px; }
-.nav-alt button { flex:1; padding:7px 6px; border-radius:8px; border:1px solid #d8d8e0;
+.nav-alt { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 10px; }
+.nav-alt button { flex:1 1 40%; min-width:0; padding:7px 6px; white-space:normal; border-radius:8px; border:1px solid #d8d8e0;
   background:#f4f4f8; color:#555; font-size:calc(12px * var(--fs, 1)); font-weight:800; font-family:inherit; cursor:pointer; }
 .nav-alt button.on { background:#fff3e0; color:#c25e00; border-color:#ff9f1a; }
 .nav-dial { font-size:calc(13px * var(--fs, 1)); font-weight:800; color:#444; margin-bottom:6px; }
@@ -7222,8 +7222,9 @@ function navRefreshBtn(){
   const b=document.getElementById('navBtn');
   if(b) b.style.display = navRevOk() ? '' : 'none';
 }
+/* 場所の名前。名前が分からない略号は「」で囲んでそのまま出す（勤務系統表の書き方） */
 function navPlaceName(c){
-  return (NAV && NAV.places && NAV.places[c]) ? NAV.places[c].name : c;
+  return (NAV && NAV.places && NAV.places[c]) ? NAV.places[c].name : '「'+c+'」';
 }
 function navMin(hm){
   const m=String(hm||'').match(/(\d{1,2}):(\d{2})/);
@@ -7264,14 +7265,21 @@ function navPlan(date){
   }else{
     pieces.push({dial:v, part:'all'});
   }
-  const altOn = !!navStoreGet(navAltKey(iso), false);
-  let altLabel='', items=[], off=true;
+  /* 形違い（近大通常／休暇中、ふれあいセンター休業日 など）。どれを使うかは日ごとに覚える。
+     以前の true（2つ目の形）もそのまま読めるようにしておく */
+  const sv = navStoreGet(navAltKey(iso), 0);
+  let sel = (sv===true) ? 1 : (typeof sv==='number' ? sv : 0);
+  let varLabels=null, items=[], off=true, io=null;
   pieces.forEach(function(pc){
     const ent = NAV.dials && NAV.dials[pc.dial] && NAV.dials[pc.dial][dt];
     if(!ent) return;
     off=false;
-    if(ent.alt && !altLabel) altLabel=ent.alt.label;
-    let list = (altOn && ent.alt) ? ent.alt.list : ent.list;
+    const vs = ent.vars || [{label:'ふだんの日', list:ent.list}].concat(ent.alt ? [{label:ent.alt.label, list:ent.alt.list}] : []);
+    if(vs.length>1 && !varLabels) varLabels = vs.map(function(v,i){ return v.label || ('形'+(i+1)); });
+    if(sel>=vs.length) sel=0;
+    let list = vs[sel].list;
+    /* 出勤・退勤（中間解放があれば2つずつ）。1本だけまるごと乗る日に使う */
+    if(pieces.length===1 && pc.part==='all' && vs[sel].in) io={in:vs[sel].in, out:vs[sel].out};
     /* 前半だけ・後半だけ乗る日は、出退勤表の解放の時刻で分ける */
     if(pc.part==='first' || pc.part==='second'){
       const sl = DB[pc.dial] && DB[pc.dial][dt];
@@ -7291,7 +7299,7 @@ function navPlan(date){
     });
   });
   items.sort(function(a,b){ return a.key-b.key; });
-  return {items:items, other:other, off:off, altLabel:altLabel, altOn:altOn,
+  return {items:items, other:other, off:off, varLabels:varLabels, sel:sel, io:io,
           dials:pieces.map(function(p){ return p.dial; })};
 }
 
@@ -7308,8 +7316,8 @@ function closeNav(){
   document.body.style.overflow='';
   clearInterval(_navTimer); _navTimer=null;
 }
-function navSetAlt(on){
-  navStoreSet(navAltKey(toISO(new Date())), !!on);
+function navSetAlt(i){
+  navStoreSet(navAltKey(toISO(new Date())), i);
   renderNav();
 }
 
@@ -7323,9 +7331,10 @@ function renderNav(){
 
   head.innerHTML = '<div class="nav-dial">'+(now.getMonth()+1)+'/'+now.getDate()+'（'+dayType(now)+'）　'
       + pl.dials.join('+')+'番</div>'
-    + (pl.altLabel ? '<div class="nav-alt">'
-        + '<button class="'+(pl.altOn?'':'on')+'" onclick="navSetAlt(false)">ふだんの日</button>'
-        + '<button class="'+(pl.altOn?'on':'')+'" onclick="navSetAlt(true)">'+pl.altLabel+'</button></div>' : '');
+    + (pl.varLabels ? '<div class="nav-alt">'
+        + pl.varLabels.map(function(lb,i){
+            return '<button class="'+(i===pl.sel?'on':'')+'" onclick="navSetAlt('+i+')">'+lb+'</button>'; }).join('')
+        + '</div>' : '');
 
   const trips=pl.items.filter(function(x){ return x.k!=='休'; });
   if(pl.off || !trips.length){
@@ -7348,11 +7357,17 @@ function renderNav(){
   let h='<div class="nav-now">';
   let curTrip=null, nextTrip=null, place='';
   if(nm < navMin(first.d)){
-    h+='<div class="nav-st">⏰ まだ乗務の前です</div><div class="nav-next">最初は '+desc(first)+'</div>'
+    h+='<div class="nav-st">⏰ まだ乗務の前です</div>';
+    if(pl.io){
+      const ci=navMin(pl.io.in[0]);
+      h+='<div class="nav-cd">出勤は <b>'+pl.io.in[0]+'</b>'+(ci>nm?'（あと '+(ci-nm)+'分）':'')+'</div>';
+    }
+    h+='<div class="nav-next">最初は '+desc(first)+'</div>'
      +'<div class="nav-cd">発車まで <b>'+(navMin(first.d)-nm)+'</b> 分</div>';
     nextTrip=first;
   }else if(nm >= navMin(last.a)){
-    h+='<div class="nav-st">🎉 今日の乗務はおしまいです</div><div class="nav-next"><small>最後は '+last.a+' '+navPlaceName(last.t)+'着でした。おつかれさまでした</small></div>';
+    h+='<div class="nav-st">🎉 今日の乗務はおしまいです</div><div class="nav-next"><small>最後は '+last.a+' '+navPlaceName(last.t)+'着でした。'
+      +(pl.io ? '退勤は '+pl.io.out[pl.io.out.length-1]+'。' : '')+'おつかれさまでした</small></div>';
   }else{
     curTrip = trips.find(function(x){ return navMin(x.d)<=nm && nm<navMin(x.a); }) || null;
     nextTrip = trips.find(function(x){ return navMin(x.d)>nm; }) || null;
@@ -7361,6 +7376,11 @@ function renderNav(){
       h+='<div class="nav-st">'+(curTrip.k==='回送'?'🚌 回送の時間です':'🚌 走行中の時間です')+'</div>'
        +'<div class="nav-next"><small>'+navPlaceName(curTrip.f)+' → '+navPlaceName(curTrip.t)+'　'+curTrip.a+'着予定</small></div>';
       place='';
+    }else if(prev && pl.io && pl.io.in.length>1 && nm>=navMin(pl.io.out[0]) && nm<navMin(pl.io.in[1])){
+      /* 中間解放の間 */
+      const ci=navMin(pl.io.in[1]);
+      h+='<div class="nav-st">🏠 中間解放中です</div>'
+       +'<div class="nav-cd">後半の出勤は <b>'+pl.io.in[1]+'</b>（あと '+(ci-nm)+'分）</div>';
     }else if(prev){
       /* 前の便と次の便の間に休憩の場所があれば、そこにいるはず */
       const restMark = pl.items.find(function(x){ return x.k==='休' && x.key>navMin(prev.a)-0.01 && (!nextTrip || x.key<navMin(nextTrip.d)); });

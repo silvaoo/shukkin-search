@@ -28,12 +28,12 @@
     "MULTI": "0",
     "QUICK2_LABEL": "9日後",
     "QUICK2_DAYS": "10",
-    "SW_DIA_LINE": "    './dia-a.json',        // ダイヤのデータ。圏外でも使えるよう控えておく",
+    "SW_DIA_LINE": "    './dia-a.json',        // ダイヤのデータ。圏外でも使えるよう控えておく\n    './trips-a.json',     // 今日のナビの行程。圏外でも使えるよう控えておく",
     "CARD_NAME": "学園前Ａダイヤ",
     "NEXT_REV": "",
     "NEXT_JSON": "",
     "PAGES2": "0",
-    "NAV": "0"
+    "NAV": "1"
   },
   "shukkin-search-c": {
     "ID": "c",
@@ -100,12 +100,12 @@
     "MULTI": "0",
     "QUICK2_LABEL": "9日後",
     "QUICK2_DAYS": "10",
-    "SW_DIA_LINE": "    './dia-yobi.json',        // ダイヤのデータ。圏外でも使えるよう控えておく",
+    "SW_DIA_LINE": "    './dia-yobi.json',        // ダイヤのデータ。圏外でも使えるよう控えておく\n    './trips-yobi.json',  // 今日のナビの行程。圏外でも使えるよう控えておく",
     "CARD_NAME": "予備ダイヤ",
     "NEXT_REV": "",
     "NEXT_JSON": "",
     "PAGES2": "0",
-    "NAV": "0"
+    "NAV": "1"
   },
   "shukkin-search-ba": {
     "ID": "ba",
@@ -136,12 +136,12 @@
     "MULTI": "0",
     "QUICK2_LABEL": "9日後",
     "QUICK2_DAYS": "10",
-    "SW_DIA_LINE": "    './dia-ba.json',        // ダイヤのデータ。圏外でも使えるよう控えておく\n    './dia-ba-1001.json',   // 2026-10-01改正の新ダイヤ",
+    "SW_DIA_LINE": "    './dia-ba.json',        // ダイヤのデータ。圏外でも使えるよう控えておく\n    './dia-ba-1001.json',   // 2026-10-01改正の新ダイヤ\n    './trips-ba.json',    // 今日のナビの行程。圏外でも使えるよう控えておく",
     "CARD_NAME": "北大和Ｂダイヤ",
     "NEXT_REV": "2026-10-01",
     "NEXT_JSON": "./dia-ba-1001.json",
     "PAGES2": "2",
-    "NAV": "0"
+    "NAV": "1"
   },
   "shukkin-search-ikoma": {
     "ID": "ikoma",
@@ -172,12 +172,12 @@
     "MULTI": "0",
     "QUICK2_LABEL": "9日後",
     "QUICK2_DAYS": "10",
-    "SW_DIA_LINE": "    './dia-ikoma.json',        // ダイヤのデータ。圏外でも使えるよう控えておく",
+    "SW_DIA_LINE": "    './dia-ikoma.json',        // ダイヤのデータ。圏外でも使えるよう控えておく\n    './trips-ikoma.json', // 今日のナビの行程。圏外でも使えるよう控えておく",
     "CARD_NAME": "生駒ダイヤ",
     "NEXT_REV": "",
     "NEXT_JSON": "",
     "PAGES2": "0",
-    "NAV": "0"
+    "NAV": "1"
   },
   "shukkin-search-all": {
     "ID": "all",
