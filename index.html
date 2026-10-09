@@ -4350,7 +4350,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v234';
+const APP_VERSION   = 'v236';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4572,7 +4572,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.55';
+const APP_LABEL = 'バージョン 3.56';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -7226,6 +7226,13 @@ function navRefreshBtn(){
 function navPlaceName(c){
   return (NAV && NAV.places && NAV.places[c]) ? NAV.places[c].name : '「'+c+'」';
 }
+/* 「A → B」の形。出庫の回送などで発の場所が系統表に書いていないときは「→ B」だけにする */
+function navRoute(f,t){
+  if(!f && !t) return '';
+  if(!f) return '→ '+navPlaceName(t);
+  if(!t) return navPlaceName(f)+' →';
+  return navPlaceName(f)+' → '+navPlaceName(t);
+}
 function navMin(hm){
   const m=String(hm||'').match(/(\d{1,2}):(\d{2})/);
   return m ? parseInt(m[1],10)*60+parseInt(m[2],10) : null;
@@ -7274,7 +7281,7 @@ function navPlan(date){
     const ent = NAV.dials && NAV.dials[pc.dial] && NAV.dials[pc.dial][dt];
     if(!ent) return;
     off=false;
-    const vs = ent.vars || [{label:'ふだんの日', list:ent.list}].concat(ent.alt ? [{label:ent.alt.label, list:ent.alt.list}] : []);
+    const vs = ent.vars || [{label:'ふだんの日', list:ent.list, in:ent.in, out:ent.out}].concat(ent.alt ? [{label:ent.alt.label, list:ent.alt.list}] : []);
     if(vs.length>1 && !varLabels) varLabels = vs.map(function(v,i){ return v.label || ('形'+(i+1)); });
     if(sel>=vs.length) sel=0;
     let list = vs[sel].list;
@@ -7352,13 +7359,24 @@ function renderNav(){
     st.innerHTML='<div class="nav-msg">'+(pl.off?'今日は公休です':'この日は乗務がありません')+'</div>';
     lb.innerHTML=''; return;
   }
+  /* 予備の日など、系統表に営業の便が無く点線だけのとき。回送と言わずに時間だけ出す */
+  if(!trips.some(function(x){ return !x.k; })){
+    let m='<b>今日は営業の便が無い勤務です</b>（予備など）';
+    if(pl.io){
+      m+='<br><br>'+pl.io.in.map(function(x,i){
+        return (pl.io.in.length>1?(i===0?'前半　':'後半　'):'')+'出勤 <b>'+x+'</b> ／ 退勤 <b>'+(pl.io.out[i]||'')+'</b>'; }).join('<br>');
+    }
+    m+='<br><br><small>系統表の点線（待機など）：'+trips.map(function(x){ return x.d+'〜'+x.a; }).join('、')+'</small>';
+    st.innerHTML='<div class="nav-msg">'+m+'</div>';
+    lb.innerHTML=''; return;
+  }
   const arr = navStoreGet(navArrKey(iso), {});
   const first=trips[0], last=trips[trips.length-1];
   /* 回送で発着が同じ場所のものは、その場での待機を含むので「回送・待機」と呼ぶ */
   const ksName=function(x){
-    if(x.f===x.t) return '回送・待機（'+navPlaceName(x.f)+'）';
-    if(x.t==='営') return '営業所へ戻る（'+navPlaceName(x.f)+'から）';
-    return '回送（'+navPlaceName(x.f)+' → '+navPlaceName(x.t)+'）';
+    if(x.f && x.f===x.t) return '回送・待機（'+navPlaceName(x.f)+'）';
+    if(x.t==='営') return x.f ? '営業所へ戻る（'+navPlaceName(x.f)+'から）' : '営業所へ戻る';
+    return '回送（'+navRoute(x.f,x.t)+'）';
   };
   const desc=function(x){
     return x.k==='回送'
@@ -7385,7 +7403,7 @@ function renderNav(){
     const prev = trips.filter(function(x){ return navMin(x.a)<=nm; }).pop() || null;
     if(curTrip){
       h+='<div class="nav-st">'+(curTrip.k==='回送'?'🚌 回送の時間です':'🚌 走行中の時間です')+'</div>'
-       +'<div class="nav-next"><small>'+navPlaceName(curTrip.f)+' → '+navPlaceName(curTrip.t)+'　'+curTrip.a+'着予定</small></div>';
+       +'<div class="nav-next"><small>'+navRoute(curTrip.f,curTrip.t)+'　'+curTrip.a+'着予定</small></div>';
       place='';
     }else if(prev && pl.io && pl.io.in.length>1 && nm>=navMin(pl.io.out[0]) && nm<navMin(pl.io.in[1])){
       /* 中間解放の間 */
@@ -7447,7 +7465,7 @@ function renderNav(){
     const late = (got!=null) ? got-navMin(x.a) : null;
     L+='<div class="nav-row'+(past?' past':'')+(cur?' cur':'')+(x.k==='回送'?' ks':'')+'">'
       +'<span class="tm">'+x.d+'→'+x.a+'</span>'
-      +'<span>'+(x.k==='回送' ? ksName(x) : navPlaceName(x.f)+' → '+navPlaceName(x.t))+'</span>'
+      +'<span>'+(x.k==='回送' ? ksName(x) : navRoute(x.f,x.t))+'</span>'
       +(late>0?'<span class="lt">+'+late+'分</span>':'')+'</div>';
   });
   lb.innerHTML=L+'</div>';
