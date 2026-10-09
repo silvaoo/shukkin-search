@@ -32,7 +32,8 @@
     "CARD_NAME": "学園前Ａダイヤ",
     "NEXT_REV": "",
     "NEXT_JSON": "",
-    "PAGES2": "0"
+    "PAGES2": "0",
+    "NAV": "0"
   },
   "shukkin-search-c": {
     "ID": "c",
@@ -63,11 +64,12 @@
     "MULTI": "0",
     "QUICK2_LABEL": "9日後",
     "QUICK2_DAYS": "10",
-    "SW_DIA_LINE": "    './dia-c.json',        // ダイヤのデータ。圏外でも使えるよう控えておく\n    './dia-c-1001.json',   // 2026-10-01改正の新ダイヤ",
+    "SW_DIA_LINE": "    './dia-c.json',        // ダイヤのデータ。圏外でも使えるよう控えておく\n    './dia-c-1001.json',   // 2026-10-01改正の新ダイヤ\n    './trips-c.json',      // 今日のナビの行程。圏外でも使えるよう控えておく",
     "CARD_NAME": "北大和Ｃダイヤ",
     "NEXT_REV": "2026-10-01",
     "NEXT_JSON": "./dia-c-1001.json",
-    "PAGES2": "1"
+    "PAGES2": "1",
+    "NAV": "1"
   },
   "shukkin-search-yobi": {
     "ID": "yobi",
@@ -102,7 +104,8 @@
     "CARD_NAME": "予備ダイヤ",
     "NEXT_REV": "",
     "NEXT_JSON": "",
-    "PAGES2": "0"
+    "PAGES2": "0",
+    "NAV": "0"
   },
   "shukkin-search-ba": {
     "ID": "ba",
@@ -137,7 +140,8 @@
     "CARD_NAME": "北大和Ｂダイヤ",
     "NEXT_REV": "2026-10-01",
     "NEXT_JSON": "./dia-ba-1001.json",
-    "PAGES2": "2"
+    "PAGES2": "2",
+    "NAV": "0"
   },
   "shukkin-search-ikoma": {
     "ID": "ikoma",
@@ -172,7 +176,8 @@
     "CARD_NAME": "生駒ダイヤ",
     "NEXT_REV": "",
     "NEXT_JSON": "",
-    "PAGES2": "0"
+    "PAGES2": "0",
+    "NAV": "0"
   },
   "shukkin-search-all": {
     "ID": "all",
@@ -207,6 +212,7 @@
     "CARD_NAME": "全ダイヤ",
     "NEXT_REV": "",
     "NEXT_JSON": "",
-    "PAGES2": "0"
+    "PAGES2": "0",
+    "NAV": "0"
   }
 }

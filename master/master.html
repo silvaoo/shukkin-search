@@ -338,6 +338,41 @@ body {
   color: var(--cyan); text-decoration: underline; cursor: pointer;
   margin-left: 6px; font-weight: 700; white-space: nowrap;
 }
+/* ==== 今日のナビ ==== */
+.nav-btn { background: rgba(255,170,0,0.10); color: var(--orange); border-color: rgba(255,170,0,0.35); }
+.nav-inner { color:#1a1a2e; }
+.nav-alt { display:flex; gap:6px; margin:4px 0 10px; }
+.nav-alt button { flex:1; padding:7px 6px; border-radius:8px; border:1px solid #d8d8e0;
+  background:#f4f4f8; color:#555; font-size:calc(12px * var(--fs, 1)); font-weight:800; font-family:inherit; cursor:pointer; }
+.nav-alt button.on { background:#fff3e0; color:#c25e00; border-color:#ff9f1a; }
+.nav-dial { font-size:calc(13px * var(--fs, 1)); font-weight:800; color:#444; margin-bottom:6px; }
+.nav-now { border:2px solid #ff9f1a; background:#fff7ec; border-radius:12px; padding:12px; margin-bottom:10px; }
+.nav-st { font-size:calc(13px * var(--fs, 1)); font-weight:800; color:#c25e00; }
+.nav-next { font-size:calc(20px * var(--fs, 1)); font-weight:900; color:#1a1a2e; line-height:1.4; margin-top:4px; }
+.nav-next small { font-size:calc(13px * var(--fs, 1)); font-weight:700; color:#555; }
+.nav-cd { font-size:calc(15px * var(--fs, 1)); font-weight:800; color:#1a1a2e; margin-top:6px; }
+.nav-cd b { font-size:calc(26px * var(--fs, 1)); color:#e65c00; }
+.nav-then { font-size:calc(12px * var(--fs, 1)); color:#555; margin-top:6px; }
+.nav-warn { margin-top:8px; padding:8px 10px; border-radius:8px; background:#ffe9e9; color:#c62828;
+  font-size:calc(13px * var(--fs, 1)); font-weight:800; }
+.nav-ok { margin-top:8px; padding:8px 10px; border-radius:8px; background:#e8f7ee; color:#1b7a43;
+  font-size:calc(13px * var(--fs, 1)); font-weight:700; }
+.nav-late { margin-top:8px; font-size:calc(13px * var(--fs, 1)); font-weight:800; color:#1a1a2e; }
+.nav-acts { display:flex; gap:6px; margin-top:10px; }
+.nav-btn2 { flex:1; padding:9px 6px; border-radius:9px; border:none; background:#ff9f1a; color:#fff;
+  font-size:calc(13px * var(--fs, 1)); font-weight:800; font-family:inherit; cursor:pointer; }
+.nav-btn2.sub { background:#eef0f6; color:#1a1a2e; border:1px solid #d8d8e0; }
+.nav-list { border-top:1px solid #e4e4ea; padding-top:6px; }
+.nav-row { display:flex; gap:8px; align-items:baseline; padding:5px 2px; border-bottom:1px dashed #ececf2;
+  font-size:calc(13px * var(--fs, 1)); color:#1a1a2e; }
+.nav-row .tm { min-width:5.6em; font-weight:800; font-variant-numeric:tabular-nums; }
+.nav-row.past { opacity:.4; }
+.nav-row.cur { background:#fff3e0; border-radius:6px; }
+.nav-row.ks { color:#777; font-style:italic; }
+.nav-row.rest { color:#2a6fb0; font-weight:700; }
+.nav-row .lt { margin-left:auto; font-size:calc(11px * var(--fs, 1)); color:#c62828; font-weight:800; }
+.nav-msg { padding:14px; text-align:center; color:#555; font-size:calc(14px * var(--fs, 1)); }
+
 /* ==== 指定して検索・カレンダー ==== */
 .range-label {
   margin-top: 10px; text-align: center; font-size: calc(12px * var(--fs, 1));
@@ -1724,6 +1759,7 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
   </div>
   <button class="speak-today-btn" id="speakTodayBtn" onclick="handleSpeakToday()">🔊 今日の勤務を読み上げ</button>
   <button class="speak-today-btn card-btn" onclick="shareTodayCard()">🖼 今日の勤務を画像で送る</button>
+  <button class="speak-today-btn nav-btn" id="navBtn" style="display:none;" onclick="openNav()">🧭 今日のナビ</button>
 </div>
 
 <!-- お知らせバナー(タップで破裂→中身を表示。×で閉じる)
@@ -1784,6 +1820,19 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
 </div>
 
 <!-- 検索結果をカレンダーで見る -->
+<!-- 今日のナビ。勤務系統表の行程から、いまどこで次は何時発かを出す -->
+<div id="navModal" class="cal-modal" onclick="if(event.target===this)closeNav()">
+  <div class="cal-inner nav-inner">
+    <div class="cal-top">
+      <div class="cal-title">🧭 今日のナビ</div>
+      <button class="cal-x" onclick="closeNav()">✕ 閉じる</button>
+    </div>
+    <div id="navHead"></div>
+    <div id="navStatus"></div>
+    <div id="navList"></div>
+  </div>
+</div>
+
 <div id="resCalModal" class="cal-modal">
   <div class="cal-inner">
     <div class="cal-top">
@@ -7138,6 +7187,255 @@ function rcFit(){
     }
   });
 }
+/* =====================================================================
+   今日のナビ（2026-10-09〜）
+   勤務系統表を読み取った trips-{{ID}}.json を使い、休憩中にアプリを開いたとき
+   「いまどこで、次は何時にどこから発車か」を出す。
+   ・位置情報は使わない。時刻と行程だけで判断する（2026-10-09 決定）
+     ホーム画面のアプリは画面を消すと位置を取れず、確実に動く保証がないため
+   ・遅れは「着いた」を押した時刻で測る
+   ・行程データの moves に「この場所からこの場所へ動くときは何分前から準備」を書ける
+   ・データが無いアプリ（apps.json の NAV が 0）では、ボタンも出さない
+   ===================================================================== */
+const NAV_ON = ('{{NAV}}' === '1');
+const NAV_KEY = '{{ID}}-trips';
+let NAV = null;
+let _navTimer = null;
+
+async function loadNav(){
+  if(!NAV_ON) return;
+  try{ const c=localStorage.getItem(NAV_KEY); if(c) NAV=JSON.parse(c); }catch(e){}
+  try{
+    const res=await fetch('./trips-{{ID}}.json?v='+cacheDay(), {cache:'no-store'});
+    if(res.ok){
+      NAV=await res.json();
+      try{ localStorage.setItem(NAV_KEY, JSON.stringify(NAV)); }catch(e){}
+    }
+  }catch(e){}
+  navRefreshBtn();
+}
+/* いまのダイヤ改正と、行程データの改正日が合うときだけ使う */
+function navRevOk(){
+  return !!(NAV && NAV.meta && NAV.meta.revision === REVISION_ISO);
+}
+function navRefreshBtn(){
+  const b=document.getElementById('navBtn');
+  if(b) b.style.display = navRevOk() ? '' : 'none';
+}
+function navPlaceName(c){
+  return (NAV && NAV.places && NAV.places[c]) ? NAV.places[c].name : c;
+}
+function navMin(hm){
+  const m=String(hm||'').match(/(\d{1,2}):(\d{2})/);
+  return m ? parseInt(m[1],10)*60+parseInt(m[2],10) : null;
+}
+/* 行程データの moves から、ある場所から次の発車場所へ動くときの決まりを探す */
+function navMove(from, to){
+  const mv = (NAV && NAV.moves) || [];
+  return mv.find(function(m){ return m.from===from && m.to===to; }) || null;
+}
+/* 2つの場所がすぐ近く（moves で near:true）かどうか。向きは問わない */
+function navNear(a, b){
+  const mv = (NAV && NAV.moves) || [];
+  return mv.some(function(m){ return m.near && ((m.from===a && m.to===b) || (m.from===b && m.to===a)); });
+}
+function navHm(n){ return Math.floor(n/60)+':'+String(n%60).padStart(2,'0'); }
+function navStoreGet(key, def){
+  try{ const v=localStorage.getItem(key); return v ? JSON.parse(v) : def; }catch(e){ return def; }
+}
+function navStoreSet(key, v){ try{ localStorage.setItem(key, JSON.stringify(v)); }catch(e){} }
+function navAltKey(iso){ return '{{ID}}-nav-alt-'+iso; }
+function navArrKey(iso){ return '{{ID}}-nav-arr-'+iso; }
+
+/* 今日、実際に乗る行程を並べる。代走・公出の記録があれば、そちらで組み立てる。 */
+function navPlan(date){
+  const iso=toISO(date), dt=dayType(date);
+  const v=parseInt(document.getElementById('todayInput').value);
+  if(!(v>=1 && v<=CUR_MAX)) return {err:'先に「今日は ◯ 番ダイヤ」に番号を入れてください'};
+  const rec=otLoad()[iso];
+  if(otIsLeave(rec)) return {err:'今日は年休です。ゆっくり休んでください'};
+  const pieces=[]; let other=false;
+  if(rec && ((rec.adds && rec.adds.length) || otIsKyu(rec))){
+    if(otBaseOf(rec)!=='none') pieces.push({dial:v, part:otBaseOf(rec)});
+    (rec.adds||[]).forEach(function(x){
+      if((x.code||'{{ID}}')!=='{{ID}}'){ other=true; return; }
+      pieces.push({dial:parseInt(x.dial,10), part:x.part||'all'});
+    });
+  }else{
+    pieces.push({dial:v, part:'all'});
+  }
+  const altOn = !!navStoreGet(navAltKey(iso), false);
+  let altLabel='', items=[], off=true;
+  pieces.forEach(function(pc){
+    const ent = NAV.dials && NAV.dials[pc.dial] && NAV.dials[pc.dial][dt];
+    if(!ent) return;
+    off=false;
+    if(ent.alt && !altLabel) altLabel=ent.alt.label;
+    let list = (altOn && ent.alt) ? ent.alt.list : ent.list;
+    /* 前半だけ・後半だけ乗る日は、出退勤表の解放の時刻で分ける */
+    if(pc.part==='first' || pc.part==='second'){
+      const sl = DB[pc.dial] && DB[pc.dial][dt];
+      const seg = sl ? rcSegs(sl, pc.part)[0] : null;
+      if(seg){
+        const s=navMin(seg.s), e=navMin(seg.e);
+        list = list.filter(function(x){ return x.k!=='休' && navMin(x.d)>=s && navMin(x.a)<=e; });
+      }
+    }
+    let last=0;
+    list.forEach(function(x){
+      /* すぐ近くの場所どうしの回送（学研北生駒駅→営業所など）は、着いたらそのまま休憩なので出さない */
+      if(x.k==='回送' && navNear(x.f, x.t)) return;
+      const key = (x.k==='休') ? last+0.5 : navMin(x.d);
+      if(x.k!=='休') last=navMin(x.a);
+      items.push(Object.assign({dial:pc.dial, key:key}, x));
+    });
+  });
+  items.sort(function(a,b){ return a.key-b.key; });
+  return {items:items, other:other, off:off, altLabel:altLabel, altOn:altOn,
+          dials:pieces.map(function(p){ return p.dial; })};
+}
+
+function openNav(){
+  if(!navRevOk()){ showToast('このダイヤのナビのデータがありません'); return; }
+  document.getElementById('navModal').classList.add('active');
+  document.body.style.overflow='hidden';
+  renderNav();
+  clearInterval(_navTimer);
+  _navTimer=setInterval(renderNav, 15000);   // 開いている間は15秒ごとに出し直す
+}
+function closeNav(){
+  document.getElementById('navModal').classList.remove('active');
+  document.body.style.overflow='';
+  clearInterval(_navTimer); _navTimer=null;
+}
+function navSetAlt(on){
+  navStoreSet(navAltKey(toISO(new Date())), !!on);
+  renderNav();
+}
+
+/* 出し直す部分。ナビの窓には入力欄が無いので、まるごと作り直してよい */
+function renderNav(){
+  const head=document.getElementById('navHead'), st=document.getElementById('navStatus'), lb=document.getElementById('navList');
+  if(!head) return;
+  const now=new Date(), iso=toISO(now), nm=now.getHours()*60+now.getMinutes();
+  const pl=navPlan(now);
+  if(pl.err){ head.innerHTML=''; st.innerHTML='<div class="nav-msg">'+pl.err+'</div>'; lb.innerHTML=''; return; }
+
+  head.innerHTML = '<div class="nav-dial">'+(now.getMonth()+1)+'/'+now.getDate()+'（'+dayType(now)+'）　'
+      + pl.dials.join('+')+'番</div>'
+    + (pl.altLabel ? '<div class="nav-alt">'
+        + '<button class="'+(pl.altOn?'':'on')+'" onclick="navSetAlt(false)">ふだんの日</button>'
+        + '<button class="'+(pl.altOn?'on':'')+'" onclick="navSetAlt(true)">'+pl.altLabel+'</button></div>' : '');
+
+  const trips=pl.items.filter(function(x){ return x.k!=='休'; });
+  if(pl.off || !trips.length){
+    st.innerHTML='<div class="nav-msg">'+(pl.off?'今日は公休です':'この日は乗務がありません')+'</div>';
+    lb.innerHTML=''; return;
+  }
+  const arr = navStoreGet(navArrKey(iso), {});
+  const first=trips[0], last=trips[trips.length-1];
+  /* 回送で発着が同じ場所のものは、その場での待機を含むので「回送・待機」と呼ぶ */
+  const ksName=function(x){
+    if(x.f===x.t) return '回送・待機（'+navPlaceName(x.f)+'）';
+    if(x.t==='営') return '営業所へ戻る（'+navPlaceName(x.f)+'から）';
+    return '回送（'+navPlaceName(x.f)+' → '+navPlaceName(x.t)+'）';
+  };
+  const desc=function(x){
+    return x.k==='回送'
+      ? x.d+'　<small>'+ksName(x)+'</small>'
+      : x.d+'　'+navPlaceName(x.f)+' 発<br><small>→ '+navPlaceName(x.t)+' '+x.a+'着</small>';
+  };
+  let h='<div class="nav-now">';
+  let curTrip=null, nextTrip=null, place='';
+  if(nm < navMin(first.d)){
+    h+='<div class="nav-st">⏰ まだ乗務の前です</div><div class="nav-next">最初は '+desc(first)+'</div>'
+     +'<div class="nav-cd">発車まで <b>'+(navMin(first.d)-nm)+'</b> 分</div>';
+    nextTrip=first;
+  }else if(nm >= navMin(last.a)){
+    h+='<div class="nav-st">🎉 今日の乗務はおしまいです</div><div class="nav-next"><small>最後は '+last.a+' '+navPlaceName(last.t)+'着でした。おつかれさまでした</small></div>';
+  }else{
+    curTrip = trips.find(function(x){ return navMin(x.d)<=nm && nm<navMin(x.a); }) || null;
+    nextTrip = trips.find(function(x){ return navMin(x.d)>nm; }) || null;
+    const prev = trips.filter(function(x){ return navMin(x.a)<=nm; }).pop() || null;
+    if(curTrip){
+      h+='<div class="nav-st">'+(curTrip.k==='回送'?'🚌 回送の時間です':'🚌 走行中の時間です')+'</div>'
+       +'<div class="nav-next"><small>'+navPlaceName(curTrip.f)+' → '+navPlaceName(curTrip.t)+'　'+curTrip.a+'着予定</small></div>';
+      place='';
+    }else if(prev){
+      /* 前の便と次の便の間に休憩の場所があれば、そこにいるはず */
+      const restMark = pl.items.find(function(x){ return x.k==='休' && x.key>navMin(prev.a)-0.01 && (!nextTrip || x.key<navMin(nextTrip.d)); });
+      place = restMark ? restMark.p : prev.t;
+      h+='<div class="nav-st">☕ いま '+navPlaceName(place)+(restMark?'で休憩':'に着いているはず')+'</div>';
+      const got = arr[prev.d];
+      if(got!=null){
+        const late = got - navMin(prev.a);
+        h+='<div class="nav-late">'+prev.a+'着の予定に '+navHm(got)+'着　'
+          +(late>0 ? '<span style="color:#c62828">'+late+'分遅れ</span>' : (late<0 ? (-late)+'分早く着きました' : '定時'))+'</div>';
+      }
+    }
+    if(nextTrip){
+      h+='<div class="nav-next">次は '+desc(nextTrip)+'</div>'
+       +'<div class="nav-cd">発車まで <b>'+(navMin(nextTrip.d)-nm)+'</b> 分</div>';
+      if(nextTrip.k==='回送'){
+        const after = trips.find(function(x){ return x.k!=='回送' && navMin(x.d)>=navMin(nextTrip.a); });
+        if(after) h+='<div class="nav-then">そのあと '+after.d+' '+navPlaceName(after.f)+'発 → '+navPlaceName(after.t)+'</div>';
+      }else if(place && nextTrip.f!==place){
+        const mv = navMove(place, nextTrip.f);
+        if(mv){
+          const ps = navMin(nextTrip.d) - mv.prep;
+          h+='<div class="nav-ok">⏱ 発車準備は <b>'+navHm(ps)+'</b> から'
+            +(ps>nm ? '（あと '+(ps-nm)+'分）' : '（もう準備の時間です）')
+            +'<br>'+navPlaceName(place)+' → '+navPlaceName(nextTrip.f)+(mv.note?'　'+mv.note:'')+'</div>';
+        }else{
+          h+='<div class="nav-warn">⚠ 次の発車は '+navPlaceName(nextTrip.f)+' からです（いま：'+navPlaceName(place)+'）</div>';
+        }
+      }
+    }
+  }
+  /* 「着いた」は、いちばん最近に発車した便（回送は除く）に付ける。
+     着く予定から20分を過ぎたら出さない。休憩中に押すと、大きな遅れに見えてしまうため */
+  const target = trips.filter(function(x){ return x.k!=='回送' && navMin(x.d)<=nm; }).pop();
+  const tGot = target ? arr[target.d] : null;
+  if(target && (tGot!=null || nm <= navMin(target.a)+20)){
+    h+='<div class="nav-acts">'
+      +(tGot!=null
+        ? '<button class="nav-btn2 sub" onclick="navArrived(\''+target.d+'\')">↩ 着いた時刻を取り消す</button>'
+        : '<button class="nav-btn2" onclick="navArrived(\''+target.d+'\')">✋ 着いた（'+target.a+'着の便）</button>')
+      +'</div>';
+  }
+  if(pl.other) h+='<div class="nav-then">※ 他のダイヤで走る分は、行程のデータが無いので出していません</div>';
+  h+='</div>';
+  st.innerHTML=h;
+
+  /* 今日の行程の一覧 */
+  let L='<div class="nav-list">';
+  pl.items.forEach(function(x){
+    if(x.k==='休'){ L+='<div class="nav-row rest"><span class="tm">☕</span>休憩（'+navPlaceName(x.p)+'）</div>'; return; }
+    const past = navMin(x.a)<=nm, cur=(x===curTrip||x===nextTrip);
+    const got = arr[x.d];
+    const late = (got!=null) ? got-navMin(x.a) : null;
+    L+='<div class="nav-row'+(past?' past':'')+(cur?' cur':'')+(x.k==='回送'?' ks':'')+'">'
+      +'<span class="tm">'+x.d+'→'+x.a+'</span>'
+      +'<span>'+(x.k==='回送' ? ksName(x) : navPlaceName(x.f)+' → '+navPlaceName(x.t))+'</span>'
+      +(late>0?'<span class="lt">+'+late+'分</span>':'')+'</div>';
+  });
+  lb.innerHTML=L+'</div>';
+}
+
+/* 着いた時刻を残す。もう一度押すと取り消す */
+function navArrived(dep){
+  const now=new Date(), iso=toISO(now), nm=now.getHours()*60+now.getMinutes();
+  const arr=navStoreGet(navArrKey(iso), {});
+  if(arr[dep]!=null){
+    if(!confirm('着いた時刻を取り消しますか？')) return;
+    delete arr[dep];
+  }else{
+    arr[dep]=nm;
+  }
+  navStoreSet(navArrKey(iso), arr);
+  renderNav();
+}
+
 /* 画面の向きや大きさが変わったら測り直す */
 window.addEventListener('resize', function(){ rcFit(); });
 
@@ -7762,6 +8060,7 @@ window.onload=async function(){
      自分のダイヤを読んだあとに呼ぶ（CUR_MAX と DB が要るため）。
      待たずに進めるので、起動が遅くなることはない。 */
   loadOtherDias();
+  loadNav();            // 今日のナビの行程（データのあるアプリだけ）
   /* 前回どこかで画面のロックが残っていたら、必ず解除しておく。
      これが残っていると、開いた瞬間から操作できないように見える。 */
   document.body.style.overflow='';
