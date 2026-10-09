@@ -13,6 +13,15 @@ mm = kk2.mm
 BASE_PLACES = {"南": "学園前駅（南口）", "北": "学園前駅（北口）", "東": "東生駒駅", "ふ": "ふれあいセンター",
                "さ": "さつき台休憩所", "営": "営業所", "い": "学研北生駒駅", "富": "富雄駅", "傍": "傍示",
                "ス": "生駒北スポーツセンター"}
+# ダイヤごとの場所の名前（乗務員さんに教えてもらったもの。同じ略号でもダイヤで意味が違うことがある）
+EXTRA_PLACES = {
+    'a': {"近": "近畿大学", "Ｕ": "UT", "U": "UT", "T": "UT", "セ": "奈良県総合医療センター",
+          "サ": "高山サイエンスタウン", "チ": "西千代ケ丘二丁目", "鹿": "鹿ノ台北二丁目", "赤": "赤膚山",
+          "登": "学研奈良登美ケ丘駅", "大": "学園大和町五丁目", "若": "若草台", "ヒ": "帝塚山ヒルズ",
+          "帝": "帝塚山西二丁目", "西": "西登美ケ丘五丁目", "中": "中登美ケ丘団地経由", "な": "奈良学園"},
+    'ba': {"緑": "緑ヶ丘循環", "六": "六条西二丁目", "中": "中菜畑", "育": "育英西校", "青": "青葉公園",
+           "高": "高山学校", "尼": "尼ヶ辻駅止め", "若": "若草台", "轉": "朝日町循環"},
+}
 MOVES = [{"from": "営", "to": "い", "prep": 10, "near": True, "note": "営業所のすぐ下"},
          {"from": "さ", "to": "東", "prep": 15}]
 
@@ -86,7 +95,8 @@ def build(code, pdf, dia, revision, places):
             if want and js in (mm(want), alls): report['ok'] += 1
             elif want: report['mis'].append('%s-%d %s %+d' % (n, vi, d, js - mm(want)))
             label = ''
-            if len(lst) > 1:
+            nara = bool(vlabs) and all(re.fullmatch(r'[A-F]', lab) for lab, _ in vlabs)
+            if len(lst) > 1 or nara:
                 report['labels'] += 1
                 st = (r['vals'].get('出勤_all') or [None])[0]
                 en = (r['vals'].get('退勤_all') or [None])[-1]
@@ -112,7 +122,22 @@ def build(code, pdf, dia, revision, places):
             if ins and outs and len(ins) == len(outs):
                 v_['in'] = ins; v_['out'] = outs     # 出勤・退勤（中間解放があれば2つずつ）
             vars_.append(v_)
-        if all(not v['list'] for v in vars_):
+        # 形の名前が A〜F だけ（奈良学園）のときは、A〜F を全部並べる。
+        # 系統表に無い形は行程が無いので、出退勤表の出勤・退勤だけを持たせる（nodata）
+        if vlabs and all(re.fullmatch(r'[A-F]', lab) for lab, _ in vlabs):
+            note = (slot or {}).get('n', '')
+            have = {v['label']: v for v in vars_}
+            full = []
+            for m in re.finditer(r'([A-F]):([\d:/〜]+)', note):
+                lab = m.group(1)
+                if lab in have:
+                    full.append(have[lab]); continue
+                a, _, b = m.group(2).partition('〜')
+                full.append({'label': lab, 'list': [], 'in': [a.split('/')[0]] + ([b.split('/')[0]] if '/' in b else []),
+                             'out': ([a.split('/')[1]] if '/' in a else []) + [b.split('/')[-1]], 'nodata': True})
+            if full:
+                vars_ = full
+        if all(not v['list'] for v in vars_) and not any(v.get('nodata') for v in vars_):
             continue  # 公休など、便の無いもの
         if len(vars_) == 1:
             ent = {k: v for k, v in vars_[0].items() if k != 'label'}
@@ -135,6 +160,7 @@ def build(code, pdf, dia, revision, places):
 if __name__ == '__main__':
     code, pdf, dia, rev, out = sys.argv[1:6]
     places = dict(BASE_PLACES)
+    places.update(EXTRA_PLACES.get(code, {}))
     if code in ('ikoma', 'yobi'):
         places.pop('南'); places.pop('北')   # 生駒・予備は「南」「北」がどこか未確認
     data, rep, unknown = build(code, pdf, dia, rev, places)

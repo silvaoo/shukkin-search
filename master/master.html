@@ -7269,7 +7269,7 @@ function navPlan(date){
      以前の true（2つ目の形）もそのまま読めるようにしておく */
   const sv = navStoreGet(navAltKey(iso), 0);
   let sel = (sv===true) ? 1 : (typeof sv==='number' ? sv : 0);
-  let varLabels=null, items=[], off=true, io=null;
+  let varLabels=null, items=[], off=true, io=null, nodata='';
   pieces.forEach(function(pc){
     const ent = NAV.dials && NAV.dials[pc.dial] && NAV.dials[pc.dial][dt];
     if(!ent) return;
@@ -7280,6 +7280,8 @@ function navPlan(date){
     let list = vs[sel].list;
     /* 出勤・退勤（中間解放があれば2つずつ）。1本だけまるごと乗る日に使う */
     if(pieces.length===1 && pc.part==='all' && vs[sel].in) io={in:vs[sel].in, out:vs[sel].out};
+    /* 奈良学園の C〜E のように、勤務系統表に行程が載っていない形 */
+    if(vs[sel].nodata) nodata = vs[sel].label || '?';
     /* 前半だけ・後半だけ乗る日は、出退勤表の解放の時刻で分ける */
     if(pc.part==='first' || pc.part==='second'){
       const sl = DB[pc.dial] && DB[pc.dial][dt];
@@ -7299,7 +7301,7 @@ function navPlan(date){
     });
   });
   items.sort(function(a,b){ return a.key-b.key; });
-  return {items:items, other:other, off:off, varLabels:varLabels, sel:sel, io:io,
+  return {items:items, other:other, off:off, varLabels:varLabels, sel:sel, io:io, nodata:nodata,
           dials:pieces.map(function(p){ return p.dial; })};
 }
 
@@ -7337,6 +7339,15 @@ function renderNav(){
         + '</div>' : '');
 
   const trips=pl.items.filter(function(x){ return x.k!=='休'; });
+  if(pl.nodata && !trips.length){
+    let m='この形（'+pl.nodata+'）の行程は、勤務系統表に載っていません';
+    if(pl.io){
+      m+='<br><br>'+pl.io.in.map(function(x,i){
+        return (pl.io.in.length>1?(i===0?'前半　':'後半　'):'')+'出勤 <b>'+x+'</b> ／ 退勤 <b>'+(pl.io.out[i]||'')+'</b>'; }).join('<br>');
+    }
+    st.innerHTML='<div class="nav-msg">'+m+'</div>';
+    lb.innerHTML=''; return;
+  }
   if(pl.off || !trips.length){
     st.innerHTML='<div class="nav-msg">'+(pl.off?'今日は公休です':'この日は乗務がありません')+'</div>';
     lb.innerHTML=''; return;
