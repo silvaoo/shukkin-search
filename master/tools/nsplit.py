@@ -10,6 +10,8 @@
 #             名前が1つにそろっているときだけ使う。
 #  手がかり2: 乗務員さんに教えてもらった行き先ごとの駅（NS_ROUTE）
 #             それでも見分けられないところは、番号ごとに教えてもらった駅（NS_DIAL）
+#  手がかり4: 1日の勤務で学園前駅と生駒駅の両方へ行くことは無い。見分けられた所が全部同じ駅なら、
+#             その日の残りの「北」「南」も同じ駅にする。両方が出たら、ビルドの最後に知らせる
 #  手がかり3: ある便で着いた場所から次の便が出るなら、同じ駅（休憩をはさんでも）。
 #             環状の便（北→北）は出た駅に戻るので、発と着は同じ駅。
 #             1つの勤務の中で、つながっている所はまとめて同じ駅にする。
@@ -145,6 +147,7 @@ def split(code, data):
 
     left = collections.OrderedDict()
     stat = collections.Counter()
+    mixed = []
     for n, day, vi, lab, L in lists_of(data['dials']):
         slots, find = _comps(L)
         strong = collections.defaultdict(set)   # 手がかり1（学園前Ａ・Ｃ・生駒の便とくらべたもの）
@@ -189,6 +192,14 @@ def split(code, data):
             a = decided.get(pv); b = decided.get(nx)
             if a and a == b:
                 decided[(i, f)] = a
+        # 1日の勤務で学園前駅と生駒駅の両方へ行くことは無い（2026-10-10 乗務員さんより）。
+        # 見分けられた所が全部同じ駅なら、残りもその駅にする
+        tags = set(decided.values())
+        if len(tags) == 1:
+            for sl in slots:
+                decided.setdefault(sl, next(iter(tags)))
+        elif len(tags) > 1:
+            mixed.append((n, day, lab))
         for (i, f) in slots:
             if (i, f) in decided:
                 L[i][f] = L[i][f] + decided[(i, f)]; stat[decided[(i, f)]] += 1
@@ -209,4 +220,8 @@ def split(code, data):
                 if c: used.add(c)
     for k in list(NS_NAME) + ['北', '南']:
         if k not in used: data['places'].pop(k, None)
+    if mixed:
+        stat['学園前と生駒が両方ある勤務'] = len(mixed)
+        for m in mixed:
+            left.setdefault((m[0], m[1] + ('（%s）' % m[2] if m[2] else '')), []).append('←学園前と生駒の両方')
     return stat, left
