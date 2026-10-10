@@ -371,6 +371,15 @@ body {
 .nav-row.ks { color:#777; font-style:italic; }
 .nav-row.rest { color:#2a6fb0; font-weight:700; }
 .nav-row .lt { margin-left:auto; font-size:calc(11px * var(--fs, 1)); color:#c62828; font-weight:800; }
+/* 経由（系統）。同じ行き先で経由が2つ以上ある区間は黄色で注意 */
+.nav-via { display:inline-block; margin-top:5px; padding:2px 8px; border-radius:7px; background:#eef3ff; color:#2a4fa0;
+  font-size:calc(13px * var(--fs, 1)); font-weight:800; line-height:1.4; }
+.nav-via.warn { background:#fff3cd; color:#7a4d00; border:1.5px solid #f0b429; }
+.nav-via small { font-size:calc(11px * var(--fs, 1)); font-weight:700; }
+.nav-row .vt { display:inline-block; margin-top:1px; font-size:calc(11px * var(--fs, 1)); color:#2a4fa0; font-weight:700; }
+.nav-row .vt.w { color:#9a5b00; }
+.nav-row.vw { background:#fffbea; }
+.nav-row.vw.cur { background:#fff0c2; }
 .nav-msg { padding:14px; text-align:center; color:#555; font-size:calc(14px * var(--fs, 1)); }
 
 /* ==== 指定して検索・カレンダー ==== */
@@ -7233,6 +7242,46 @@ function navRoute(f,t){
   if(!t) return navPlaceName(f)+' →';
   return navPlaceName(f)+' → '+navPlaceName(t);
 }
+/* 経由（系統）。同じ行き先でも経由が違う便がある（学園前駅南口⇔西千代ケ丘二丁目の22系統・26系統など）。
+   行程データの便に v（系統の番号など）が付いていれば、vias の名前で出す。
+   v が "?" の便は、系統表の所要時間からは経由が分からないもの */
+function navViaName(v){
+  if(!v) return '';
+  if(v==='?') return '経由を確認';
+  return (NAV && NAV.vias && NAV.vias[v]) ? NAV.vias[v] : v+'系統';
+}
+/* その区間（行き・帰りどちらも）に経由が2つ以上あるか。あれば経由まちがいに注意を出す */
+function navViaMulti(x){
+  if(!x || !x.v || x.k || !NAV || !NAV.dials) return false;
+  if(!NAV._vp){
+    const m={};
+    Object.keys(NAV.dials).forEach(function(n){
+      Object.keys(NAV.dials[n]).forEach(function(dt){
+        const e=NAV.dials[n][dt];
+        (e.vars||[e]).forEach(function(vv){
+          (vv.list||[]).forEach(function(y){
+            if(!y.v || y.k) return;
+            const k=[y.f,y.t].sort().join('|');
+            (m[k]=m[k]||{})[y.v]=1;
+          });
+        });
+      });
+    });
+    NAV._vp=m;
+  }
+  const s=NAV._vp[[x.f,x.t].sort().join('|')];
+  return x.v==='?' || (!!s && Object.keys(s).filter(function(k){ return k!=='?'; }).length>1);
+}
+/* 便の経由の札。prev は同じ区間を前に走った便（経由が変わるときに知らせる） */
+function navViaTag(x, prev){
+  if(!x || x.k || !x.v) return '';
+  const multi=navViaMulti(x);
+  let s='<div class="nav-via'+(multi?' warn':'')+'">'+(multi?'⚠ ':'')+navViaName(x.v);
+  if(x.v==='?') s+='<br><small>系統表の時間からは分かりません。行先表示を確かめてください</small>';
+  else if(multi && prev && prev.v && prev.v!=='?' && prev.v!==x.v) s+='<br><small>前の便（'+navViaName(prev.v)+'）と経由が違います</small>';
+  else if(multi) s+='<br><small>この区間は経由が2つあります</small>';
+  return s+'</div>';
+}
 function navMin(hm){
   const m=String(hm||'').match(/(\d{1,2}):(\d{2})/);
   return m ? parseInt(m[1],10)*60+parseInt(m[2],10) : null;
@@ -7391,8 +7440,11 @@ function renderNav(){
       const ci=navMin(pl.io.in[0]);
       h+='<div class="nav-cd">出勤は <b>'+pl.io.in[0]+'</b>'+(ci>nm?'（あと '+(ci-nm)+'分）':'')+'</div>';
     }
-    h+='<div class="nav-next">最初は '+desc(first)+'</div>'
+    h+='<div class="nav-next">最初は '+desc(first)+'</div>'+navViaTag(first, null)
      +'<div class="nav-cd">発車まで <b>'+(navMin(first.d)-nm)+'</b> 分</div>';
+    /* 今日、経由に注意する便の数 */
+    const nv=trips.filter(function(x){ return navViaMulti(x); }).length;
+    if(nv) h+='<div class="nav-then">⚠ 今日は経由に注意する便が <b>'+nv+'本</b> あります（下の一覧の黄色）</div>';
     nextTrip=first;
   }else if(nm >= navMin(last.a)){
     h+='<div class="nav-st">🎉 今日の乗務はおしまいです</div><div class="nav-next"><small>最後は '+last.a+' '+navPlaceName(last.t)+'着でした。'
@@ -7423,7 +7475,10 @@ function renderNav(){
       }
     }
     if(nextTrip){
-      h+='<div class="nav-next">次は '+desc(nextTrip)+'</div>'
+      /* 同じ区間（行き・帰り）を前に走った便。経由が変わるなら知らせる */
+      const prevSame = trips.filter(function(x){ return !x.k && x.v && navMin(x.d)<navMin(nextTrip.d)
+        && [x.f,x.t].sort().join('|')===[nextTrip.f,nextTrip.t].sort().join('|'); }).pop() || null;
+      h+='<div class="nav-next">次は '+desc(nextTrip)+'</div>'+navViaTag(nextTrip, prevSame)
        +'<div class="nav-cd">発車まで <b>'+(navMin(nextTrip.d)-nm)+'</b> 分</div>';
       if(nextTrip.k==='回送'){
         const after = trips.find(function(x){ return x.k!=='回送' && navMin(x.d)>=navMin(nextTrip.a); });
@@ -7463,9 +7518,10 @@ function renderNav(){
     const past = navMin(x.a)<=nm, cur=(x===curTrip||x===nextTrip);
     const got = arr[x.d];
     const late = (got!=null) ? got-navMin(x.a) : null;
-    L+='<div class="nav-row'+(past?' past':'')+(cur?' cur':'')+(x.k==='回送'?' ks':'')+'">'
+    L+='<div class="nav-row'+(past?' past':'')+(cur?' cur':'')+(x.k==='回送'?' ks':'')+(navViaMulti(x)?' vw':'')+'">'
       +'<span class="tm">'+x.d+'→'+x.a+'</span>'
-      +'<span>'+(x.k==='回送' ? ksName(x) : navRoute(x.f,x.t))+'</span>'
+      +'<span>'+(x.k==='回送' ? ksName(x) : navRoute(x.f,x.t))
+        +(x.v && !x.k ? '<br><span class="vt'+(navViaMulti(x)?' w':'')+'">'+(navViaMulti(x)?'⚠ ':'')+navViaName(x.v)+'</span>' : '')+'</span>'
       +(late>0?'<span class="lt">+'+late+'分</span>':'')+'</div>';
   });
   lb.innerHTML=L+'</div>';

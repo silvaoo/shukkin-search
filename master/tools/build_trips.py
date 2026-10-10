@@ -32,6 +32,36 @@ EXTRA_PLACES = {
 }
 # ダイヤによっては当てはまらない場所の決まり（生駒の「さ」はさつき台住宅で、さつき台休憩所ではない）
 NO_MOVES = {'ikoma': [('さ', '東')]}
+# 経由（系統）。同じ区間でも経由が違う便がある（学園前駅南口⇔西千代ケ丘二丁目の22系統・26系統など）。
+# 系統表には経由が書いていないので、所要分で見分ける。どの所要分がどの経由かは乗務員さんに聞いて書く。
+#   {dia: [{'pair': (発, 着), 'both': True（逆向きも同じ）, 'min': {所要分: 系統}, 'other': '?'（どれでもない分）}]}
+#   'other' を '?' にすると、ナビで「経由を確認」と出す
+VIA_RULES = {}
+# 系統の名前 {系統: 画面に出す名前}
+VIA_NAMES = {}
+
+
+def apply_via(code, data, rules=None, names=None):
+    """便に経由（v）を付ける。付けた数を返す"""
+    rules = VIA_RULES.get(code, []) if rules is None else rules
+    names = VIA_NAMES if names is None else names
+    cnt = collections.Counter()
+    used = set()
+    for dd in data['dials'].values():
+        for ent in dd.values():
+            for var in ent.get('vars', [ent] if 'list' in ent else []):
+                for x in var['list']:
+                    if x.get('k') or 'd' not in x: continue
+                    for r in rules:
+                        f, t = r['pair']
+                        if (x['f'], x['t']) == (f, t) or (r.get('both') and (x['f'], x['t']) == (t, f)):
+                            v = r['min'].get(mm(x['a']) - mm(x['d']), r.get('other'))
+                            if v:
+                                x['v'] = v; used.add(v); cnt[v] += 1
+                            break
+    if used:
+        data['vias'] = {v: names.get(v, v + '系統') for v in sorted(used) if v != '?'}
+    return cnt
 MOVES = [{"from": "営", "to": "い", "prep": 10, "near": True, "note": "営業所のすぐ下"},
          {"from": "さ", "to": "東", "prep": 15}]
 
@@ -181,6 +211,9 @@ if __name__ == '__main__':
         for (n, d), v in left.items():
             print('    見分けられない %s番 %s: %s' % (n, d, ' '.join(v)))
         unknown = sorted(set(unknown) - {'北', '南'} | ({'北', '南'} if left else set()))
+    vc = apply_via(code, data)
+    if vc:
+        print('  経由を付けた便', dict(vc))
     json.dump(data, open(out, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     print(code, '行', rep['rows'], '実車一致', rep['ok'], '不一致', len(rep['mis']), rep['mis'])
     print('  形違い', rep['labels'], '名前が付いた', rep['labels_ok'], '付かない', rep['nolabel'][:12])
