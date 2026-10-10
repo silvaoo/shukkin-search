@@ -40,6 +40,9 @@ NS_ROUTE = {'ba': {('北', '環'): '学', ('北', '緑'): '学', ('北', '轉'):
 # 手がかりで見分けられなかったところを、番号ごとに教えてもらったもの（見分けられたところは変えない）
 # 2026-10-10: 予備 7・8・19番は前後の路線から生駒駅、23番は学園前駅
 NS_DIAL = {'yobi': {'7': '生', '8': '生', '19': '生', '23': '学'}}
+# 1日で学園前駅と生駒駅の両方が出ても正しいと確かめた勤務（ビルドで知らせない）
+# 2026-10-10: 北大和Ｂ 2番平日は中間解放をはさみ、前半が生駒駅南口⇔中菜畑二丁目、後半が朝日町循環（学園前）
+NS_MIXED_OK = {'ba': {('2', '平')}}
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORK = os.path.abspath(os.path.join(HERE, '..', '..', '..'))
@@ -198,7 +201,7 @@ def split(code, data):
         if len(tags) == 1:
             for sl in slots:
                 decided.setdefault(sl, next(iter(tags)))
-        elif len(tags) > 1:
+        elif len(tags) > 1 and (n, day) not in NS_MIXED_OK.get(code, set()):
             mixed.append((n, day, lab))
         for (i, f) in slots:
             if (i, f) in decided:
