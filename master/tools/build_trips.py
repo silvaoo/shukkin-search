@@ -9,6 +9,7 @@
 import sys, json, re, collections
 sys.path.insert(0, __import__('os').path.dirname(__import__('os').path.abspath(__file__)))
 import kk2
+import nsplit
 mm = kk2.mm
 BASE_PLACES = {"南": "学園前駅（南口）", "北": "学園前駅（北口）", "東": "東生駒駅", "ふ": "ふれあいセンター",
                "さ": "さつき台休憩所", "営": "営業所", "い": "学研北生駒駅", "富": "富雄駅", "傍": "傍示",
@@ -173,6 +174,13 @@ if __name__ == '__main__':
     if code == 'yobi':
         places.pop('南'); places.pop('北')   # 予備は「南」「北」がどこか未確認（生駒は生駒駅の北口・南口）
     data, rep, unknown = build(code, pdf, dia, rev, places)
+    if code in nsplit.NS_ROUTE:
+        # 予備・北大和Ｂは「北」「南」が学園前駅か生駒駅かを前後の路線から見分ける（nsplit.py）
+        stat, left = nsplit.split(code, data)
+        print('  北・南の見分け', dict(stat))
+        for (n, d), v in left.items():
+            print('    見分けられない %s番 %s: %s' % (n, d, ' '.join(v)))
+        unknown = sorted(set(unknown) - {'北', '南'} | ({'北', '南'} if left else set()))
     json.dump(data, open(out, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     print(code, '行', rep['rows'], '実車一致', rep['ok'], '不一致', len(rep['mis']), rep['mis'])
     print('  形違い', rep['labels'], '名前が付いた', rep['labels_ok'], '付かない', rep['nolabel'][:12])
