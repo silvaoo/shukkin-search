@@ -30,6 +30,29 @@ EXTRA_PLACES = {
            "芝": "芝辻操作場", "轉": "轉輪王"},
     'yobi': {"競": "競輪", "同": "同志社", "京": "京都駅", "祝": "祝園駅", "七": "光台7丁目"},
 }
+# 同じダイヤの中でも、番号によって場所が違う略号。{dia: {番号: {略号: 名前}}}
+# 2026-10-11: 予備 10番の「西」は大和西大寺駅（北口）（競輪との往復）。1番・12番の「西」は別の場所かもしれないので未定
+PLACE_BY_DIAL = {'yobi': {'10': {'西': '大和西大寺駅（北口）'}}}
+
+
+def apply_place_by_dial(code, data):
+    """番号ごとの名前を付ける。略号を「西_10」のように番号付きに置きかえて places に入れる"""
+    for n, rule in PLACE_BY_DIAL.get(code, {}).items():
+        for ent in data['dials'].get(n, {}).values():
+            for var in ent.get('vars', [ent] if 'list' in ent else []):
+                for x in var['list']:
+                    for f in ('f', 't', 'p'):
+                        if x.get(f) in rule:
+                            x[f] = x[f] + '_' + n
+        for c, name in rule.items():
+            data['places'][c + '_' + n] = {'name': name}
+    # もう使われていない略号の名前は消す
+    used = {x.get(f) for dd in data['dials'].values() for ent in dd.values()
+            for var in ent.get('vars', [ent] if 'list' in ent else []) for x in var['list'] for f in ('f', 't', 'p')}
+    for c in list(data['places']):
+        if c not in used: data['places'].pop(c)
+
+
 # ダイヤによっては当てはまらない場所の決まり（生駒の「さ」はさつき台住宅で、さつき台休憩所ではない）
 NO_MOVES = {'ikoma': [('さ', '東')]}
 # 経由（系統）。同じ区間でも経由が違う便がある（学園前駅南口⇔西千代ケ丘二丁目の22系統・26系統など）。
@@ -204,6 +227,7 @@ if __name__ == '__main__':
     if code == 'yobi':
         places.pop('南'); places.pop('北')   # 予備は「南」「北」がどこか未確認（生駒は生駒駅の北口・南口）
     data, rep, unknown = build(code, pdf, dia, rev, places)
+    apply_place_by_dial(code, data)
     if code in nsplit.NS_ROUTE:
         # 予備・北大和Ｂは「北」「南」が学園前駅か生駒駅かを前後の路線から見分ける（nsplit.py）
         stat, left = nsplit.split(code, data)
