@@ -107,11 +107,17 @@ def parse_page(pg):
             sc = [c for c in SC if abs(c['x0'] - c0['x0']) < 3.0]
             ec = [c for c in EC if abs(c['x1'] - c1['x1']) < 3.0 or abs(c['x0'] - (p2 or c1)['x0']) < 3.0]
             # 場所は1文字。短い便が並ぶと隣の便の場所とくっつくので、いちばん近い1文字だけ取る
-            f = min(sc, key=lambda c: abs(c['x0'] - c0['x0']))['text'] if sc else ''
+            sc = [c for c in sc if c['text'] not in ('外', '内')]
+            fc = min(sc, key=lambda c: abs(c['x0'] - c0['x0'])) if sc else None
+            f = fc['text'] if fc else ''
             t = min(ec, key=lambda c: abs(c['x1'] - c1['x1']))['text'] if ec else ''
             d = pick(int(sm), b['x0']); a = pick(int(em), b['x1'])
             if a < d: a += 60
             it = {'d': '%d:%02d' % divmod(d, 60), 'f': f, 'a': '%d:%02d' % divmod(a, 60), 't': t}
+            # 発の場所の右に「外」「内」があれば、循環の外回り・内回り（生駒駅北口の循環などに付いている）
+            if fc:
+                rr = [c for c in SC if c['text'] in ('外', '内') and abs(c['top'] - fc['top']) < 0.8 and fc['x1'] - 0.5 < c['x0'] < fc['x1'] + 8]
+                if rr and f == t: it['r'] = min(rr, key=lambda c: c['x0'])['text']
             # 読み違いに備えて、ほかの読み方も控えておく（実車の合計が合わないときに使う）
             alts = set()
             for cs_ in s:

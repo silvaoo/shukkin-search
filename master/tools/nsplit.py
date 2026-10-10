@@ -9,6 +9,7 @@
 #             略号が同じでも場所が違うため）。名前が分からない略号は、学園前Ａ・Ｃ・生駒で
 #             名前が1つにそろっているときだけ使う。
 #  手がかり2: 乗務員さんに教えてもらった行き先ごとの駅（NS_ROUTE）
+#             それでも見分けられないところは、番号ごとに教えてもらった駅（NS_DIAL）
 #  手がかり3: ある便で着いた場所から次の便が出るなら、同じ駅（休憩をはさんでも）。
 #             環状の便（北→北）は出た駅に戻るので、発と着は同じ駅。
 #             1つの勤務の中で、つながっている所はまとめて同じ駅にする。
@@ -21,13 +22,22 @@
 # 見分けた「北」「南」は「北学」「北生」「南学」「南生」という略号に置きかえる。
 # 見分けられなかったもの・手がかりが食い違うものは「北」「南」のまま。画面では「北口」「南口」と出す。
 # 環状の便（北→北）の所要分は、学園前Ａに無いだけで学園前にもあり得るので手がかり1には使わない。
+# ただし系統表で「外」「内」（外回り・内回り）が付いた循環は、生駒の系統表にだけ出てくるので手がかりにする
+# （kk2.py が便に r:"外" / r:"内" を付ける）。北大和Ｂ 29番の昼の循環がこれ。
 import json, os, collections
 
 NS_NAME = {'北学': '学園前駅（北口）', '南学': '学園前駅（南口）',
            '北生': '生駒駅（北口）', '南生': '生駒駅（南口）'}
 # 乗務員さんに教えてもらった、行き先ごとの駅。{dia: {(北/南, 相手の略号): '学' か '生'}}
 # 環状（北→北）は (北, '環')。例: {'ba': {('北', '緑'): '学', ('北', '環'): '学'}}
-NS_ROUTE = {'ba': {}, 'yobi': {}}
+# 2026-10-10 北大和Ｂ: 北口の循環・緑ヶ丘・轉輪王・青葉公園前は朝日町循環、
+#   南口の循環・六条西三丁目は六条西二丁目行き、近鉄奈良駅行き（最終は尼ヶ辻駅止め）。どれも学園前駅
+NS_ROUTE = {'ba': {('北', '環'): '学', ('北', '緑'): '学', ('北', '轉'): '学', ('北', '青'): '学',
+                   ('南', '環'): '学', ('南', '六'): '学', ('南', '近'): '学', ('南', '尼'): '学'},
+            'yobi': {}}
+# 手がかりで見分けられなかったところを、番号ごとに教えてもらったもの（見分けられたところは変えない）
+# 2026-10-10: 予備 7・8・19番は前後の路線から生駒駅、23番は学園前駅
+NS_DIAL = {'yobi': {'7': '生', '8': '生', '19': '生', '23': '学'}}
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORK = os.path.abspath(os.path.join(HERE, '..', '..', '..'))
@@ -68,6 +78,9 @@ def _evidence():
         for _, _, _, _, L in lists_of(d['dials']):
             for x in L:
                 if x.get('k') or 'd' not in x: continue          # 営業の便だけ
+                # 外回り・内回りの印がある循環（生駒駅北口の循環など）
+                if x.get('r') and x['f'] in ('北', '南') and x['f'] == x['t']:
+                    ev[(x['f'], '環' + x['r'])].add(tag)
                 for end, other, dr in ((x['f'], x['t'], '発'), (x['t'], x['f'], '着')):
                     if end in ('北', '南') and other and other not in ('北', '南') and pl.get(other):
                         ev[(end, dr, pl[other], mm(x['a']) - mm(x['d']))].add(tag)
@@ -134,18 +147,22 @@ def split(code, data):
     stat = collections.Counter()
     for n, day, vi, lab, L in lists_of(data['dials']):
         slots, find = _comps(L)
-        votes = collections.defaultdict(set)
+        strong = collections.defaultdict(set)   # 手がかり1（学園前Ａ・Ｃ・生駒の便とくらべたもの）
+        weak = collections.defaultdict(set)     # 手がかり2（教えてもらった行き先ごとの駅）
         for (i, f) in slots:
             x = L[i]
             if f == 'p' or 'd' not in x: continue
             other = x['t'] if f == 'f' else x['f']
             if not x.get('k') and other == x[f]:
+                # 外回り・内回りの印がある循環は、同じ印の循環がある駅
+                t = ev.get((x[f], '環' + x['r'])) if x.get('r') else None
+                if t and len(t) == 1: strong[find((i, f))] |= t
                 r = route.get((x[f], '環'))      # 環状（北→北）は (北, '環') で教えてもらう
-                if r: votes[find((i, f))].add(r)
+                if r: weak[find((i, f))].add(r)
                 continue
             if not other or other in ('北', '南'): continue
             r = route.get((x[f], other))
-            if r: votes[find((i, f))].add(r); continue
+            if r: weak[find((i, f))].add(r)
             if x.get('k'): continue
             nm = ident(other)
             if not nm: continue
@@ -153,15 +170,33 @@ def split(code, data):
             tags = set()
             for dd in range(-2, 3):
                 tags |= ev.get((x[f], '発' if f == 'f' else '着', nm, dur + dd), set())
-            if len(tags) == 1: votes[find((i, f))] |= tags
+            if len(tags) == 1: strong[find((i, f))] |= tags
+        # 便とくらべた手がかりがあればそれを使い、無いときだけ教えてもらった行き先の駅を使う
+        # （北大和Ｂの「北→北」の循環は、ふだんは学園前の朝日町循環だが、生駒の便の間に入ることもある）
+        decided = {}
         for (i, f) in slots:
-            v = votes.get(find((i, f)), set())
+            c = find((i, f))
+            v = strong.get(c) or weak.get(c) or set()
+            if not v and n in NS_DIAL.get(code, {}):
+                v = {NS_DIAL[code][n]}
             if len(v) == 1:
-                L[i][f] = L[i][f] + next(iter(v)); stat[next(iter(v))] += 1
+                decided[(i, f)] = next(iter(v))
+        # 休憩の場所だけ分からないとき: 前に着いた駅と次に出る駅が同じなら、その駅の反対の口で休憩
+        for (i, f) in slots:
+            if f != 'p' or (i, f) in decided: continue
+            pv = next(((j, 't') for j in range(i - 1, -1, -1) if L[j].get('k') != '休'), None)
+            nx = next(((j, 'f') for j in range(i + 1, len(L)) if L[j].get('k') != '休'), None)
+            a = decided.get(pv); b = decided.get(nx)
+            if a and a == b:
+                decided[(i, f)] = a
+        for (i, f) in slots:
+            if (i, f) in decided:
+                L[i][f] = L[i][f] + decided[(i, f)]; stat[decided[(i, f)]] += 1
             else:
-                stat['食い違い' if v else '分からない'] += 1
+                c = find((i, f))
+                stat['食い違い' if (strong.get(c) or weak.get(c)) else '分からない'] += 1
                 x = L[i]
-                left.setdefault((n, day), []).append('%s%s' % (x.get('d') or '休憩', ''))
+                left.setdefault((n, day), []).append(x.get('d') or '休憩')
     for k, v in NS_NAME.items():
         data['places'][k] = {'name': v}
     # 見分けられなかったものは、駅の名前を付けずに「北口」「南口」とだけ出す
