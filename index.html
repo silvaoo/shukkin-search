@@ -348,6 +348,13 @@ body {
 .nav-dial { font-size:calc(13px * var(--fs, 1)); font-weight:800; color:#444; margin-bottom:6px; }
 .nav-now { border:2px solid #ff9f1a; background:#fff7ec; border-radius:12px; padding:12px; margin-bottom:10px; }
 .nav-st { font-size:calc(13px * var(--fs, 1)); font-weight:800; color:#c25e00; }
+/* 走っている時間（運行中・回送中）。点滅させて、運転に集中してもらう */
+.nav-run { text-align:center; font-size:calc(22px * var(--fs, 1)); font-weight:900; color:#d32f2f; letter-spacing:.1em;
+  background:#ffebee; border:2px solid #e53935; border-radius:10px; padding:6px 4px; animation: navBlink 1.2s ease-in-out infinite; }
+.nav-run.ks { color:#6a1b9a; background:#f3e5f5; border-color:#8e24aa; }
+.nav-safe { text-align:center; font-size:calc(15px * var(--fs, 1)); font-weight:800; color:#b71c1c; margin-top:6px; }
+@keyframes navBlink { 0%,100% { opacity:1; } 50% { opacity:.25; } }
+@media (prefers-reduced-motion: reduce) { .nav-run { animation:none; } }
 .nav-next { font-size:calc(20px * var(--fs, 1)); font-weight:900; color:#1a1a2e; line-height:1.4; margin-top:4px; }
 .nav-next small { font-size:calc(13px * var(--fs, 1)); font-weight:700; color:#555; }
 .nav-cd { font-size:calc(15px * var(--fs, 1)); font-weight:800; color:#1a1a2e; margin-top:6px; }
@@ -758,6 +765,10 @@ body.light #todayInput { background: #fff; }
 .speak-today-btn:active { background: rgba(0,255,136,0.25); }
 /* 勤務をカード画像にして送るボタン。読み上げと同じ形にそろえてある */
 .card-btn { margin-top: 8px; color: var(--note); border-color: var(--note); }
+/* 今日のナビのボタン。カウントダウンの枠と同じくらいの大きさで目立たせる */
+.speak-today-btn.nav-btn { padding: 9px 8px; border-radius: 10px; font-size: calc(15px * var(--fs, 1)); font-weight: 800;
+  color: var(--orange); background: rgba(255,170,0,0.14); border: 1.5px solid rgba(255,170,0,0.6); }
+.speak-today-btn.nav-btn:active { background: rgba(255,170,0,0.28); }
 .card-btn:active { background: rgba(255,212,121,0.22); }
 .speak-today-btn.speaking { background: rgba(255,0,128,0.12); color: var(--pink); border-color: rgba(255,0,128,0.3); }
 
@@ -1774,13 +1785,14 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
   </div>
   <div class="today-preview empty" id="todayPreviewBox">↑ 1〜92の番号を入力してください</div>
   <div class="today-countdown" id="todayCountdown" style="display:none;"></div>
+  <!-- 今日のナビ。好評なので、退勤までのカウントダウンと同じ大きさですぐ下に置く（2026-10-12） -->
+  <button class="speak-today-btn nav-btn" id="navBtn" style="display:none;" onclick="openNav()">🧭 今日のナビ</button>
   <div class="mydial-note" id="myDialNote" style="display:none;">
     ✅ この番号を保存し、明日から自動で1つずつ進みます。
     <span class="mydial-forget" onclick="forgetMyDial()">保存を消す</span>
   </div>
   <button class="speak-today-btn" id="speakTodayBtn" onclick="handleSpeakToday()">🔊 今日の勤務を読み上げ</button>
   <button class="speak-today-btn card-btn" onclick="shareTodayCard()">🖼 今日の勤務を画像で送る</button>
-  <button class="speak-today-btn nav-btn" id="navBtn" style="display:none;" onclick="openNav()">🧭 今日のナビ</button>
 </div>
 
 <!-- お知らせバナー(タップで破裂→中身を表示。×で閉じる)
@@ -4395,7 +4407,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v247';
+const APP_VERSION   = 'v248';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4617,7 +4629,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.67';
+const APP_LABEL = 'バージョン 3.68';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -7616,7 +7628,8 @@ function renderNav(){
     nextTrip = trips.find(function(x){ return navMin(x.d)>nm; }) || null;
     const prev = trips.filter(function(x){ return navMin(x.a)<=nm; }).pop() || null;
     if(curTrip){
-      h+='<div class="nav-st">'+(curTrip.k==='回送'?'🚌 回送の時間です':'🚌 走行中の時間です')+'</div>'
+      h+='<div class="nav-run'+(curTrip.k==='回送'?' ks':'')+'">'+(curTrip.k==='回送'?'🚌 回送中':'🚌 運行中')+'</div>'
+       +'<div class="nav-safe">⚠ 気をつけて運転してください</div>'
        +'<div class="nav-next"><small>'+navRoute(curTrip.f,curTrip.t)+'　'+curTrip.a+'着予定</small></div>';
       place='';
     }else if(prev && pl.io && pl.io.in.length>1 && nm>=navMin(pl.io.out[0]) && nm<navMin(pl.io.in[1])){
@@ -7645,8 +7658,9 @@ function renderNav(){
         h+='<div class="nav-st">☕ いま '+navPlaceName(nextTrip.f)+'で発車待ちのはず</div>';
         place = nextTrip.f;
       }else if(gapMove && nm >= gapMove.leaveAt){
-        h+='<div class="nav-st">🚌 '+navPlaceName(nextTrip.f)+'へ移動（回送）の時間です</div>'
-         +'<div class="nav-next"><small>'+navRoute(gapMove.from, nextTrip.f)+'　'+navHm(gapMove.arriveBy)+'ごろ着</small></div>';
+        h+='<div class="nav-run ks">🚌 回送中</div>'
+         +'<div class="nav-safe">⚠ 気をつけて運転してください</div>'
+         +'<div class="nav-next"><small>'+navPlaceName(nextTrip.f)+'へ移動　'+navRoute(gapMove.from, nextTrip.f)+'　'+navHm(gapMove.arriveBy)+'ごろ着（目安）</small></div>';
         place = '';
       }else{
         h+='<div class="nav-st">☕ いま '+navPlaceName(place)+(restMark?'で休憩':'に着いているはず')+'</div>';
