@@ -1533,6 +1533,9 @@ a.source-link:visited {
   border-radius: 8px;
   background: #fff;
 }
+.src-msg { padding:28px 16px; text-align:center; color:#555; font-size:calc(14px * var(--fs, 1)); line-height:1.7; }
+.src-retry { margin-top:12px; padding:10px 18px; border:none; border-radius:10px; background:#1a73e8; color:#fff;
+  font-size:calc(15px * var(--fs, 1)); font-weight:800; font-family:inherit; }
 .source-img-scroll img {
   width: 100%;
   height: auto;
@@ -8005,16 +8008,56 @@ function buildSourceImages(){
     pages = rev ? SRC_PAGES2 : SRC_PAGES;
     name  = function(i){ return rev ? ('genpage-1001-'+i) : ('genpage-'+i); };
   }
-  let html='';
+  /* 読み込み中は文字を出し、1枚も出せなかったときは理由と「もう一度」ボタンを出す。
+     以前は失敗した画像を黙って消していたので、電波が弱いと白い箱だけになり
+     「何も表示されない」ように見えた（2026-10-11 予備で報告あり） */
+  let html='<div class="src-msg" id="srcMsg">⏳ 出退勤表を読み込んでいます…</div>';
   for(let i=1;i<=pages;i++){
-    html += '<img class="src-page" id="srcImg'+i+'" src="'+base+name(i)+'.jpg?v='+cacheDay()+'"'
-          + ' alt="出退勤表 '+i+'枚目"'
-          + ' onerror="this.remove()">';        // 無い枚数は静かに消す
+    html += '<img class="src-page" id="srcImg'+i+'" data-src="'+base+name(i)+'.jpg"'
+          + ' src="'+base+name(i)+'.jpg?v='+cacheDay()+'"'
+          + ' alt="出退勤表 '+i+'枚目" decoding="async"'
+          + ' onload="srcImgOk(this)" onerror="srcImgNg(this)">';
   }
   box.innerHTML=html;
+  box._pending = pages;
   // 1枚目だけは従来どおり srcImg でも掴めるようにしておく
   const first=document.getElementById('srcImg1');
   if(first) first.id='srcImg';
+}
+/* 出退勤表の画像が出た */
+function srcImgOk(img){
+  const m=document.getElementById('srcMsg');
+  if(m) m.style.display='none';
+  srcImgDone();
+}
+/* 出なかった。1回だけ、端末の控えを使わずに取り直す。それでもだめなら消す
+   （枚数の多いアプリ用に多めに並べているので、無い枚数はここで静かに消える） */
+function srcImgNg(img){
+  if(!img.dataset.retry){
+    img.dataset.retry='1';
+    img.src = img.dataset.src + '?r=' + Date.now();
+    return;
+  }
+  img.remove();
+  srcImgDone();
+}
+function srcImgDone(){
+  const box=document.getElementById('srcScroll');
+  if(!box) return;
+  box._pending = Math.max(0, (box._pending||1) - 1);
+  if(box._pending > 0) return;
+  const shown = [...box.querySelectorAll('img.src-page')].some(function(i){ return i.naturalWidth > 0; });
+  const m=document.getElementById('srcMsg');
+  if(!shown && m){
+    m.style.display='block';
+    m.innerHTML='出退勤表の画像を読み込めませんでした。<br>電波の良い所で、もう一度ためしてください。'
+      + '<br><button class="src-retry" onclick="srcRetry()">↻ もう一度読み込む</button>';
+  }
+}
+function srcRetry(){
+  const box=document.getElementById('srcScroll');
+  if(box) box._built='';
+  buildSourceImages();
 }
 /* PDFが実在するか確かめて、有る時だけボタンを見せる */
 /* 候補を順に試して、最初に見つかったものをボタンの行き先にする。
