@@ -3379,12 +3379,13 @@ function otTodayHtml(v,m,d,dtLabel,r){
   const firstT=(f0&&f0.slot)?(String(f0.slot.o).match(/(\d{1,2}):(\d{2})/)||[''])[0]:'';
 
   /* その日が何なのかで札を変える。公休に出た日を「代走・振替」と呼ぶと分かりにくい。 */
-  const isKyuDay = otIsKyu(r) || !slot0;
+  const und0 = !slot0 && otBaseUndecided(new Date());   // 奈良学園など。公休ではない
+  const isKyuDay = otIsKyu(r) || (!slot0 && !und0);
   const badge = isKyuDay
     ? '<span class="today-badge kyu">🔵 公休出勤</span>'
     : '<span class="today-badge sub">⏱ 代走・振替あり</span>';
   let h='<div class="off-wrap">'
-      + stampHtml(toISO(new Date()), !slot0)
+      + stampHtml(toISO(new Date()), !slot0 && !und0)
       + '<div class="today-head"><b>'+m+'/'+d+'（'+dtLabel+'）</b>'+badge+'</div>';
 
   /* --- 実際に出るほう（大きく・目立たせる） --- */
@@ -3417,7 +3418,7 @@ function otTodayHtml(v,m,d,dtLabel,r){
   const shitei = isKyuDay && !!slot0;
   h+='<div class="dual base'+(shitei?' off':'')+'"><div class="dual-ttl">📋 本来のダイヤ</div>'
     +'<div class="dual-row"><span class="dual-dial">'+v+'番</span>'
-    +'<span class="dual-time">'+(slot0?formatDisplayTime(slot0.o):'公休')+'</span>'
+    +'<span class="dual-time">'+(slot0?formatDisplayTime(slot0.o):(und0?'当日決まる勤務':'公休'))+'</span>'
     +'<span class="dual-w">'+(slot0&&!shitei?('　労働 '+(slot0.w||'-')):'')+'</span></div>'
     +'<div class="dual-note">'
       +(shitei ? '指定公休のため乗りません' : isKyuDay ? 'この日は本来お休みです' : (baseWord||'—'))
@@ -3490,7 +3491,7 @@ function buildCard(){
   const otSub=!!(otRec && otRec.adds && otRec.adds.length);
   let otList=[], otKyuDay=false;
   if(otSub){
-    otKyuDay = otIsKyu(otRec) || !slot;
+    otKyuDay = otIsKyu(otRec) || (!slot && !undecided);
     if(!otKyuDay && otBaseOf(otRec)!=='none' && slot){
       otList.push({dial:v, part:otBaseOf(otRec), slot:slot});
     }
@@ -3653,7 +3654,7 @@ function handleSpeakToday(){
   }
   if(otRec && otRec.adds && otRec.adds.length){
     const base0=(rec&&rec[dt]&&String(rec[dt].o)!=='—')?rec[dt]:null;
-    const isKyuDay = otIsKyu(otRec) || !base0;
+    const isKyuDay = otIsKyu(otRec) || (!base0 && !(rec&&rec[dt]&&String(rec[dt].o)==='—'));
     text += isKyuDay ? `本来は${v}番ダイヤで公休ですが、公休出勤です。`
                      : `本来は${v}番ダイヤですが、代走・振替があります。`;
     const list=[];
@@ -3988,7 +3989,8 @@ function realDutyHtml(iso){
   const bd0=otBaseDial(d);
   const rec0=(bd0!==null)?DB[bd0]:null;
   const has0=!!(rec0 && rec0[dt] && String(rec0[dt].o)!=='—');
-  const isKyuDay = otIsKyu(r) || !has0;
+  const und0 = !!(rec0 && rec0[dt] && String(rec0[dt].o)==='—');   // 奈良学園など。公休ではない
+  const isKyuDay = otIsKyu(r) || (!has0 && !und0);
   let what='';
   if(!isKyuDay && r.adds && r.adds.length===1){
     const a0=r.adds[0];
@@ -4363,7 +4365,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v245';
+const APP_VERSION   = 'v246';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4585,7 +4587,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.65';
+const APP_LABEL = 'バージョン 3.66';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -5170,6 +5172,29 @@ function otBaseSlot(date){
   const rec=(num!==null)?DB[num]:null;
   return (rec&&rec[dt]&&String(rec[dt].o)!=='—') ? rec[dt] : null;
 }
+/* その日の本来の勤務が「当日決まる」もの（学園前Ａ 14番の奈良学園など、時刻が「—」）か。
+   公休ではない。出勤はするので、代わりに別のダイヤを走っても公出ではなく、時間外も付かない（2026-10-12） */
+function otBaseUndecided(date){
+  const num=otBaseDial(date);
+  const rec=(num!==null)?DB[num]:null;
+  const dt=dayType(date);
+  return !!(rec && rec[dt] && String(rec[dt].o)==='—');
+}
+/* 時間外の記録を直す（2026-10-12）。以前は当日決まる勤務の日を公休とみなし、
+   代わりに走ったダイヤを「公休出勤」として時間外を付けていた。見つけたら差し替えに直す */
+function otFixUndecided(){
+  if(IS_MULTI) return;
+  const all=otLoad(); let n=0;
+  Object.keys(all).forEach(function(iso){
+    const r=all[iso];
+    if(!r || r.kind!=='公休出勤' || !(r.adds && r.adds.length)) return;
+    const p=iso.split('-').map(Number);
+    const d=new Date(p[0],p[1]-1,p[2]); d.setHours(0,0,0,0);
+    if(!otBaseUndecided(d)) return;
+    r.dayKind='work'; r.base='none'; r.kind='差し替え'; r.min=0; n++;
+  });
+  if(n) otSave(all);
+}
 /* その日の自分のダイヤ番号（覚えた番号から日数で進めたもの） */
 function otBaseDial(date){
   let saved=null;
@@ -5228,6 +5253,13 @@ function otCalc(date, base, adds, forceKyu){
     rows.push({dial:a.dial, part:a.part, o:slot.o, w:slot.w, code:code});
   }
 
+  // 当日決まる勤務（奈良学園など）の日に、代わりに別のダイヤを走った。公出ではなく、時間外も付かない
+  if(!baseSlot && !forceKyu && otBaseUndecided(date)){
+    if(rows.length===0) return {ok:false, msg:'代わりに走ったダイヤ番号を入れてください'};
+    return {ok:true, kind:'差し替え', baseDial:baseDial, baseLabel:'当日決まる勤務（奈良学園など）',
+            rows:rows, ot:0,
+            how:'当日決まる勤務の日に、代わりに走ったダイヤです。出勤の日なので、公出にも時間外にもなりません'};
+  }
   // 公休の日は、番号が分からなくても（他営業所のダイヤなど）公出として扱える
   if(rows.length===0){
     if(!baseSlot){
@@ -5776,7 +5808,8 @@ function otPreview(){
   // データ上の本来の勤務
   const dataSlot=otBaseSlot(date), bd=otBaseDial(date);
   // 何も選んでいなければ、データに合わせて初期値を決める
-  if(otKind===null) otKind = dataSlot ? 'work' : 'kyu';
+  const undecided = !dataSlot && otBaseUndecided(date);
+  if(otKind===null) otKind = (dataSlot || undecided) ? 'work' : 'kyu';
   const isLeave = otKind==='leave';
   const bs = (otKind==='work') ? dataSlot : null;
 
@@ -5792,6 +5825,7 @@ function otPreview(){
     hint.textContent =
         (otKind==='kyu' && dataSlot) ? '指定公休として扱います。出たダイヤの拘束時間×0.8で計算します。'
       : isLeave ? '年休として記録します。この日は勤務時間を出さず、次の出勤を表示します。'
+      : (otKind==='work' && undecided) ? '奈良学園のように当日決まる勤務の日です。代わりに走ったダイヤを入れてください。公出ではなく、時間外も付きません。'
       : '';
   }
   // 選んだ日の勤務を、日付のすぐ下に大きく出す
@@ -5887,7 +5921,7 @@ function otStore(){
   if(adds.length===0 && otKind==='work'){ showToast('付いたダイヤ番号を入れてください'); return; }
   const all=otLoad();
   all[iso]={
-    base: (otKind==='work' ? otBaseSel : 'none'), adds: adds, min:(otKind==='leave'?0:h*60+mi), dayKind: otKind,
+    base: (otKind==='work' ? (otLast && otLast.kind==='差し替え' ? 'none' : otBaseSel) : 'none'), adds: adds, min:(otKind==='leave'?0:h*60+mi), dayKind: otKind,
     kind: otLast?otLast.kind:'手入力',
     note: document.getElementById('otNote').value.trim()
   };
@@ -5946,7 +5980,8 @@ function revCollect(from, to){
                  n:n, slot:slot, ot:ot});
     if(ot){ r.ot+=(ot.min||0); if(otIsKyu(ot)) r.kyu++; if(otIsLeave(ot)) r.leave++; }
     if(otIsLeave(ot)){ r.off++; continue; }
-    if(!slot && !otIsKyu(ot)){ r.off++; continue; }
+    const undecided = !!(rec&&rec[dt]&&String(rec[dt].o)==='—');   // 奈良学園など。出勤の日
+    if(!slot && !otIsKyu(ot) && !undecided){ r.off++; continue; }
     r.work++;
     if(slot){
       r.labor+=otMin(slot.w);
@@ -8310,6 +8345,7 @@ window.onload=async function(){
     if(sel) selectDia(sel);
   }else{
     await loadDiaData();   // 先にダイヤのデータを読み込む
+    try{ otFixUndecided(); }catch(e){}   // 当日決まる勤務の日を公出にしていた記録を直す（2026-10-12）
   }
   /* 他のダイヤも読んでおく。時間外で別のダイヤを走った日を入れられるように。
      自分のダイヤを読んだあとに呼ぶ（CUR_MAX と DB が要るため）。
