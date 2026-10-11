@@ -2478,6 +2478,7 @@ function selectDia(code){
   renderDiaPicker();
   clearRangeResults();     // 前のダイヤの検索結果は消す
   updateTodayPreview();
+  if(_navBooted) loadNav();   // 今日のナビの行程も、選んだダイヤのものに替える
 }
 
 /* 曜日の日本語表記 */
@@ -7213,22 +7214,38 @@ const NAV_ON = ('{{NAV}}' === '1');
 const NAV_KEY = '{{ID}}-trips';
 let NAV = null;
 let _navTimer = null;
+let _navBooted = false;   // 起動の読み込みが済んだか（スペシャルでダイヤを切り替えたときに読み直す）
 
 async function loadNav(){
   if(!NAV_ON) return;
-  try{ const c=localStorage.getItem(NAV_KEY); if(c) NAV=JSON.parse(c); }catch(e){}
+  /* スペシャル検索くんは、選んでいるダイヤのアプリから行程を借りてくる（同じ住所なので読める）。
+     ダイヤを切り替えるたびに呼ぶ。読み込み中に別のダイヤへ切り替えたら、古い方は捨てる。 */
+  let url='./trips-{{ID}}.json', key=NAV_KEY;
+  const want = IS_MULTI ? CUR_DIA : null;
+  if(IS_MULTI){
+    const d = ALL_DIAS.find(function(x){ return x.code===CUR_DIA; });
+    if(!d){ NAV=null; navRefreshBtn(); return; }
+    url = '../'+d.repo+'/trips-'+d.code+'.json';
+    key = NAV_KEY+'-'+d.code;
+    NAV = null; navRefreshBtn();          // 前のダイヤの行程を使わないよう、いったん消す
+  }
+  try{ const c=localStorage.getItem(key); if(c) NAV=JSON.parse(c); }catch(e){}
+  if(IS_MULTI) navRefreshBtn();
   try{
-    const res=await fetch('./trips-{{ID}}.json?v='+cacheDay(), {cache:'no-store'});
+    const res=await fetch(url+'?v='+cacheDay(), {cache:'no-store'});
     if(res.ok){
-      NAV=await res.json();
-      try{ localStorage.setItem(NAV_KEY, JSON.stringify(NAV)); }catch(e){}
+      const j=await res.json();
+      if(IS_MULTI && CUR_DIA!==want) return;   // もう別のダイヤに切り替わっている
+      NAV=j;
+      try{ localStorage.setItem(key, JSON.stringify(NAV)); }catch(e){}
     }
   }catch(e){}
   navRefreshBtn();
 }
 /* いまのダイヤ改正と、行程データの改正日が合うときだけ使う */
 function navRevOk(){
-  return !!(NAV && NAV.meta && NAV.meta.revision === REVISION_ISO);
+  return !!(NAV && NAV.meta && NAV.meta.revision === REVISION_ISO
+            && (!IS_MULTI || NAV.meta.code === CUR_DIA));
 }
 function navRefreshBtn(){
   const b=document.getElementById('navBtn');
@@ -7304,8 +7321,9 @@ function navStoreGet(key, def){
   try{ const v=localStorage.getItem(key); return v ? JSON.parse(v) : def; }catch(e){ return def; }
 }
 function navStoreSet(key, v){ try{ localStorage.setItem(key, JSON.stringify(v)); }catch(e){} }
-function navAltKey(iso){ return '{{ID}}-nav-alt-'+iso; }
-function navArrKey(iso){ return '{{ID}}-nav-arr-'+iso; }
+/* スペシャル検索くんでは、ダイヤごとに分けて覚える（番号が同じでも中身が違うため） */
+function navAltKey(iso){ return '{{ID}}-nav-alt-'+(IS_MULTI ? CUR_DIA+'-' : '')+iso; }
+function navArrKey(iso){ return '{{ID}}-nav-arr-'+(IS_MULTI ? CUR_DIA+'-' : '')+iso; }
 
 /* 今日、実際に乗る行程を並べる。代走・公出の記録があれば、そちらで組み立てる。 */
 function navPlan(date){
@@ -7390,7 +7408,8 @@ function renderNav(){
   const pl=navPlan(now);
   if(pl.err){ head.innerHTML=''; st.innerHTML='<div class="nav-msg">'+pl.err+'</div>'; lb.innerHTML=''; return; }
 
-  head.innerHTML = '<div class="nav-dial">'+(now.getMonth()+1)+'/'+now.getDate()+'（'+dayType(now)+'）　'
+  const dnm = IS_MULTI ? ((ALL_DIAS.find(function(x){ return x.code===CUR_DIA; })||{}).name || '') : '';
+  head.innerHTML = '<div class="nav-dial">'+(dnm ? dnm+'　' : '')+(now.getMonth()+1)+'/'+now.getDate()+'（'+dayType(now)+'）　'
       + pl.dials.join('+')+'番</div>'
     + (pl.varLabels ? '<div class="nav-alt">'
         + pl.varLabels.map(function(lb,i){
@@ -8208,7 +8227,8 @@ window.onload=async function(){
      自分のダイヤを読んだあとに呼ぶ（CUR_MAX と DB が要るため）。
      待たずに進めるので、起動が遅くなることはない。 */
   loadOtherDias();
-  loadNav();            // 今日のナビの行程（データのあるアプリだけ）
+  _navBooted=true;
+  loadNav();            // 今日のナビの行程（データのあるアプリだけ。スペシャルは選んでいるダイヤの分）
   /* 前回どこかで画面のロックが残っていたら、必ず解除しておく。
      これが残っていると、開いた瞬間から操作できないように見える。 */
   document.body.style.overflow='';
