@@ -7311,6 +7311,37 @@ function navMove(from, to){
   const mv = (NAV && NAV.moves) || [];
   return mv.find(function(m){ return m.from===from && m.to===to; }) || null;
 }
+/* 系統表に回送の線が無いまま、次の便が別の場所から出るとき（休憩のあと別の所から出る など）。
+   発車の何分前にはその場所に着いているはずとするか */
+const NAV_ARRIVE_EARLY = 10;
+/* 2つの場所の間を動くのにかかる時間の目安（分）。同じ区間の営業の便の所要分でいちばん多いもの。
+   便が無ければ、回送のいちばん短いもの（待ち時間を含まない短いものだけ）。分からなければ null */
+function navTravel(a, b){
+  if(!NAV || !NAV.dials || !a || !b) return null;
+  if(!NAV._tr) NAV._tr = {};
+  const key=[a,b].sort().join('|');
+  if(key in NAV._tr) return NAV._tr[key];
+  const trip={}, ks=[];
+  Object.keys(NAV.dials).forEach(function(n){
+    Object.keys(NAV.dials[n]).forEach(function(dt){
+      const e=NAV.dials[n][dt];
+      (e.vars||[e]).forEach(function(vv){
+        (vv.list||[]).forEach(function(y){
+          if(!y.d || !y.f || !y.t || [y.f,y.t].sort().join('|')!==key) return;
+          const m=navMin(y.a)-navMin(y.d);
+          if(!(m>0)) return;
+          if(y.k==='回送'){ if(m>=2 && m<=30) ks.push(m); }
+          else trip[m]=(trip[m]||0)+1;
+        });
+      });
+    });
+  });
+  let best=null, cnt=0;
+  Object.keys(trip).forEach(function(m){ if(trip[m]>cnt){ cnt=trip[m]; best=parseInt(m,10); } });
+  if(best==null && ks.length) best=Math.min.apply(null, ks);
+  NAV._tr[key]=best;
+  return best;
+}
 /* 2つの場所がすぐ近く（moves で near:true）かどうか。向きは問わない */
 function navNear(a, b){
   const mv = (NAV && NAV.moves) || [];
@@ -7455,7 +7486,7 @@ function renderNav(){
       : x.d+'　'+navPlaceName(x.f)+' 発<br><small>→ '+navPlaceName(x.t)+' '+x.a+'着</small>';
   };
   let h='<div class="nav-now">';
-  let curTrip=null, nextTrip=null, place='';
+  let curTrip=null, nextTrip=null, place='', gapMove=null;
   if(nm < navMin(first.d)){
     h+='<div class="nav-st">⏰ まだ乗務の前です</div>';
     if(pl.io){
@@ -7488,7 +7519,29 @@ function renderNav(){
       /* 前の便と次の便の間に休憩の場所があれば、そこにいるはず */
       const restMark = pl.items.find(function(x){ return x.k==='休' && x.key>navMin(prev.a)-0.01 && (!nextTrip || x.key<navMin(nextTrip.d)); });
       place = restMark ? restMark.p : prev.t;
-      h+='<div class="nav-st">☕ いま '+navPlaceName(place)+(restMark?'で休憩':'に着いているはず')+'</div>';
+      /* 次の便が別の場所から出るのに、系統表に回送の線が無いとき。
+         発車の NAV_ARRIVE_EARLY 分前にはその場所に着いているはずとして、移動の時間を見積もる。
+         （例: 学研北生駒駅に着いて営業所で休み、18:29 高山サイエンスタウン発。18:23 にはもう高山にいるはず） */
+      gapMove = null;
+      if(nextTrip && !nextTrip.k && nextTrip.f && place && nextTrip.f!==place
+         && !navMove(place, nextTrip.f) && !navNear(place, nextTrip.f)){
+        const tr = navTravel(place, nextTrip.f);
+        const dep = navMin(nextTrip.d), arr0 = navMin(prev.a);
+        let arriveBy = dep - NAV_ARRIVE_EARLY;
+        let leaveAt = arriveBy - (tr || 15);
+        if(leaveAt < arr0){ leaveAt = arr0; arriveBy = Math.min(dep, arr0 + (tr || 15)); }
+        gapMove = {tr:tr, leaveAt:leaveAt, arriveBy:arriveBy, from:place};
+      }
+      if(gapMove && nm >= gapMove.arriveBy){
+        h+='<div class="nav-st">☕ いま '+navPlaceName(nextTrip.f)+'で発車待ちのはず</div>';
+        place = nextTrip.f;
+      }else if(gapMove && nm >= gapMove.leaveAt){
+        h+='<div class="nav-st">🚌 '+navPlaceName(nextTrip.f)+'へ移動（回送）の時間です</div>'
+         +'<div class="nav-next"><small>'+navRoute(gapMove.from, nextTrip.f)+'　'+navHm(gapMove.arriveBy)+'ごろ着</small></div>';
+        place = '';
+      }else{
+        h+='<div class="nav-st">☕ いま '+navPlaceName(place)+(restMark?'で休憩':'に着いているはず')+'</div>';
+      }
       const got = arr[prev.d];
       if(got!=null){
         const late = got - navMin(prev.a);
@@ -7512,6 +7565,10 @@ function renderNav(){
           h+='<div class="nav-ok">⏱ 発車準備は <b>'+navHm(ps)+'</b> から'
             +(ps>nm ? '（あと '+(ps-nm)+'分）' : '（もう準備の時間です）')
             +'<br>'+navPlaceName(place)+' → '+navPlaceName(nextTrip.f)+(mv.note?'　'+mv.note:'')+'</div>';
+        }else if(gapMove){
+          h+='<div class="nav-ok">🚌 <b>'+navHm(gapMove.leaveAt)+'</b> ごろ '+navPlaceName(nextTrip.f)+' へ移動'
+            +(gapMove.tr ? '（約'+gapMove.tr+'分）' : '')
+            +'<br><small>系統表に回送の線が無いので、時刻は目安です（発車の'+NAV_ARRIVE_EARLY+'分前に着く見込み）</small></div>';
         }else{
           h+='<div class="nav-warn">⚠ 次の発車は '+navPlaceName(nextTrip.f)+' からです（いま：'+navPlaceName(place)+'）</div>';
         }
