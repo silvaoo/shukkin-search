@@ -7409,6 +7409,30 @@ function navPlan(date){
     });
   });
   items.sort(function(a,b){ return a.key-b.key; });
+  /* 勤務は営業所に戻るまで（2026-10-11 乗務員さんより）。最後の便が学園前駅などで終わっていても、
+     系統表に営業所へ戻る回送の線が無いことが多いので、ここで「営業所へ戻る」を足す（時刻は目安）。
+     中間解放のある日は、前半の終わりにも足す。学研北生駒駅のように営業所のすぐ近くで終わるときは足さない */
+  const realTrips = items.filter(function(x){ return x.k!=='休'; });
+  const ends = [];
+  if(realTrips.length){
+    if(io && io.out.length>1){
+      const o0 = navMin(io.out[0]);
+      const fh = realTrips.filter(function(x){ return navMin(x.a) <= o0; });
+      if(fh.length && fh.length < realTrips.length) ends.push({x:fh[fh.length-1], out:io.out[0]});
+    }
+    ends.push({x:realTrips[realTrips.length-1], out: io ? io.out[io.out.length-1] : null});
+  }
+  ends.forEach(function(e){
+    const last = e.x;
+    if(!last.t || last.t==='営' || navNear(last.t,'営')) return;
+    const a0 = navMin(last.a), out = e.out ? navMin(e.out) : null;
+    let tr = navTravel(last.t, '営');
+    if(!tr) tr = (out!=null) ? Math.max(5, Math.min(30, out - a0 - 10)) : 20;
+    let a = a0 + tr;
+    if(out!=null && a > out - 10) a = Math.max(a0 + 1, out - 10);   // 営業所に着いてから退勤まで10分はみる
+    items.push({k:'回送', f:last.t, t:'営', d:last.a, a:navHm(a), key:a0 + 0.2, syn:true, dial:last.dial});
+  });
+  items.sort(function(a,b){ return a.key-b.key; });
   return {items:items, other:other, off:off, varLabels:varLabels, sel:sel, io:io, nodata:nodata,
           dials:pieces.map(function(p){ return p.dial; })};
 }
@@ -7477,7 +7501,7 @@ function renderNav(){
   /* 回送で発着が同じ場所のものは、その場での待機を含むので「回送・待機」と呼ぶ */
   const ksName=function(x){
     if(x.f && x.f===x.t) return '回送・待機（'+navPlaceName(x.f)+'）';
-    if(x.t==='営') return x.f ? '営業所へ戻る（'+navPlaceName(x.f)+'から）' : '営業所へ戻る';
+    if(x.t==='営') return (x.f ? '営業所へ戻る（'+navPlaceName(x.f)+'から）' : '営業所へ戻る') + (x.syn ? '<small>（時刻は目安）</small>' : '');
     return '回送（'+navRoute(x.f,x.t)+'）';
   };
   const desc=function(x){
@@ -7499,9 +7523,16 @@ function renderNav(){
     const nv=trips.filter(function(x){ return navViaMulti(x); }).length;
     if(nv) h+='<div class="nav-then">⚠ 今日は経由に注意する便が <b>'+nv+'本</b> あります（下の一覧の黄色）</div>';
     nextTrip=first;
+  }else if(nm >= navMin(last.a) && pl.io && nm < navMin(pl.io.out[pl.io.out.length-1])){
+    /* 営業所に戻ってから退勤まで（入庫・点検など） */
+    const oe = navMin(pl.io.out[pl.io.out.length-1]);
+    h+='<div class="nav-st">🏁 '+(last.t==='営' ? '営業所に戻っているはず' : navPlaceName(last.t)+'に着いたはず。営業所へ')+'</div>'
+      +'<div class="nav-next">退勤は <b>'+pl.io.out[pl.io.out.length-1]+'</b></div>'
+      +'<div class="nav-cd">退勤まで <b>'+(oe-nm)+'</b> 分</div>'
+      +'<div class="nav-then">入庫・点検など、営業所に戻るまでが勤務です</div>';
   }else if(nm >= navMin(last.a)){
-    h+='<div class="nav-st">🎉 今日の乗務はおしまいです</div><div class="nav-next"><small>最後は '+last.a+' '+navPlaceName(last.t)+'着でした。'
-      +(pl.io ? '退勤は '+pl.io.out[pl.io.out.length-1]+'。' : '')+'おつかれさまでした</small></div>';
+    h+='<div class="nav-st">🎉 今日の乗務はおしまいです</div><div class="nav-next"><small>'
+      +(pl.io ? '退勤は '+pl.io.out[pl.io.out.length-1]+'でした。' : '最後は '+last.a+' '+navPlaceName(last.t)+'着でした。')+'おつかれさまでした</small></div>';
   }else{
     curTrip = trips.find(function(x){ return navMin(x.d)<=nm && nm<navMin(x.a); }) || null;
     nextTrip = trips.find(function(x){ return navMin(x.d)>nm; }) || null;
