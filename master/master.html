@@ -1281,6 +1281,15 @@ body.multi .only-single{ display:none !important; }
   font-size:calc(15.5px * var(--fs, 1)); font-weight:800; cursor:pointer;
   font-family:'Noto Sans JP',sans-serif; }
 .rcd-memo:active{ background:#d3e4f7; }
+/* 今日の枠の中から時間外・代走を入れる／直す／消す（2026-10-12） */
+.today-ot-acts{ display:flex; gap:8px; margin-top:12px; }
+.today-ot-btn{ flex:1; padding:9px 8px; border-radius:9px; border:1px solid var(--note); background:transparent;
+  color:var(--note); font-size:calc(13px * var(--fs, 1)); font-weight:800; font-family:inherit; cursor:pointer; }
+.today-ot-btn.del{ flex:0 0 auto; padding:9px 12px; border-color:var(--border); color:var(--dim); }
+.today-ot-btn:active{ background:rgba(255,212,121,0.18); }
+.ot-delbtn{ width:100%; padding:11px; margin-top:10px; border-radius:10px; border:1px solid var(--border);
+  background:transparent; color:var(--dim); font-size:calc(14px * var(--fs, 1)); font-weight:700;
+  font-family:'Noto Sans JP',sans-serif; cursor:pointer; }
 .ot-addrow{ width:100%; padding:11px; margin-top:8px; border-radius:9px;
   border:1px dashed var(--border); background:transparent; color:var(--note);
   font-size:calc(13px * var(--fs, 1)); font-weight:bold; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
@@ -2006,6 +2015,7 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
       <input type="text" id="otNote" class="ot-in" placeholder="遅出前に／上がりの後に　など">
 
       <button class="ot-save" onclick="otStore()">保存する</button>
+      <button class="ot-delbtn" id="otDelBtn" style="display:none;" onclick="otDeleteCur()">🗑 この日の記録を消す</button>
       <p class="ot-warn">
         ⚠ <b>おおよその計算</b>です。多少のズレがあることはご了承ください。
       </p>
@@ -2635,6 +2645,26 @@ function getShiftType(o){
 
 /* ==== 今日のダイヤ入力欄：ライブプレビュー ==== */
 function updateTodayPreview(){
+  _updateTodayPreview();
+  /* 今日の枠の中から、時間外・代走をすぐ入れたり直したりできるように（2026-10-12）。
+     番号を入れ間違えた・当日に変わった、というときにマイページまで行かずに済む */
+  if(IS_MULTI) return;
+  const v=parseInt(document.getElementById('todayInput').value);
+  const box=document.getElementById('todayPreviewBox');
+  if(!box || !v || v<1 || v>CUR_MAX) return;
+  const iso=toISO(new Date());
+  const has=!!otLoad()[iso];
+  box.insertAdjacentHTML('beforeend',
+    '<div class="today-ot-acts">'
+    + '<button class="today-ot-btn" onclick="otFromToday()">'+(has?'✏️ 時間外・代走を直す':'⏱ 時間外・代走を入れる')+'</button>'
+    + (has?'<button class="today-ot-btn del" onclick="otDelete(\''+iso+'\')">🗑 消す</button>':'')
+    + '</div>');
+}
+function otFromToday(){
+  otFromMyPage=false;
+  openOt(toISO(new Date()));
+}
+function _updateTodayPreview(){
   const v=parseInt(document.getElementById('todayInput').value);
   const box=document.getElementById('todayPreviewBox');
   if(!v||v<1||v>CUR_MAX){
@@ -5662,6 +5692,7 @@ function openOt(iso){
   otRenderAdds();
   const bb=document.getElementById('otBackBtn');
   if(bb) bb.textContent = otFromMyPage ? '← マイページに戻る' : '✕ 閉じる';
+  otFillSaved(otDateVal());
   document.getElementById('otModal').classList.add('active');
   document.body.style.overflow='hidden';
 }
@@ -5801,6 +5832,8 @@ function otSetAddPart(i,v){
 function otPreview(){
   const box=document.getElementById('otResult');
   const iso=otDateVal();
+  const db=document.getElementById('otDelBtn');
+  if(db) db.style.display = (iso && otLoad()[iso]) ? 'block' : 'none';
   if(!iso){ box.innerHTML='日付を入れてください'; otLast=null; return; }
   const p=iso.split('-').map(Number);
   const date=new Date(p[0],p[1]-1,p[2]); date.setHours(0,0,0,0);
@@ -5934,9 +5967,19 @@ function otStore(){
 }
 
 function otDelete(iso){
-  if(!confirm(iso+' の時間外を消しますか？')) return;
+  const p=String(iso).split('-').map(Number);
+  if(!confirm(p[1]+'/'+p[2]+' の時間外・代走の記録を消しますか？\n（本来のダイヤに戻ります）')) return;
   const all=otLoad(); delete all[iso]; otSave(all);
   renderOtPane(); refreshOtButtons(); updateTodayPreview();
+  showToast('🗑 記録を消しました');
+}
+/* 入力画面で選んでいる日の記録を消す */
+function otDeleteCur(){
+  const iso=otDateVal();
+  if(!iso || !otLoad()[iso]) return;
+  const before=Object.keys(otLoad()).length;
+  otDelete(iso);
+  if(Object.keys(otLoad()).length<before) closeOt();
 }
 
 /* ==================================================================
@@ -7777,6 +7820,9 @@ function otFromDetail(iso){
   closeRcDetail();
   closeMemoList();     // 重ならないよう、いったん閉じる
   openOt(iso);
+}
+/* その日の記録があれば、入力画面に中身を入れておく */
+function otFillSaved(iso){
   const rec=otLoad()[iso];
   if(rec){   // すでに登録があれば、その中身を出しておく
     otBaseSel=(otIsKyu(rec)||otIsLeave(rec)) ? 'all' : (rec.base||'all');
