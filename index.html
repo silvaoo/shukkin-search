@@ -4629,7 +4629,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.68';
+const APP_LABEL = 'バージョン 3.69';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -5661,7 +5661,7 @@ function renderDiaInfo(){
      出すと学園前Ａの内容が出て、全ダイヤの情報のように見えてしまう。 */
   if('a'==='all'){ el.style.display='none'; return; }
   const n=Object.keys(DB).length;
-  el.textContent = n ? ('ダイヤ ' + (REVISION_ISO||'—') + '改正 ／ ' + n + '番') : 'ダイヤ 未取得';
+  el.textContent = n ? ('ダイヤ ' + (REVISION_ISO||'—') + '改正 ／ ' + n + '系統') : 'ダイヤ 未取得';   // 番号の数は「系統」と呼ぶ（学園前Ａは92系統）
 }
 
 /* ある番号の、その日の勤務を取り出す。ダイヤをまたいで使える。 */
