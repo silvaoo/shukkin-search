@@ -62,9 +62,10 @@ NO_MOVES = {'ikoma': [('さ', '東')]}
 #   循環で印（kk2.py の MARKS）が付くものは 'mark': {印: 系統}（印が無いものは None）
 # 2026-10-14: 富雄駅→富雄駅は、印なし＝60系統 富雄団地循環、三＝58系統 三松ヶ丘経由、て＝43系統 帝塚山南循環
 _FUJI = {'pair': ('富', '富'), 'mark': {None: '60', '三': '58', 'て': '43'}}
-# 2026-10-14: 学園前駅（南口）⇔西千代ケ丘二丁目は、9分＝22系統 学園中三丁目経由、11分＝26系統 学園大和町経由。
+# 2026-10-15: 学園前駅（南口）⇔西千代ケ丘二丁目は、9分＝26系統 学園大和町経由、11分＝22系統 学園中三丁目経由。
+#   （2026-10-14 に逆で入れていた。83番平日の実物のダイヤ表で確認: 幕22 14:09→14:20 中三経由、幕26 14:55→15:04 大三）
 #   10分の便（朝晩 29本）は別の路線かもしれないので、系統は付けず勤務系統表のとおりに出す（乗務員さんより）
-_CHIYO = {'pair': ('南', 'チ'), 'both': True, 'min': {9: '22', 11: '26'}}
+_CHIYO = {'pair': ('南', 'チ'), 'both': True, 'min': {9: '26', 11: '22'}}
 VIA_RULES = {'a': [_FUJI, _CHIYO],
              'yobi': [_FUJI, dict(_CHIYO, pair=('南学', 'チ'))]}   # 予備は北・南を駅ごとに分けたあと（南学）
 # 系統の名前 {系統: 画面に出す名前}
@@ -249,7 +250,8 @@ if __name__ == '__main__':
     vc = apply_via(code, data)
     if vc:
         print('  経由を付けた便', dict(vc))
-    json.dump(data, open(out, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    # 配っている trips-*.json は詰めた形（1行）。字下げすると差分が全部の行になり、ファイルも倍になる
+    json.dump(data, open(out, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     print(code, '行', rep['rows'], '実車一致', rep['ok'], '不一致', len(rep['mis']), rep['mis'])
     print('  形違い', rep['labels'], '名前が付いた', rep['labels_ok'], '付かない', rep['nolabel'][:12])
     print('  名前の分からない略号', unknown)

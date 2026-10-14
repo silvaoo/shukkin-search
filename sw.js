@@ -10,7 +10,7 @@
 
 // キャッシュ名にバージョンを入れておき、更新のたびにこの値を変えることで
 // 新しいService Workerが「更新あり」と判定されるようにする
-const CACHE_VERSION = 'a-shukkin-v252';
+const CACHE_VERSION = 'a-shukkin-v253';
 const CACHE_FILES = [
     './',
     './index.html',
@@ -84,7 +84,8 @@ self.addEventListener('fetch', (event) => {
     // ダイヤのデータも毎回ネットワークを先に見る。
     // 控えを先に返すと、ダイヤ改正をしても古いダイヤが出続けてしまう。
     // 圏外のときだけ、控えてあるものを使う。
-    if (/dia-[a-z0-9-]*\.json$/i.test(new URL(event.request.url).pathname)) {
+    // 今日のナビの行程（trips-*.json）も同じ。系統・経由の直しがすぐ届くように（2026-10-15）
+    if (/(dia|trips)-[a-z0-9-]*\.json$/i.test(new URL(event.request.url).pathname)) {
         event.respondWith(
             fetch(event.request)
                 .then((res) => {
