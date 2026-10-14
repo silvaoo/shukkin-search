@@ -388,6 +388,18 @@ body {
 .nav-row.vw { background:#fffbea; }
 .nav-row.vw.cur { background:#fff0c2; }
 .nav-msg { padding:14px; text-align:center; color:#555; font-size:calc(14px * var(--fs, 1)); }
+/* ダイヤ内容（検索結果から開く、その日の行程の一覧）。カレンダーや詳細の上にも出せるよう前に出す */
+#navModal { z-index:10035; }
+.nav-io { font-size:calc(14px * var(--fs, 1)); font-weight:800; color:#1a1a2e; margin-top:6px; line-height:1.6; }
+.nav-io b { font-size:calc(20px * var(--fs, 1)); color:#e65c00; }
+/* 検索結果のダイヤ番号の横に置く「ダイヤ内容」ボタン */
+.day-dial.has-nav, .rcd-dial.has-nav { display:flex; align-items:baseline; flex-wrap:wrap; column-gap:4px; row-gap:6px; }
+.dial-nav-btn { margin-left:auto; align-self:center; padding:6px 10px; border-radius:9px;
+  border:1.5px solid currentColor; background:rgba(255,255,255,0.07); color:var(--orange);   /* 色はダイヤ番号と同じ（アプリごとの色に合わせる） */
+  font-size:calc(13px * var(--fs, 1)); font-weight:800; font-family:'Noto Sans JP',sans-serif;
+  line-height:1.2; text-shadow:none; cursor:pointer; white-space:nowrap; }
+.dial-nav-btn:active { transform:scale(0.96); }
+.rcd-dial .dial-nav-btn { background:#fff3e0; color:#c25e00; border-color:#ff9f1a; }
 
 /* ==== 指定して検索・カレンダー ==== */
 .range-label {
@@ -1857,7 +1869,7 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
 <div id="navModal" class="cal-modal" onclick="if(event.target===this)closeNav()">
   <div class="cal-inner nav-inner">
     <div class="cal-top">
-      <div class="cal-title">🧭 今日のナビ</div>
+      <div class="cal-title" id="navTitle">🧭 今日のナビ</div>
       <button class="cal-x" onclick="closeNav()">✕ 閉じる</button>
     </div>
     <div id="navHead"></div>
@@ -4407,7 +4419,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v251';
+const APP_VERSION   = 'v252';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4629,7 +4641,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.72';
+const APP_LABEL = 'バージョン 3.73';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -6633,7 +6645,9 @@ function render(rows){
         <div class="${dateClass}">${r.m}/${r.d}（${r.dw}）${r.hol?'🎌':''}${longBadge}</div>
         <div class="${badgeClass}">${badgeText}</div>
       </div>
-      <div class="day-dial">${r.dn}<span> 番</span></div>
+      ${(!isOff && NAV_ON)
+        ? `<div class="day-dial has-nav">${r.dn}<span> 番</span><button class="dial-nav-btn" data-dial="${r.dn}" data-dt="${r.dt}"${navHasDial(r.dn, r.dt)?'':' style="display:none"'} onclick="openNavPreview('${r.iso}',${r.dn})">🧭 ダイヤ内容</button></div>`
+        : `<div class="day-dial">${r.dn}<span> 番</span></div>`}
       ${bodyHtml}
       ${memoBlockHtml(r.iso,r.dn)}
     </div>`;
@@ -7340,6 +7354,10 @@ function navRevOk(){
 function navRefreshBtn(){
   const b=document.getElementById('navBtn');
   if(b) b.style.display = navRevOk() ? '' : 'none';
+  /* 検索結果の「ダイヤ内容」ボタン。行程の読み込みが検索より後になったときも出るように、ここで合わせ直す */
+  document.querySelectorAll('.dial-nav-btn[data-dial]').forEach(function(x){
+    x.style.display = navHasDial(x.getAttribute('data-dial'), x.getAttribute('data-dt')) ? '' : 'none';
+  });
 }
 /* 場所の名前。名前が分からない略号は「」で囲んでそのまま出す（勤務系統表の書き方） */
 function navPlaceName(c){
@@ -7446,12 +7464,13 @@ function navStoreSet(key, v){ try{ localStorage.setItem(key, JSON.stringify(v));
 function navAltKey(iso){ return 'a-nav-alt-'+(IS_MULTI ? CUR_DIA+'-' : '')+iso; }
 function navArrKey(iso){ return 'a-nav-arr-'+(IS_MULTI ? CUR_DIA+'-' : '')+iso; }
 
-/* 今日、実際に乗る行程を並べる。代走・公出の記録があれば、そちらで組み立てる。 */
-function navPlan(date){
+/* 今日、実際に乗る行程を並べる。代走・公出の記録があれば、そちらで組み立てる。
+   dialOverride を渡したとき（検索結果の「ダイヤ内容」）は、その番号の行程だけをそのまま並べる */
+function navPlan(date, dialOverride){
   const iso=toISO(date), dt=dayType(date);
-  const v=parseInt(document.getElementById('todayInput').value);
+  const v = dialOverride ? parseInt(dialOverride,10) : parseInt(document.getElementById('todayInput').value);
   if(!(v>=1 && v<=CUR_MAX)) return {err:'先に「今日は ◯ 番ダイヤ」に番号を入れてください'};
-  const rec=otLoad()[iso];
+  const rec = dialOverride ? null : otLoad()[iso];
   if(otIsLeave(rec)) return {err:'今日は年休です。ゆっくり休んでください'};
   const pieces=[]; let other=false;
   if(rec && ((rec.adds && rec.adds.length) || otIsKyu(rec))){
@@ -7527,21 +7546,55 @@ function navPlan(date){
           dials:pieces.map(function(p){ return p.dial; })};
 }
 
+/* 検索結果の「ダイヤ内容」で開いているときは {iso, dial}。今日のナビのときは null */
+let _navPv = null;
+/* その番号・曜日の行程データがあるか（無ければ「ダイヤ内容」ボタンを出さない） */
+function navHasDial(dial, dt){
+  return !!(NAV_ON && navRevOk() && NAV.dials && NAV.dials[dial] && NAV.dials[dial][dt]);
+}
+function navSetTitle(t){
+  const el=document.getElementById('navTitle');
+  if(el) el.textContent=t;
+}
 function openNav(){
   if(!navRevOk()){ showToast('このダイヤのナビのデータがありません'); return; }
+  _navPv = null;
+  navSetTitle('🧭 今日のナビ');
   document.getElementById('navModal').classList.add('active');
   document.body.style.overflow='hidden';
   renderNav();
+  document.getElementById('navModal').scrollTop=0;
   clearInterval(_navTimer);
   _navTimer=setInterval(renderNav, 15000);   // 開いている間は15秒ごとに出し直す
 }
+/* 検索結果・カレンダーから、その日のダイヤの行程を見る（2026-10-15）。
+   時刻で動かないので、出し直しの時計は止めておく */
+function openNavPreview(iso, dial){
+  if(!navRevOk()){ showToast('このダイヤの行程のデータがありません'); return; }
+  _navPv = {iso:iso, dial:parseInt(dial,10)};
+  clearInterval(_navTimer); _navTimer=null;
+  navSetTitle('🧭 ダイヤ内容');
+  beep(760,50,0);
+  if(navigator.vibrate) navigator.vibrate(12);
+  document.getElementById('navModal').classList.add('active');
+  document.body.style.overflow='hidden';
+  renderNav();
+  document.getElementById('navModal').scrollTop=0;
+}
+/* カレンダーのマスの詳細から開くとき。詳細は閉じてから出す */
+function navFromDetail(iso, dial){
+  closeRcDetail();
+  openNavPreview(iso, dial);
+}
 function closeNav(){
   document.getElementById('navModal').classList.remove('active');
-  document.body.style.overflow='';
+  /* 下にカレンダーなどが開いたままなら、画面の固定はそのままにする */
+  if(!document.querySelector('.cal-modal.active')) document.body.style.overflow='';
   clearInterval(_navTimer); _navTimer=null;
+  _navPv = null;
 }
 function navSetAlt(i){
-  navStoreSet(navAltKey(toISO(new Date())), i);
+  navStoreSet(navAltKey(_navPv ? _navPv.iso : toISO(new Date())), i);
   renderNav();
 }
 
@@ -7549,8 +7602,12 @@ function navSetAlt(i){
 function renderNav(){
   const head=document.getElementById('navHead'), st=document.getElementById('navStatus'), lb=document.getElementById('navList');
   if(!head) return;
-  const now=new Date(), iso=toISO(now), nm=now.getHours()*60+now.getMinutes();
-  const pl=navPlan(now);
+  /* pv: 検索結果の「ダイヤ内容」。時刻で動く部分（いまどこ・あと何分）は出さず、行程を並べるだけ */
+  const pv=_navPv;
+  const now = pv ? new Date(pv.iso+'T00:00:00') : new Date();
+  const iso=toISO(now), nm = pv ? -1 : now.getHours()*60+now.getMinutes();
+  const dayWord = pv ? 'この日' : '今日';
+  const pl=navPlan(now, pv ? pv.dial : null);
   if(pl.err){ head.innerHTML=''; st.innerHTML='<div class="nav-msg">'+pl.err+'</div>'; lb.innerHTML=''; return; }
 
   const dnm = IS_MULTI ? ((ALL_DIAS.find(function(x){ return x.code===CUR_DIA; })||{}).name || '') : '';
@@ -7572,12 +7629,12 @@ function renderNav(){
     lb.innerHTML=''; return;
   }
   if(pl.off || !trips.length){
-    st.innerHTML='<div class="nav-msg">'+(pl.off?'今日は公休です':'この日は乗務がありません')+'</div>';
+    st.innerHTML='<div class="nav-msg">'+(pl.off?dayWord+'は公休です':'この日は乗務がありません')+'</div>';
     lb.innerHTML=''; return;
   }
   /* 予備の日など、系統表に営業の便が無く点線だけのとき。回送と言わずに時間だけ出す */
   if(!trips.some(function(x){ return !x.k; })){
-    let m='<b>今日は営業の便が無い勤務です</b>（予備など）';
+    let m='<b>'+dayWord+'は営業の便が無い勤務です</b>（予備など）';
     if(pl.io){
       m+='<br><br>'+pl.io.in.map(function(x,i){
         return (pl.io.in.length>1?(i===0?'前半　':'後半　'):'')+'出勤 <b>'+x+'</b> ／ 退勤 <b>'+(pl.io.out[i]||'')+'</b>'; }).join('<br>');
@@ -7586,7 +7643,7 @@ function renderNav(){
     st.innerHTML='<div class="nav-msg">'+m+'</div>';
     lb.innerHTML=''; return;
   }
-  const arr = navStoreGet(navArrKey(iso), {});
+  const arr = pv ? {} : navStoreGet(navArrKey(iso), {});
   const first=trips[0], last=trips[trips.length-1];
   /* 回送で発着が同じ場所のものは、その場での待機を含むので「回送・待機」と呼ぶ */
   const ksName=function(x){
@@ -7601,7 +7658,27 @@ function renderNav(){
   };
   let h='<div class="nav-now">';
   let curTrip=null, nextTrip=null, place='', gapMove=null;
-  if(nm < navMin(first.d)){
+  if(pv){
+    /* ダイヤ内容：出勤・退勤、最初と最後の便、経由の注意 */
+    const todayIso = toISO(new Date());
+    h+='<div class="nav-st">📋 '+(pv.iso===todayIso ? '今日の' : '')+pv.dial+'番の行程です</div>';
+    if(pl.io){
+      h+='<div class="nav-io">'+pl.io.in.map(function(x,i){
+        return (pl.io.in.length>1?(i===0?'前半　':'後半　'):'')+'出勤 <b>'+x+'</b>　退勤 <b>'+(pl.io.out[i]||'')+'</b>'; }).join('<br>')+'</div>';
+    }
+    h+='<div class="nav-next">最初は '+desc(first)+'</div>'+navViaTag(first, null);
+    const revs=trips.filter(function(x){ return !x.k; });
+    const lastRev=revs[revs.length-1];
+    h+='<div class="nav-then">営業の便は <b>'+revs.length+'本</b>'
+      +(lastRev && lastRev!==first ? '。最後の便は '+lastRev.d+' '+navPlaceName(lastRev.f)+'発 → '+navPlaceName(lastRev.t)+' '+lastRev.a+'着' : '')+'</div>';
+    const nv=trips.filter(function(x){ return navViaMulti(x); }).length;
+    if(nv) h+='<div class="nav-then">⚠ 経由に注意する便が <b>'+nv+'本</b> あります（下の一覧の黄色）</div>';
+    /* 今日の分なら、いまの状況（今日のナビ）へすぐ切り替えられるようにする */
+    const tv=parseInt((document.getElementById('todayInput')||{}).value,10);
+    if(pv.iso===todayIso && tv===pv.dial){
+      h+='<div class="nav-acts"><button class="nav-btn2" onclick="openNav()">🧭 いまの状況（今日のナビ）を見る</button></div>';
+    }
+  }else if(nm < navMin(first.d)){
     h+='<div class="nav-st">⏰ まだ乗務の前です</div>';
     if(pl.io){
       const ci=navMin(pl.io.in[0]);
@@ -7700,7 +7777,7 @@ function renderNav(){
   }
   /* 「着いた」は、いちばん最近に発車した便（回送は除く）に付ける。
      着く予定から20分を過ぎたら出さない。休憩中に押すと、大きな遅れに見えてしまうため */
-  const target = trips.filter(function(x){ return x.k!=='回送' && navMin(x.d)<=nm; }).pop();
+  const target = pv ? null : trips.filter(function(x){ return x.k!=='回送' && navMin(x.d)<=nm; }).pop();
   const tGot = target ? arr[target.d] : null;
   if(target && (tGot!=null || nm <= navMin(target.a)+20)){
     h+='<div class="nav-acts">'
@@ -7766,7 +7843,9 @@ function openRcDetail(iso){
   else { badge='平日'; bcls='hei'; }
 
   let html=`<div class="rcd-date">${dt.getMonth()+1}/${dt.getDate()}（${DW[dt.getDay()]}）<span class="rcd-badge ${bcls}">${badge}</span></div>`;
-  html+=`<div class="rcd-dial">${r.dn}<span> 番ダイヤ</span></div>`;
+  html+=(!off && navHasDial(r.dn, r.dt))
+    ? `<div class="rcd-dial has-nav">${r.dn}<span> 番ダイヤ</span><button class="dial-nav-btn" onclick="navFromDetail('${iso}',${r.dn})">🧭 ダイヤ内容</button></div>`
+    : `<div class="rcd-dial">${r.dn}<span> 番ダイヤ</span></div>`;
 
   if(off){
     html+='<div class="rcd-off-big">🎉 公休</div>';
