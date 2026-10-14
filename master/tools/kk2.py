@@ -7,6 +7,14 @@ import pdfplumber
 sys.path.insert(0, __import__('os').path.dirname(__import__('os').path.abspath(__file__)))
 from kkparse import words_of, DAY
 
+
+# 循環の便の発の場所のすぐ右に付く印。場所の略号ではないので、略号としては読まない。
+#   外・内 … 外回り・内回り（生駒駅北口の生駒台循環など）
+#   三 … 58系統 三松ヶ丘経由 富雄団地循環（富雄駅→富雄駅）。印が無い富雄駅→富雄駅は60系統 富雄団地循環
+#   て … 43系統 帝塚山南循環（富雄駅→富雄駅）
+# 便に r として残す（発と着が同じ循環の便だけ）
+MARKS = ('外', '内', '三', 'て')
+
 def chars_of(pg):
     cs = []
     for c in sorted(pg.chars, key=lambda c: (round(c['top'], 1), c['x0'])):
@@ -107,16 +115,16 @@ def parse_page(pg):
             sc = [c for c in SC if abs(c['x0'] - c0['x0']) < 3.0]
             ec = [c for c in EC if abs(c['x1'] - c1['x1']) < 3.0 or abs(c['x0'] - (p2 or c1)['x0']) < 3.0]
             # 場所は1文字。短い便が並ぶと隣の便の場所とくっつくので、いちばん近い1文字だけ取る
-            sc = [c for c in sc if c['text'] not in ('外', '内')]
+            sc = [c for c in sc if c['text'] not in MARKS]
             fc = min(sc, key=lambda c: abs(c['x0'] - c0['x0'])) if sc else None
             f = fc['text'] if fc else ''
             t = min(ec, key=lambda c: abs(c['x1'] - c1['x1']))['text'] if ec else ''
             d = pick(int(sm), b['x0']); a = pick(int(em), b['x1'])
             if a < d: a += 60
             it = {'d': '%d:%02d' % divmod(d, 60), 'f': f, 'a': '%d:%02d' % divmod(a, 60), 't': t}
-            # 発の場所の右に「外」「内」があれば、循環の外回り・内回り（生駒駅北口の循環などに付いている）
+            # 発の場所のすぐ右の印。循環の種類を表す（MARKS の説明を見る）
             if fc:
-                rr = [c for c in SC if c['text'] in ('外', '内') and abs(c['top'] - fc['top']) < 0.8 and fc['x1'] - 0.5 < c['x0'] < fc['x1'] + 8]
+                rr = [c for c in SC if c['text'] in MARKS and abs(c['top'] - fc['top']) < 0.8 and fc['x1'] - 0.5 < c['x0'] < fc['x1'] + 8]
                 if rr and f == t: it['r'] = min(rr, key=lambda c: c['x0'])['text']
             # 読み違いに備えて、ほかの読み方も控えておく（実車の合計が合わないときに使う）
             alts = set()

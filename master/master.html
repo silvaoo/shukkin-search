@@ -7388,8 +7388,8 @@ function navViaTag(x, prev){
   const multi=navViaMulti(x);
   let s='<div class="nav-via'+(multi?' warn':'')+'">'+(multi?'⚠ ':'')+navViaName(x.v);
   if(x.v==='?') s+='<br><small>系統表の時間からは分かりません。行先表示を確かめてください</small>';
-  else if(multi && prev && prev.v && prev.v!=='?' && prev.v!==x.v) s+='<br><small>前の便（'+navViaName(prev.v)+'）と経由が違います</small>';
-  else if(multi) s+='<br><small>この区間は経由が2つあります</small>';
+  else if(multi && prev && prev.v && prev.v!=='?' && prev.v!==x.v) s+='<br><small>前の便（'+navViaName(prev.v)+'）と系統・経由が違います</small>';
+  else if(multi) s+='<br><small>この区間は系統・経由の違う便があります</small>';
   return s+'</div>';
 }
 function navMin(hm){

@@ -59,9 +59,12 @@ NO_MOVES = {'ikoma': [('さ', '東')]}
 # 系統表には経由が書いていないので、所要分で見分ける。どの所要分がどの経由かは乗務員さんに聞いて書く。
 #   {dia: [{'pair': (発, 着), 'both': True（逆向きも同じ）, 'min': {所要分: 系統}, 'other': '?'（どれでもない分）}]}
 #   'other' を '?' にすると、ナビで「経由を確認」と出す
-VIA_RULES = {}
+#   循環で印（kk2.py の MARKS）が付くものは 'mark': {印: 系統}（印が無いものは None）
+# 2026-10-14: 富雄駅→富雄駅は、印なし＝60系統 富雄団地循環、三＝58系統 三松ヶ丘経由、て＝43系統 帝塚山南循環
+_FUJI = {'pair': ('富', '富'), 'mark': {None: '60', '三': '58', 'て': '43'}}
+VIA_RULES = {'a': [_FUJI], 'yobi': [_FUJI]}
 # 系統の名前 {系統: 画面に出す名前}
-VIA_NAMES = {}
+VIA_NAMES = {'60': '60系統 富雄団地循環', '58': '58系統 三松ヶ丘経由 富雄団地循環', '43': '43系統 帝塚山南循環'}
 
 
 def apply_via(code, data, rules=None, names=None):
@@ -78,7 +81,10 @@ def apply_via(code, data, rules=None, names=None):
                     for r in rules:
                         f, t = r['pair']
                         if (x['f'], x['t']) == (f, t) or (r.get('both') and (x['f'], x['t']) == (t, f)):
-                            v = r['min'].get(mm(x['a']) - mm(x['d']), r.get('other'))
+                            if 'mark' in r:
+                                v = r['mark'].get(x.get('r'), r.get('other'))
+                            else:
+                                v = r['min'].get(mm(x['a']) - mm(x['d']), r.get('other'))
                             if v:
                                 x['v'] = v; used.add(v); cnt[v] += 1
                             break
