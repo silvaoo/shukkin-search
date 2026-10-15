@@ -78,7 +78,11 @@ VIA_NAMES = {'60': '60系統 富雄団地循環', '58': '58系統 三松ヶ丘�
              '22': '22系統 学園中三丁目経由', '26': '26系統 学園大和町経由',
              '3': '3系統 快速 奈良学園経由'}
 # 区間に経由が1つしか無くても、必ず ⚠ で知らせる系統 {系統: 添える一言}
-VIA_WARN = {'3': '朝だけの快速です。行先・経由をよく確かめてください'}
+VIA_WARN = {'3': '朝だけの快速です。行先・経由をよく確かめてください',
+            '22': '要注意！26系統（学園大和町経由）とまちがえないように'}
+# 系統の色分け {系統: 色の名前}。ナビは vc-<色> の色で出す（2026-10-15 乗務員さんより: 22と26を色分け、22は要注意）
+#   red＝要注意（⚠ 付き）、blue＝落ち着いた色。色の決まりが無い系統は、これまでどおり黄色の ⚠
+VIA_COLOR = {'22': 'red', '26': 'blue'}
 
 
 def apply_via(code, data, rules=None, names=None):
@@ -109,6 +113,9 @@ def apply_via(code, data, rules=None, names=None):
         warn = {v: VIA_WARN[v] for v in sorted(used) if v in VIA_WARN}
         if warn:
             data['viawarn'] = warn
+        color = {v: VIA_COLOR[v] for v in sorted(used) if v in VIA_COLOR}
+        if color:
+            data['viacolor'] = color
     return cnt
 MOVES = [{"from": "営", "to": "い", "prep": 10, "near": True, "note": "営業所のすぐ下"},
          {"from": "さ", "to": "東", "prep": 15}]

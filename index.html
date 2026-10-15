@@ -387,6 +387,16 @@ body {
 .nav-row .vt.w { color:#9a5b00; }
 .nav-row.vw { background:#fffbea; }
 .nav-row.vw.cur { background:#fff0c2; }
+/* 系統の色分け（2026-10-15）。22系統＝赤（要注意）、26系統＝青。色だけに頼らず、赤には ⚠ と一言も付ける */
+.nav-via.vc-red { background:#ffebee; color:#b71c1c; border:2px solid #e53935; }
+.nav-via.vc-blue { background:#e3f2fd; color:#0d47a1; border:1.5px solid #42a5f5; }
+.nav-row.vc-red { background:#fff1f1; box-shadow:inset 4px 0 0 #e53935; }
+.nav-row.vc-red.cur { background:#ffdede; }
+.nav-row.vc-blue { background:#eef6ff; box-shadow:inset 4px 0 0 #42a5f5; }
+.nav-row.vc-blue.cur { background:#d9ebff; }
+.nav-row.vc-red, .nav-row.vc-blue { padding-left:8px; }   /* 左の色の帯と文字が重ならないように */
+.nav-row .vt.vc-red { color:#c62828; font-weight:900; }
+.nav-row .vt.vc-blue { color:#1565c0; }
 .nav-msg { padding:14px; text-align:center; color:#555; font-size:calc(14px * var(--fs, 1)); }
 /* ダイヤ内容（検索結果から開く、その日の行程の一覧）。カレンダーや詳細の上にも出せるよう前に出す */
 #navModal { z-index:10035; }
@@ -4419,7 +4429,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v254';
+const APP_VERSION   = 'v255';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4641,7 +4651,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.75';
+const APP_LABEL = 'バージョン 3.76';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -7405,14 +7415,27 @@ function navViaWarn(x){
   return (x && x.v && !x.k && NAV && NAV.viawarn && NAV.viawarn[x.v]) || '';
 }
 /* 便の経由の札。prev は同じ区間を前に走った便（経由が変わるときに知らせる） */
+/* 系統の色分け（22系統は赤・26系統は青 など）。行程データの viacolor に色の名前が入っている */
+function navViaColor(x){
+  return (x && x.v && !x.k && NAV && NAV.viacolor && NAV.viacolor[x.v]) || '';
+}
+/* ⚠ を付けるか。一言（viawarn）のある系統と、色の決まりが無い注意の便に付ける。
+   色分けで青にした系統（26系統など）には付けない（赤の22系統と見分けやすくするため） */
+function navViaMark(x){
+  return (navViaWarn(x) || (navViaMulti(x) && !navViaColor(x))) ? '⚠ ' : '';
+}
 function navViaTag(x, prev){
   if(!x || x.k || !x.v) return '';
-  const multi=navViaMulti(x);
-  let s='<div class="nav-via'+(multi?' warn':'')+'">'+(multi?'⚠ ':'')+navViaName(x.v);
-  if(x.v==='?') s+='<br><small>系統表の時間からは分かりません。行先表示を確かめてください</small>';
-  else if(navViaWarn(x)) s+='<br><small>'+navViaWarn(x)+'</small>';
-  else if(multi && prev && prev.v && prev.v!=='?' && prev.v!==x.v) s+='<br><small>前の便（'+navViaName(prev.v)+'）と系統・経由が違います</small>';
-  else if(multi) s+='<br><small>この区間は系統・経由の違う便があります</small>';
+  const multi=navViaMulti(x), col=navViaColor(x), warn=navViaWarn(x);
+  let s='<div class="nav-via'+(col ? ' vc-'+col : (multi?' warn':''))+'">'+navViaMark(x)+navViaName(x.v);
+  const sub=[];
+  if(x.v==='?') sub.push('系統表の時間からは分かりません。行先表示を確かめてください');
+  else{
+    if(warn) sub.push(warn);
+    if(multi && prev && prev.v && prev.v!=='?' && prev.v!==x.v) sub.push('前の便（'+navViaName(prev.v)+'）と系統・経由が違います');
+    else if(multi && !warn) sub.push('この区間は系統・経由の違う便があります');
+  }
+  if(sub.length) s+='<br><small>'+sub.join('<br>')+'</small>';
   return s+'</div>';
 }
 function navMin(hm){
@@ -7677,7 +7700,7 @@ function renderNav(){
     h+='<div class="nav-then">営業の便は <b>'+revs.length+'本</b>'
       +(lastRev && lastRev!==first ? '。最後の便は '+lastRev.d+' '+navPlaceName(lastRev.f)+'発 → '+navPlaceName(lastRev.t)+' '+lastRev.a+'着' : '')+'</div>';
     const nv=trips.filter(function(x){ return navViaMulti(x); }).length;
-    if(nv) h+='<div class="nav-then">⚠ 経由に注意する便が <b>'+nv+'本</b> あります（下の一覧の黄色）</div>';
+    if(nv) h+='<div class="nav-then">⚠ 経由に注意する便が <b>'+nv+'本</b> あります（下の一覧の色の付いた便）</div>';
     /* 今日の分なら、いまの状況（今日のナビ）へすぐ切り替えられるようにする */
     const tv=parseInt((document.getElementById('todayInput')||{}).value,10);
     if(pv.iso===todayIso && tv===pv.dial){
@@ -7693,7 +7716,7 @@ function renderNav(){
      +'<div class="nav-cd">発車まで <b>'+(navMin(first.d)-nm)+'</b> 分</div>';
     /* 今日、経由に注意する便の数 */
     const nv=trips.filter(function(x){ return navViaMulti(x); }).length;
-    if(nv) h+='<div class="nav-then">⚠ 今日は経由に注意する便が <b>'+nv+'本</b> あります（下の一覧の黄色）</div>';
+    if(nv) h+='<div class="nav-then">⚠ 今日は経由に注意する便が <b>'+nv+'本</b> あります（下の一覧の色の付いた便）</div>';
     nextTrip=first;
   }else if(nm >= navMin(last.a) && pl.io && nm < navMin(pl.io.out[pl.io.out.length-1])){
     /* 営業所に戻ってから退勤まで（入庫・点検など） */
@@ -7802,10 +7825,11 @@ function renderNav(){
     const past = navMin(x.a)<=nm, cur=(x===curTrip||x===nextTrip);
     const got = arr[x.d];
     const late = (got!=null) ? got-navMin(x.a) : null;
-    L+='<div class="nav-row'+(past?' past':'')+(cur?' cur':'')+(x.k==='回送'?' ks':'')+(navViaMulti(x)?' vw':'')+'">'
+    const vcol=navViaColor(x), vmul=navViaMulti(x);
+    L+='<div class="nav-row'+(past?' past':'')+(cur?' cur':'')+(x.k==='回送'?' ks':'')+(vcol?' vc-'+vcol:(vmul?' vw':''))+'">'
       +'<span class="tm">'+x.d+'→'+x.a+'</span>'
       +'<span>'+(x.k==='回送' ? ksName(x) : navRoute(x.f,x.t))
-        +(x.v && !x.k ? '<br><span class="vt'+(navViaMulti(x)?' w':'')+'">'+(navViaMulti(x)?'⚠ ':'')+navViaName(x.v)+'</span>' : '')+'</span>'
+        +(x.v && !x.k ? '<br><span class="vt'+(vcol?' vc-'+vcol:(vmul?' w':''))+'">'+navViaMark(x)+navViaName(x.v)+'</span>' : '')+'</span>'
       +(late>0?'<span class="lt">+'+late+'分</span>':'')+'</div>';
   });
   lb.innerHTML=L+'</div>';
