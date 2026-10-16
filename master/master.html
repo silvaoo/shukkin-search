@@ -394,7 +394,16 @@ body {
 .nav-row.vc-red.cur { background:#ffdede; }
 .nav-row.vc-blue { background:#eef6ff; box-shadow:inset 4px 0 0 #42a5f5; }
 .nav-row.vc-blue.cur { background:#d9ebff; }
-.nav-row.vc-red, .nav-row.vc-blue { padding-left:8px; }   /* 左の色の帯と文字が重ならないように */
+.nav-row.vc-red, .nav-row.vc-blue, .nav-row.vc-green, .nav-row.vc-orange { padding-left:8px; }   /* 左の色の帯と文字が重ならないように */
+/* 緑・橙（2026-10-17 生駒: 生駒台循環 外回り＝緑・内回り＝橙、田原台線 北谷公園経由＝橙・八丁目経由＝緑・九丁目西経由＝青） */
+.nav-via.vc-green { background:#e8f5e9; color:#1b5e20; border:1.5px solid #43a047; }
+.nav-via.vc-orange { background:#fff3e0; color:#bf4f00; border:1.5px solid #fb8c00; }
+.nav-row.vc-green { background:#eef8ef; box-shadow:inset 4px 0 0 #43a047; }
+.nav-row.vc-green.cur { background:#d8f0da; }
+.nav-row.vc-orange { background:#fff5e8; box-shadow:inset 4px 0 0 #fb8c00; }
+.nav-row.vc-orange.cur { background:#ffe6c4; }
+.nav-row .vt.vc-green { color:#2e7d32; }
+.nav-row .vt.vc-orange { color:#c25e00; }
 .nav-row .vt.vc-red { color:#c62828; font-weight:900; }
 .nav-row .vt.vc-blue { color:#1565c0; }
 .nav-msg { padding:14px; text-align:center; color:#555; font-size:calc(14px * var(--fs, 1)); }
