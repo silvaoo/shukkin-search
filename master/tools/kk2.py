@@ -14,6 +14,10 @@ from kkparse import words_of, DAY
 #   て … 43系統 帝塚山南循環（富雄駅→富雄駅）
 # 便に r として残す（発と着が同じ循環の便だけ）
 MARKS = ('外', '内', '三', 'て')
+# 循環でない便の発の場所のすぐ右に付く、経由の印（2026-10-16）。便に m として残す（build_trips.py の VIA_RULES で使う）
+#   中 … 学研北生駒駅⇔学園前駅（北口）の中登美ケ丘経由（130系統・129系統 急行）。印が無いものは 128系統 西登美ケ丘経由 など
+#   場所の略号の「中」（中登美ケ丘四丁目 など）と同じ字なので、MARKS のように略号から外すことはしない
+VIA_MARKS = ('中',)
 
 def chars_of(pg):
     cs = []
@@ -126,6 +130,9 @@ def parse_page(pg):
             if fc:
                 rr = [c for c in SC if c['text'] in MARKS and abs(c['top'] - fc['top']) < 0.8 and fc['x1'] - 0.5 < c['x0'] < fc['x1'] + 8]
                 if rr and f == t: it['r'] = min(rr, key=lambda c: c['x0'])['text']
+                if f != t:
+                    mk = [c for c in SC if c is not fc and c['text'] in VIA_MARKS and abs(c['top'] - fc['top']) < 0.8 and fc['x1'] - 0.5 < c['x0'] < fc['x1'] + 6]
+                    if mk: it['m'] = min(mk, key=lambda c: c['x0'])['text']
             # 読み違いに備えて、ほかの読み方も控えておく（実車の合計が合わないときに使う）
             alts = set()
             for cs_ in s:
