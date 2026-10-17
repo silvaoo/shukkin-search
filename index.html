@@ -1838,7 +1838,7 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
   <div class="card-title">クイック検索</div>
   <div class="quick-grid">
     <button class="qbtn" onclick="quickSearch('tomorrow')">明日</button>
-    <button class="qbtn" onclick="quickSearch('mid')">9日後</button>
+    <button class="qbtn" onclick="quickSearch('mid')">10日後</button>
     <button class="qbtn" onclick="quickSearch('month1')">1ヶ月</button>
   </div>
 </div>
@@ -2093,7 +2093,7 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
         <ol>
           <li>自分の<b>ダイヤ番号</b>を入れる</li>
           <li>すぐ下に<b>今日の出退勤</b>が出る</li>
-          <li>先の予定は<b>「9日後」など</b>を押す</li>
+          <li>先の予定は<b>「10日後」など</b>を押す</li>
         </ol>
         <div class="qq">
           これだけで使えます。番号は保存されるので、次の日からは<b>開くだけ</b>でOKです。<br>
@@ -2115,8 +2115,8 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
       </div>
 
       <div class="guide-step">
-        <h3>② 「明日」「9日後」「1ヶ月」を押す</h3>
-        <p>押すだけで勤務が出ます。「明日」は明日1日だけ、<b>「9日後」は今日を入れて10日分</b>、「1ヶ月」はその期間をまとめて表示します。次の日以降は、番号が1日ずつ進んだ状態で出ます。</p>
+        <h3>② 「明日」「10日後」「1ヶ月」を押す</h3>
+        <p>押すだけで勤務が出ます。「明日」は明日1日だけ、<b>「10日後」は今日を入れて11日分</b>、「1ヶ月」はその期間をまとめて表示します。次の日以降は、番号が1日ずつ進んだ状態で出ます。</p>
         <img src="images/guide-2.jpg" alt="クイック検索と指定して検索">
       </div>
 
@@ -4438,7 +4438,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v259';
+const APP_VERSION   = 'v260';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4660,7 +4660,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.80';
+const APP_LABEL = 'バージョン 3.81';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -7990,7 +7990,7 @@ function quickSearch(type){
   const t=new Date();t.setHours(0,0,0,0);
   let from,to;
   if(type==='today'){from=to=t;}
-  else if(type==='mid'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+10-1);}   // 真ん中のボタン。日数は apps.json で決める
+  else if(type==='mid'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+11-1);}   // 真ん中のボタン。日数は apps.json で決める
   else if(type==='week1'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+6);}   // 今日から7日間
   else if(type==='tomorrow'){from=new Date(t);from.setDate(t.getDate()+1);to=new Date(from);}  // 明日1日だけ
   else if(type==='week2'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+13);}  // 今日から14日間
