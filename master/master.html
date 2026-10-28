@@ -7652,9 +7652,43 @@ function navPlan(date, dialOverride){
     }
     ends.push({x:realTrips[realTrips.length-1], out: io ? io.out[io.out.length-1] : null});
   }
+  /* 代走・公出で2本以上乗る日（例: 61番前半の代走のあと、本来の31番）。
+     1本目の終わりと2本目の始まりの間が空いていれば、いったん営業所へ戻って、また出庫する（2026-10-29 乗務員さんより）。
+     系統表には乗る分ごとの入庫・出庫の線が無いことが多いので、ここで足す（時刻は目安） */
+  const starts = [];
+  if(pieces.length > 1 && realTrips.length){
+    const segEnd = function(pc){
+      const sl = DB[pc.dial] && DB[pc.dial][dt];
+      const sg = sl ? rcSegs(sl, pc.part) : [];
+      return sg.length ? sg[sg.length-1].e : null;
+    };
+    const byPiece = pieces.map(function(pc){
+      const its = realTrips.filter(function(x){ return x.dial===pc.dial; });
+      return {pc:pc, first:its[0], last:its[its.length-1]};
+    }).filter(function(z){ return z.first; })
+      .sort(function(a,b){ return navMin(a.first.d) - navMin(b.first.d); });
+    for(let i=0; i+1<byPiece.length; i++){
+      const A=byPiece[i], B=byPiece[i+1];
+      if(navMin(B.first.d) - navMin(A.last.a) < 60) continue;     // すぐ続けて乗るなら戻らない
+      if(!ends.some(function(e){ return e.x===A.last; })) ends.push({x:A.last, out:segEnd(A.pc), between:true});
+      starts.push({x:B.first, after:A.last});
+    }
+  }
+  /* 2本目の前の出庫。営業所（またはすぐ近く）から出る便なら要らない。
+     着くのは発車の5分前、出るのはそこから移動の分（分からなければ20分）を引いた時刻 */
+  starts.forEach(function(st){
+    const fx = st.x;
+    if(!fx.f || fx.f==='営' || navNear('営', fx.f)) return;
+    const dep = navMin(fx.d);
+    const tr = navTravel('営', fx.f) || 20;
+    const a = dep - 5, d = Math.max(navMin(st.after.a) + 15, a - tr);
+    if(d >= a) return;
+    items.push({k:'回送', f:'営', t:fx.f, d:navHm(d), a:navHm(a), key:dep - 0.3, syn:true, dial:fx.dial});
+  });
   ends.forEach(function(e){
     const last = e.x;
-    if(!last.t || last.t==='営' || navNear(last.t,'営')) return;
+    if(!last.t || last.t==='営') return;
+    if(navNear(last.t,'営') && !e.between) return;   // 学研北生駒駅などで終わる日は出さない（乗る分の間は出す）
     const a0 = navMin(last.a), out = e.out ? navMin(e.out) : null;
     let tr = navTravel(last.t, '営');
     if(!tr) tr = (out!=null) ? Math.max(5, Math.min(30, out - a0 - 10)) : 20;
@@ -7821,6 +7855,7 @@ function renderNav(){
   const ksName=function(x){
     if(x.f && x.f===x.t) return '回送・待機（'+navPlaceName(x.f)+'）';
     if(x.t==='営') return (x.f ? '営業所へ戻る（'+navPlaceName(x.f)+'から）' : '営業所へ戻る') + (x.syn ? '<small>（時刻は目安）</small>' : '');
+    if(x.f==='営' && x.syn) return '営業所から出庫（→ '+navPlaceName(x.t)+'）<small>（時刻は目安）</small>';
     return '回送（'+navRoute(x.f,x.t)+'）';
   };
   const desc=function(x){
