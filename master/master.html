@@ -1342,6 +1342,11 @@ body.multi .only-single{ display:none !important; }
 .ot-diasel{ flex:1; min-width:0; font-size:calc(15px * var(--fs, 1)); padding:10px 8px; }
 /* 番号の欄。独立した行にして、必ず見えるようにする。 */
 .ot-dial{ width:100%; margin-bottom:8px; }
+/* 臨時＆シャトル等の時刻（始まり〜終わり） */
+.ot-rinji{ display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+.ot-rinji input{ flex:1; min-width:0; }
+.ot-rinji span{ color:var(--dim); font-size:calc(14px * var(--fs, 1)); }
+.ot-rinji-hint{ font-size:calc(11px * var(--fs, 1)); color:var(--dim); line-height:1.5; }
 .ot-rowdel{ background:none; border:none; color:var(--dim); font-size:calc(18px * var(--fs, 1));
   cursor:pointer; padding:2px 8px; }
 
@@ -3354,7 +3359,7 @@ function nextWorkDay(from){
     // その日に別のダイヤで出ると登録してあれば、それを優先する
     if(rec && rec.adds && rec.adds.length){
       const s0=otSlotOf(rec.adds[0].code||'{{ID}}', rec.adds[0].dial, d);
-      if(s0) return {date:new Date(d), dial:rec.adds[0].dial, slot:s0};
+      if(s0) return {date:new Date(d), dial:(rec.adds[0].code===OT_RINJI?'臨時':rec.adds[0].dial), slot:s0};
     }
     const r=DB[dial];
     const slot=(r&&r[dt])?r[dt]:null;
@@ -3372,7 +3377,7 @@ function offDayHtml(v,m,d,dtLabel){
     + '<span class="ok-text">🎉 公休</span> です</div>';
   if(nx){
     const nm=nx.date.getMonth()+1, nd=nx.date.getDate(), nw=DW[nx.date.getDay()];
-    h+='<div class="today-next">次の出勤　<b>'+nm+'/'+nd+'（'+nw+'）'+nx.dial+'番</b>　'
+    h+='<div class="today-next">次の出勤　<b>'+nm+'/'+nd+'（'+nw+'）'+(nx.dial==='臨時'?'臨時':nx.dial+'番')+'</b>　'
       + String(nx.slot.o) + '（労働 ' + (nx.slot.w||'-') + '）</div>'
       + untilNextHtml(nx);
   }
@@ -3398,7 +3403,7 @@ function otLeaveHtml(m,d,dtLabel,r){
   let next='';
   if(nx){
     const nm=nx.date.getMonth()+1, nd=nx.date.getDate(), nw=DW[nx.date.getDay()];
-    next='<div class="today-next">次の出勤　<b>'+nm+'/'+nd+'（'+nw+'）'+nx.dial+'番</b>　'
+    next='<div class="today-next">次の出勤　<b>'+nm+'/'+nd+'（'+nw+'）'+(nx.dial==='臨時'?'臨時':nx.dial+'番')+'</b>　'
        + String(nx.slot.o) + '（労働 ' + (nx.slot.w||'-') + '）</div>'
        + untilNextHtml(nx);
   }else{
@@ -3438,7 +3443,7 @@ function otTodayHtml(v,m,d,dtLabel,r){
   (r.adds||[]).forEach(function(x){
     const sl=otSlotOf(x.code||'{{ID}}', x.dial, new Date());
     real.push({dial:x.dial, part:x.part, slot:sl, mine:false,
-               code:x.code||'{{ID}}'});
+               code:x.code||'{{ID}}'});   // 臨時は x.code が rinji
   });
 
   /* 出勤の早い順に並べ替える。朝いちばん早いものを先頭に。 */
@@ -3466,10 +3471,10 @@ function otTodayHtml(v,m,d,dtLabel,r){
   let whatCh='';
   if(!isKyuDay && r.adds && r.adds.length===1){
     const a0=r.adds[0];
-    if(a0.part==='second' && otBaseOf(r)==='first') whatCh='後半だけ '+a0.dial+'番に替わりました';
-    else if(a0.part==='first' && otBaseOf(r)==='second') whatCh='前半だけ '+a0.dial+'番に替わりました';
-    else if(a0.part==='all' && otBaseOf(r)==='none')      whatCh='まるごと '+a0.dial+'番に替わりました';
-    else if(otBaseOf(r)==='all')                          whatCh=a0.dial+'番が足されました';
+    if(a0.part==='second' && otBaseOf(r)==='first') whatCh='後半だけ '+otDN(a0)+'に替わりました';
+    else if(a0.part==='first' && otBaseOf(r)==='second') whatCh='前半だけ '+otDN(a0)+'に替わりました';
+    else if(a0.part==='all' && otBaseOf(r)==='none')      whatCh='まるごと '+otDN(a0)+'に替わりました';
+    else if(otBaseOf(r)==='all')                          whatCh=otDN(a0)+'が足されました';
   }
   h+='<div class="dual real"><div class="dual-ttl">🚌 '
     +(isKyuDay?'公休出勤で出るのは':'この日に出るのは')+'</div>'
@@ -3477,7 +3482,7 @@ function otTodayHtml(v,m,d,dtLabel,r){
   real.forEach(function(x){
     const t=x.slot?formatDisplayTimePart(x.slot.o, x.part, x.slot.w):'（時刻が確定していません）';
     const one=!x.slot||!String(x.slot.o).includes('/')||x.part==='all';
-    h+='<div class="dual-row"><span class="dual-dial">'+x.dial+'番</span>'
+    h+='<div class="dual-row"><span class="dual-dial">'+otDN(x)+'</span>'
       +'<span class="dual-part">'+(partLb[x.part]||'')+'</span>'
       +'<span class="dual-time">'+t+'</span>'
       +(one&&x.slot?'<span class="dual-w">　労働 '+(x.slot.w||'-')+'</span>':'')+'</div>';
@@ -3570,7 +3575,7 @@ function buildCard(){
     }
     otRec.adds.forEach(function(x){
       const s2=otSlotOf(x.code||'{{ID}}', x.dial, (typeof date!=='undefined'?date:(typeof today!=='undefined'?today:new Date())));
-      if(s2) otList.push({dial:x.dial, part:x.part, slot:s2});
+      if(s2) otList.push({dial:x.dial, part:x.part, slot:s2, code:x.code});
     });
     otList.sort(function(a,b){
       const f=function(x){const mm=String(x.slot.o).match(/(\d{1,2}):(\d{2})/);
@@ -3612,7 +3617,7 @@ function buildCard(){
       g.fillStyle='rgba(255,255,255,.85)'; g.font='500 44px sans-serif';
       g.fillText('次の出勤',80,620);
       g.fillStyle='#fff';
-      fitText(g, `${nx.date.getMonth()+1}/${nx.date.getDate()} ${nx.dial}番 ${nx.slot.o}`,
+      fitText(g, `${nx.date.getMonth()+1}/${nx.date.getDate()} ${nx.dial==='臨時'?'臨時':nx.dial+'番'} ${nx.slot.o}`,
               80, 700, W-160, 62, 34);
     }
   }else if(otSub && otList.length){
@@ -3623,7 +3628,7 @@ function buildCard(){
     const partLb={all:'',first:'（前半）',second:'（後半）'};
     otList.slice(0,2).forEach(function(x){
       g.fillStyle='#fff';
-      fitText(g, x.dial+'番'+(partLb[x.part]||''), 80, y, W-160, 64, 40);
+      fitText(g, otDN(x)+(partLb[x.part]||''), 80, y, W-160, 64, 40);
       g.fillStyle='rgba(255,255,255,.95)';
       fitText(g, String(x.slot.o), 80, y+76, W-160, 68, 34);
       y+=170;
@@ -3720,7 +3725,7 @@ function handleSpeakToday(){
     const nx=nextWorkDay(new Date());
     text+='年休です。';
     if(nx){
-      text+=`次の出勤は${nx.date.getMonth()+1}月${nx.date.getDate()}日、${nx.dial}番ダイヤ。`
+      text+=`次の出勤は${nx.date.getMonth()+1}月${nx.date.getDate()}日、${nx.dial==='臨時'?'臨時の仕事':nx.dial+'番ダイヤ'}。`
           + timeToSpeech(nx.slot.o, nx.slot.w)+'。';
     }
     speakText(text,'speakTodayBtn'); return;
@@ -3736,11 +3741,11 @@ function handleSpeakToday(){
     }
     otRec.adds.forEach(function(x){
       const s2=otSlotOf(x.code||'{{ID}}', x.dial, (typeof date!=='undefined'?date:(typeof today!=='undefined'?today:new Date())));
-      if(s2) list.push({dial:x.dial, part:x.part, slot:s2});
+      if(s2) list.push({dial:x.dial, part:x.part, slot:s2, code:x.code});
     });
     const partW={all:'', first:'の前半', second:'の後半'};
     list.forEach(function(x){
-      text += `${x.dial}番ダイヤ${partW[x.part]||''}。` + otSpeakSlot(x.slot, x.part) + '。';
+      text += (x.code===OT_RINJI ? '臨時の仕事' : `${x.dial}番ダイヤ${partW[x.part]||''}`) + '。' + otSpeakSlot(x.slot, x.part) + '。';
     });
     text += `時間外は${otSpeak(otRec.min)}です。`;
     speakText(text,'speakTodayBtn'); return;
@@ -4067,10 +4072,10 @@ function realDutyHtml(iso){
   let what='';
   if(!isKyuDay && r.adds && r.adds.length===1){
     const a0=r.adds[0];
-    if(a0.part==='second' && otBaseOf(r)==='first') what='後半だけ '+a0.dial+'番に替わりました';
-    else if(a0.part==='first' && otBaseOf(r)==='second') what='前半だけ '+a0.dial+'番に替わりました';
-    else if(a0.part==='all' && otBaseOf(r)==='none')      what='まるごと '+a0.dial+'番に替わりました';
-    else if(otBaseOf(r)==='all')                          what=a0.dial+'番が足されました';
+    if(a0.part==='second' && otBaseOf(r)==='first') what='後半だけ '+otDN(a0)+'に替わりました';
+    else if(a0.part==='first' && otBaseOf(r)==='second') what='前半だけ '+otDN(a0)+'に替わりました';
+    else if(a0.part==='all' && otBaseOf(r)==='none')      what='まるごと '+otDN(a0)+'に替わりました';
+    else if(otBaseOf(r)==='all')                          what=otDN(a0)+'が足されました';
   }
   let h='<div class="real-duty'+(isKyuDay?' is-kyu':'')+'">'
       + '<div class="rd-ttl">'
@@ -4079,7 +4084,7 @@ function realDutyHtml(iso){
       + (what?'<div class="rd-chg">✅ '+what+'</div>':'');
   list.forEach(function(x){
     h+='<div class="rd-row">'
-      +'<span class="rd-dial">'+x.dial+'番</span>'
+      +'<span class="rd-dial">'+otDN(x)+'</span>'
       +'<span class="rd-part">'+(partLb[x.part]||'')+'</span>'
       +'<span class="rd-time">'+(x.slot?formatDisplayTimePart(x.slot.o,x.part,x.slot.w):'時刻が確定していません')+'</span>'
       +((x.slot && (!String(x.slot.o).includes('/')||x.part==='all'))
@@ -5317,6 +5322,7 @@ function otCalc(date, base, adds, forceKyu){
     const code=a.code||'{{ID}}';
     const slot=otSlotOf(code, a.dial, date);
     if(!slot){
+      if(code===OT_RINJI) return {ok:false, msg:'臨時の始まりと終わりの時刻を入れてください'};
       return {ok:false, msg:(code!=='{{ID}}'?otDiaName(code)+' ':'')
                           +a.dial+'番は この日 公休か、時刻が確定していません'};
     }
@@ -5324,6 +5330,24 @@ function otCalc(date, base, adds, forceKyu){
     addLabor += otPart(slot.w, a.part);
     addHeld  += otHeldPart(slot.o, a.part);
     rows.push({dial:a.dial, part:a.part, o:slot.o, w:slot.w, code:code});
+  }
+  /* 臨時＆シャトル等が入る日（2026-10-28 乗務員さんより）。臨時は労働時間が分からないので、
+     付いた分の「いちばん早い始まり〜いちばん遅い終わり」の通しの拘束×0.8 を付いた分とする。
+     例: 臨時 10:25〜16:35 ＋ 31番 17:09〜24:04 → 10:25〜24:04（13:39）×0.8 ＝ 10:55 */
+  let rinjiHow='';
+  if(rows.some(function(x){ return x.code===OT_RINJI; })){
+    let s0=null, e0=null;
+    rows.forEach(function(x){
+      rcSegs({o:x.o}, x.part).forEach(function(g){
+        const a=rcMin(g.s), b=rcMin(g.e);
+        if(s0===null || a<s0) s0=a;
+        if(e0===null || b>e0) e0=b;
+      });
+    });
+    if(s0!==null && e0>s0){
+      addEval = (e0-s0)*0.8;
+      rinjiHow='臨時は労働時間が分からないので、通しの拘束 '+navHm(s0)+'〜'+navHm(e0)+'（'+otFmt(e0-s0)+'）×0.8 を付いた分としました';
+    }
   }
 
   // 当日決まる勤務（奈良学園など）の日に、代わりに別のダイヤを走った。公出ではなく、時間外も付かない
@@ -5346,6 +5370,8 @@ function otCalc(date, base, adds, forceKyu){
   // --- 公休の日に出た ---
   if(!baseSlot){
     const useLabor = addLabor >= addHeld*0.8;
+    if(rinjiHow) return {ok:true, kind:'公休出勤', baseDial:baseDial, baseLabel:'公休',
+                         rows:rows, ot:Math.max(0,Math.round(addEval)), how:rinjiHow};
     return {ok:true, kind:'公休出勤', baseDial:baseDial, baseLabel:'公休',
             rows:rows, ot:Math.max(0,Math.round(addEval)),
             how:'労働 '+otFmt(addLabor)+' と 拘束 '+otFmt(addHeld)+'×0.8（'
@@ -5375,7 +5401,7 @@ function otCalc(date, base, adds, forceKyu){
     : '付いた分 '+otFmt(Math.round(addEval))+' がそのまま時間外';
   return {ok:true, kind:(base==='all'?'追加':'振替'), baseDial:baseDial,
           baseLabel:baseSlot.o+'（労働 '+baseSlot.w+'）／'+baseWord,
-          rows:rows, ot:ot, how:howTxt};
+          rows:rows, ot:ot, how:(rinjiHow ? rinjiHow+'。' : '')+howTxt};
 }
 
 /* 拘束時間のうち、指定した側だけを取り出す */
@@ -5695,8 +5721,28 @@ function renderDiaInfo(){
   el.textContent = n ? ('ダイヤ ' + (REVISION_ISO||'—') + '改正 ／ ' + n + '系統') : 'ダイヤ 未取得';   // 番号の数は「系統」と呼ぶ（学園前Ａは92系統）
 }
 
+/* ==== 臨時＆シャトル等（2026-10-28） ====
+   近大の農学祭のピストンなど、ダイヤ番号の無い仕事。時間外の「付いたダイヤ」で選べる。
+   番号の代わりに、dial に "10:25-16:35" の形で始まりと終わりの時刻を入れる。
+   労働時間は分からないので、計算は拘束時間×0.8（otCalc を見る） */
+const OT_RINJI = 'rinji';
+function otRinjiParse(v){
+  const m=String(v||'').match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/);
+  if(!m) return null;
+  const s=parseInt(m[1],10)*60+parseInt(m[2],10);
+  let e=parseInt(m[3],10)*60+parseInt(m[4],10);
+  if(e<=s) e+=24*60;            // 日付をまたぐ（23:30〜0:30 など）
+  return {s:s, e:e};
+}
+/* 呼び名。ふつうは「31番」、臨時は「臨時」 */
+function otDN(x){ return (x && x.code===OT_RINJI) ? '臨時' : (x.dial+'番'); }
+
 /* ある番号の、その日の勤務を取り出す。ダイヤをまたいで使える。 */
 function otSlotOf(code, num, date){
+  if(code===OT_RINJI){
+    const t=otRinjiParse(num);
+    return t ? {o:navHm(t.s)+'〜'+navHm(t.e), w:'', rinji:true} : null;
+  }
   const j = (code==='{{ID}}') ? {dials:DB} : OTHER_DB[code];
   if(!j || !j.dials) return null;
   const rec=j.dials[String(num)];
@@ -5831,7 +5877,24 @@ function otRenderAdds(){
     const opts = OTHER_DIAS.filter(function(d){ return d.code==='{{ID}}' || OTHER_DB[d.code]; })
       .map(function(d){
         return '<option value="'+d.code+'"'+(code===d.code?' selected':'')+'>'+d.name+'</option>';
-      }).join('');
+      }).join('')
+      + '<option value="'+OT_RINJI+'"'+(code===OT_RINJI?' selected':'')+'>臨時＆シャトル等</option>';
+    /* 臨時は番号が無いので、始まりと終わりの時刻を入れる */
+    if(code===OT_RINJI){
+      const tm=String(r.dial||'').split('-');
+      return '<div class="ot-addrow-box">'
+        +'<div class="ot-addrow-top">'
+          +'<select class="ot-in ot-diasel" onchange="otSetAddCode('+i+',this.value)">'+opts+'</select>'
+          +(otAdds.length>1?'<button class="ot-rowdel" onclick="otDelRow('+i+')">✕</button>':'')
+        +'</div>'
+        +'<div class="ot-rinji">'
+          +'<input type="time" class="ot-in" value="'+(tm[0]||'')+'" oninput="otSetRinji('+i+',0,this.value)" onchange="otSetRinji('+i+',0,this.value)">'
+          +'<span>〜</span>'
+          +'<input type="time" class="ot-in" value="'+(tm[1]||'')+'" oninput="otSetRinji('+i+',1,this.value)" onchange="otSetRinji('+i+',1,this.value)">'
+        +'</div>'
+        +'<div class="ot-rinji-hint">始まりと終わりの時刻を入れてください。労働時間が分からないので、拘束時間×0.8で計算します</div>'
+        +'</div>';
+    }
     /* ダイヤの選択と番号は上下に分ける。
        横に3つ並べると、狭い画面で番号の欄が押し出されて見えなくなる。 */
     return '<div class="ot-addrow-box">'
@@ -5853,9 +5916,31 @@ function otSetAddDial(i,v){ otAdds[i].dial=v; otEdited=false; otPreview(); }
 function otSetAddCode(i,v){
   otAdds[i].code=v;
   otAdds[i].dial='';
+  if(v===OT_RINJI) otAdds[i].part='all';   // 臨時に前半・後半は無い
   otEdited=false;
   otRenderAdds();
   otPreview();
+}
+/* 臨時の時刻。which 0＝始まり、1＝終わり。入力中なので作り直さない */
+function otSetRinji(i, which, v){
+  const tm=String(otAdds[i].dial||'').split('-');
+  tm[which]=String(v||'').slice(0,5);
+  otAdds[i].dial=(tm[0]||'')+'-'+(tm[1]||'');
+  otEdited=false;
+  otPreview();
+}
+/* 入力欄から、計算・保存に使う「付いたもの」を取り出す。臨時は時刻が2つそろったものだけ */
+function otCleanAdds(){
+  return otAdds.filter(function(r){
+      const c=r.code||'{{ID}}';
+      if(c===OT_RINJI) return !!otRinjiParse(r.dial);
+      const n=parseInt(r.dial);
+      return n>=1 && n<=otMaxOf(c);
+    }).map(function(r){
+      const c=r.code||'{{ID}}';
+      return (c===OT_RINJI) ? {dial:String(r.dial), part:'all', code:c}
+                            : {dial:parseInt(r.dial), part:r.part, code:c};
+    });
 }
 function otSetAddPart(i,v){
   otAdds[i].part=v; otEdited=false;
@@ -5909,10 +5994,7 @@ function otPreview(){
   const wrap=document.getElementById('otBaseWrap');
   if(wrap) wrap.style.display = bs ? 'block' : 'none';
 
-  const adds=otAdds.filter(function(r){
-      const n=parseInt(r.dial);
-      return n>=1 && n<=otMaxOf(r.code||'{{ID}}');
-    }).map(function(r){ return {dial:parseInt(r.dial), part:r.part, code:r.code||'{{ID}}'}; });
+  const adds=otCleanAdds();
   if(adds.length===0){ box.innerHTML='付いたダイヤ番号を入れてください'; otLast=null; return; }
 
   const r=otCalc(date, bs?otBaseSel:'none', adds, otKind==='kyu');
@@ -5973,6 +6055,7 @@ function otPreview(){
      '<div class="ot-sub">本来：'+r.baseLabel+'</div>'
     +r.rows.map(function(x){
         const nm=(x.code && x.code!=='{{ID}}') ? (otDiaName(x.code)+' ') : '';
+        if(x.code===OT_RINJI) return '<div class="ot-sub">＋ 臨時 '+x.o+'（労働時間は分かりません）</div>';
         return '<div class="ot-sub">＋ '+nm+x.dial+'番 '+partLb[x.part]+' '+x.o+'（労働 '+x.w+'）</div>';
       }).join('')
     +'<div class="ot-sub">'+r.how+'</div>'
@@ -5990,10 +6073,7 @@ function otStore(){
   if(!iso){ showToast('日付を入れてください'); return; }
   const h=parseInt(document.getElementById('otH').value)||0;
   const mi=parseInt(document.getElementById('otM').value)||0;
-  const adds=otAdds.filter(function(r){
-      const n=parseInt(r.dial);
-      return n>=1 && n<=otMaxOf(r.code||'{{ID}}');
-    }).map(function(r){ return {dial:parseInt(r.dial), part:r.part, code:r.code||'{{ID}}'}; });
+  const adds=otCleanAdds();
   if(adds.length===0 && otKind==='work'){ showToast('付いたダイヤ番号を入れてください'); return; }
   const all=otLoad();
   all[iso]={
@@ -6256,7 +6336,7 @@ function renderRevPane(){
       if(otIsKyu(r.ot)) pill='<span class="rv-pill kyu">公出</span>';
       else if(otIsLeave(r.ot)) pill='<span class="rv-pill leave">年休</span>';
       else if(r.ot && r.ot.adds && r.ot.adds.length){
-        pill='<span class="rv-pill sub">'+r.ot.adds.map(function(x){return x.dial+'番';}).join('＋')+'</span>';
+        pill='<span class="rv-pill sub">'+r.ot.adds.map(function(x){return otDN(x);}).join('＋')+'</span>';
       }
       const otT = r.ot ? ('<div class="rv-ot-t">⏱ '+otFmt(r.ot.min)+'</div>') : '';
       h+='<tr class="'+(r.ot?'has-ot':'')+'">'
@@ -7124,7 +7204,7 @@ function rcRealList(rec, date){
   }
   rec.adds.forEach(function(x){
     if(x.dial===''||x.dial==null) return;
-    list.push({dial:x.dial, part:x.part,
+    list.push({dial:x.dial, part:x.part, code:x.code||'{{ID}}',
                slot:otSlotOf(x.code||'{{ID}}', x.dial, date)});
   });
   return list.length ? list : null;
@@ -7184,7 +7264,7 @@ function renderResultCal(){
     let dnTxt = (r&&r.dn) ? r.dn+'番' : '';
     if(real){
       /* 番号は実際に乗るものを並べる（例 20+6番） */
-      dnTxt = real.map(function(x){ return x.dial; }).join('+') + '番';
+      dnTxt = real.map(function(x){ return x.code===OT_RINJI ? '臨時' : x.dial; }).join('+') + '番';
       const baseOff = !r.rec || !r.slot;
       const isKyu = otIsKyu(stRec) || baseOff;
       let segs=[], unknown=false;
@@ -7511,10 +7591,11 @@ function navPlan(date, dialOverride){
   if(!(v>=1 && v<=CUR_MAX)) return {err:'先に「今日は ◯ 番ダイヤ」に番号を入れてください'};
   const rec = otLoad()[iso];
   if(otIsLeave(rec)) return {err:(dialOverride ? 'この日' : '今日')+'は年休です。ゆっくり休んでください'};
-  const pieces=[]; let other=false;
+  const pieces=[], rinji=[]; let other=false;
   if(rec && ((rec.adds && rec.adds.length) || otIsKyu(rec))){
     if(otBaseOf(rec)!=='none') pieces.push({dial:v, part:otBaseOf(rec)});
     (rec.adds||[]).forEach(function(x){
+      if(x.code===OT_RINJI){ rinji.push(x); return; }   // 臨時は行程のデータが無い
       if((x.code||'{{ID}}')!=='{{ID}}'){ other=true; return; }
       pieces.push({dial:parseInt(x.dial,10), part:x.part||'all'});
     });
@@ -7535,7 +7616,8 @@ function navPlan(date, dialOverride){
     if(sel>=vs.length) sel=0;
     let list = vs[sel].list;
     /* 出勤・退勤（中間解放があれば2つずつ）。1本だけまるごと乗る日に使う */
-    if(pieces.length===1 && pc.part==='all' && vs[sel].in) io={in:vs[sel].in, out:vs[sel].out};
+    /* 臨時や他のダイヤも走る日は、この1本の出勤・退勤がその日の出勤・退勤ではないので出さない */
+    if(pieces.length===1 && pc.part==='all' && vs[sel].in && !rinji.length && !other) io={in:vs[sel].in, out:vs[sel].out};
     /* 奈良学園の C〜E のように、勤務系統表に行程が載っていない形 */
     if(vs[sel].nodata) nodata = vs[sel].label || '?';
     /* 前半だけ・後半だけ乗る日は、出退勤表の解放の時刻で分ける */
@@ -7583,13 +7665,16 @@ function navPlan(date, dialOverride){
   items.sort(function(a,b){ return a.key-b.key; });
   return {items:items, other:other, off:off, varLabels:varLabels, sel:sel, io:io, nodata:nodata,
           dials:pieces.map(function(p){ return p.dial; }),
-          /* 「51番前半＋28番」のような呼び名。乗る順（最初の便が早い順）に並べる */
-          label:pieces.slice().sort(function(a,b){
-              const fa=items.find(function(x){ return x.dial===a.dial && x.k!=='休'; });
-              const fb=items.find(function(x){ return x.dial===b.dial && x.k!=='休'; });
-              return (fa ? fa.key : 1e9) - (fb ? fb.key : 1e9);
-            }).map(function(p){ return p.dial+'番'+(p.part==='first'?'前半':p.part==='second'?'後半':''); }).join('＋') || (v+'番'),
-          byRec:!!(rec && ((rec.adds && rec.adds.length) || otIsKyu(rec))), rec:rec};
+          /* 「51番前半＋28番」「臨時＋31番」のような呼び名。乗る順（始まりが早い順）に並べる */
+          label:pieces.map(function(p){
+              const f=items.find(function(x){ return x.dial===p.dial && x.k!=='休'; });
+              return {k:(f ? f.key : 1e9), t:p.dial+'番'+(p.part==='first'?'前半':p.part==='second'?'後半':'')};
+            }).concat(rinji.map(function(x){
+              const t=otRinjiParse(x.dial);
+              return {k:(t ? t.s : 1e9), t:'臨時'};
+            })).sort(function(a,b){ return a.k-b.k; })
+            .map(function(z){ return z.t; }).join('＋') || (v+'番'),
+          byRec:!!(rec && ((rec.adds && rec.adds.length) || otIsKyu(rec))), rec:rec, rinji:rinji};
 }
 /* 記録のある日の出勤・退勤を、乗る分ごとに並べる（例: 51番前半 出勤6:10 退勤10:30 ／ 28番 出勤13:00 退勤21:00）。
    ほかのダイヤ（code が違う）で走る分も、出退勤表があれば出す */
@@ -7602,14 +7687,14 @@ function navIoByRec(rec, date){
   }
   (rec.adds||[]).forEach(function(x){
     if(x.dial===''||x.dial==null) return;
-    list.push({dial:parseInt(x.dial,10), part:x.part||'all', code:x.code||'{{ID}}'});
+    list.push({dial:(x.code===OT_RINJI ? x.dial : parseInt(x.dial,10)), part:x.part||'all', code:x.code||'{{ID}}'});
   });
   const rows=[];
   list.forEach(function(p){
     const sl=otSlotOf(p.code, p.dial, date);
     if(!sl) return;
     const segs=rcSegs(sl, p.part);
-    const nm=p.dial+'番'+(p.part==='first'?'前半':p.part==='second'?'後半':'')+(p.code!=='{{ID}}'?'（他のダイヤ）':'');
+    const nm=otDN(p)+(p.part==='first'?'前半':p.part==='second'?'後半':'')+(p.code!=='{{ID}}'&&p.code!==OT_RINJI?'（他のダイヤ）':'');
     segs.forEach(function(g,i){
       rows.push({t:rcMin(g.s), h:nm+(segs.length>1?(i===0?' 前半':' 後半'):'')+'<br>出勤 <b>'+g.s+'</b>　退勤 <b>'+g.e+'</b>'});
     });
@@ -7750,7 +7835,7 @@ function renderNav(){
     const todayIso = toISO(new Date());
     h+='<div class="nav-st">📋 '+(pv.iso===todayIso ? '今日の' : '')+pl.label+'の行程です</div>';
     if(pl.byRec) h+='<div class="nav-then">⏱ 時間外・代走の記録どおりに出しています（本来は '+pv.dial+'番）</div>';
-    const ioRec = (!pl.io && pl.byRec) ? navIoByRec(pl.rec, now) : '';
+    const ioRec = (pl.byRec && (!pl.io || pl.rinji.length || pl.other)) ? navIoByRec(pl.rec, now) : '';
     if(ioRec){
       h+='<div class="nav-io">'+ioRec+'</div>';
     }else if(pl.io){
@@ -7878,6 +7963,10 @@ function renderNav(){
       +'</div>';
   }
   if(pl.other) h+='<div class="nav-then">※ 他のダイヤで走る分は、行程のデータが無いので出していません</div>';
+  (pl.rinji||[]).forEach(function(x){
+    const sl=otSlotOf(OT_RINJI, x.dial, now);
+    if(sl) h+='<div class="nav-then">※ 臨時 '+sl.o+' は、行程のデータが無いので一覧に出していません</div>';
+  });
   h+='</div>';
   st.innerHTML=h;
 
@@ -7957,7 +8046,7 @@ function openRcDetail(iso){
   const otRec=otLoad()[iso];
   if(otRec){
     html+=`<div class="rcd-note">⏱ 時間外 ${otFmt(otRec.min)}　`
-      +(otRec.adds||[]).map(x=>x.dial+'番'+(x.part==='first'?'前半':x.part==='second'?'後半':'')).join('＋')
+      +(otRec.adds||[]).map(x=>otDN(x)+(x.part==='first'?'前半':x.part==='second'?'後半':'')).join('＋')
       +`</div>`;
   }
   html+=`<button class="rcd-ot" onclick="otFromDetail('${iso}')">⏱ ${otRec?'時間外を直す':'時間外を追加'}</button>`;
