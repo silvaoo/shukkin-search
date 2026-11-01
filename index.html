@@ -2361,6 +2361,24 @@ function diaJsonUrl(){
   if(NEXT_REV && NEXT_JSON && toISO(new Date()) >= NEXT_REV) return NEXT_JSON;
   return DIA_JSON;
 }
+/* 他のダイヤの改正（2026-11-01）。apps.json の NEXT_REV / NEXT_JSON から build.py が作る。
+   例 {"ba":{"rev":"2026-10-01","url":"../shukkin-search-ba/dia-ba-1001.json"}}
+   代走で他のダイヤを選んだときや、スペシャル検索くんで読むときも、
+   改正日を過ぎていれば新しいデータを読む。
+   以前は古いファイル（dia-ba.json）を決め打ちで読んでいて、学園前で北大和Ｂ9番の代走を入れると
+   3月改正の時刻（16:07〜22:54）が出ていた。 */
+const OTHER_REVS = {"c":{"rev":"2026-10-01","url":"../shukkin-search-c/dia-c-1001.json"},"ba":{"rev":"2026-10-01","url":"../shukkin-search-ba/dia-ba-1001.json"}};
+/* そのダイヤで、いま読むべきデータの住所。改正前や改正の無いダイヤは baseUrl のまま */
+function otherDiaUrl(code, baseUrl){
+  const r = OTHER_REVS[code];
+  return (r && toISO(new Date()) >= r.rev) ? r.url : baseUrl;
+}
+/* 控えのデータが、いま必要な改正のものか。古い控えを正しいものとして使わないため */
+function otherDiaOk(code, j){
+  const r = OTHER_REVS[code];
+  if(!(r && toISO(new Date()) >= r.rev)) return true;   // 改正前・改正の無いダイヤは確かめなくてよい
+  return !!(j && j.meta && String(j.meta.revision) === r.rev);
+}
 const DIA_CACHE_KEY = 'a-dia-cache';
 /* ダイヤ改正ごとに控えの置き場を分ける。
    同じ鍵を使い回すと、改正日を過ぎても端末に残った古いダイヤが
@@ -2464,9 +2482,9 @@ const IS_MULTI = ('0' === '1');
 const ALL_DIAS = [
   { code:'a',     name:'学園前Ａ', repo:'shukkin-search',       url:'../shukkin-search/dia-a.json' },
   { code:'ikoma', name:'生駒',     repo:'shukkin-search-ikoma', url:'../shukkin-search-ikoma/dia-ikoma.json' },
-  /* 北大和ＢとＣは2026-10-01改正。スペシャル検索くんは公開前なので先に新ダイヤを見る。 */
-  { code:'ba',    name:'北大和Ｂ', repo:'shukkin-search-ba',    url:'../shukkin-search-ba/dia-ba-1001.json' },
-  { code:'c',     name:'北大和Ｃ', repo:'shukkin-search-c',     url:'../shukkin-search-c/dia-c-1001.json' },
+  /* 改正後の新しいデータは otherDiaUrl が選ぶ（apps.json の NEXT_REV / NEXT_JSON） */
+  { code:'ba',    name:'北大和Ｂ', repo:'shukkin-search-ba',    url:'../shukkin-search-ba/dia-ba.json' },
+  { code:'c',     name:'北大和Ｃ', repo:'shukkin-search-c',     url:'../shukkin-search-c/dia-c.json' },
   { code:'yobi',  name:'予備',     repo:'shukkin-search-yobi',  url:'../shukkin-search-yobi/dia-yobi.json' }
 ];
 const ALL_SEL_KEY = 'a-sel-dia';   // 最後に選んだダイヤ
@@ -2479,10 +2497,10 @@ async function loadAllDias(){
     const key = 'a-dia-' + d.code;
     try{
       const c = localStorage.getItem(key);
-      if(c) ALL_DB[d.code] = JSON.parse(c);
+      if(c){ const j = JSON.parse(c); if(otherDiaOk(d.code, j)) ALL_DB[d.code] = j; }
     }catch(e){}
     try{
-      const res = await fetch(d.url + '?v=' + cacheDay());
+      const res = await fetch(otherDiaUrl(d.code, d.url) + '?v=' + cacheDay());
       if(res.ok){
         const j = await res.json();
         ALL_DB[d.code] = j;
@@ -4443,7 +4461,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v271';
+const APP_VERSION   = 'v272';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4665,7 +4683,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.91';
+const APP_LABEL = 'バージョン 3.92';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -5656,13 +5674,15 @@ async function loadOtherDias(){
   try{
     const saved=JSON.parse(localStorage.getItem(OTHER_KEY)||'null');
     if(saved) OTHER_DB=saved;
+    // 改正前の古い控えは使わない（読み直せなければ、そのダイヤは選べないままにする）
+    for(const k in OTHER_DB){ if(!otherDiaOk(k, OTHER_DB[k])) delete OTHER_DB[k]; }
   }catch(e){}
   OTHER_DB['a'] = {meta:{cycle:CUR_MAX}, dials:DB};   // 自分のぶん
 
   for(const d of OTHER_DIAS){
     if(d.code==='a') continue;
     try{
-      const r=await fetch(d.url+'?v='+cacheDay());
+      const r=await fetch(otherDiaUrl(d.code, d.url)+'?v='+cacheDay());
       if(!r.ok) continue;
       const j=await r.json();
       if(j && j.dials) OTHER_DB[d.code]=j;

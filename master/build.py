@@ -90,9 +90,22 @@ if bad:
     print("   font-size: 14px ではなく font-size: calc(14px * var(--fs, 1)) と書いてください")
     sys.exit(1)
 
+# --- 他のダイヤの改正 ---------------------------------------
+# 代走で他のダイヤを選んだときも、改正日を過ぎていれば新しいデータを読むため。
+# apps.json の NEXT_REV / NEXT_JSON から作り、全アプリに同じものを入れる。
+# 以前は master.html に古いファイル（dia-ba.json）を決め打ちしていて、
+# 学園前で北大和Ｂ9番の代走を入れると3月改正の時刻が出ていた（2026-11-01 修正）
+other_revs = {}
+for _repo, _c in apps.items():
+    if _c.get("NEXT_REV") and _c.get("NEXT_JSON") and _c.get("ID") != "all":
+        other_revs[_c["ID"]] = {"rev": _c["NEXT_REV"],
+                                "url": "../" + _repo + "/" + re.sub(r"^\./", "", _c["NEXT_JSON"])}
+OTHER_REVS_JS = json.dumps(other_revs, ensure_ascii=False, separators=(",", ":"))
+
 for repo, cfg in apps.items():
     cfg = dict(cfg)
     cfg["REPO"] = repo
+    cfg["OTHER_REVS"] = OTHER_REVS_JS
 
     # --- 版番号を決める -------------------------------------
     # 既存の sw.js から 'a-shukkin-v112' の v112 を取り出す
