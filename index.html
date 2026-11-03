@@ -345,6 +345,7 @@ body {
 .nav-alt button { flex:1 1 40%; min-width:0; padding:7px 6px; white-space:normal; border-radius:8px; border:1px solid #d8d8e0;
   background:#f4f4f8; color:#555; font-size:calc(12px * var(--fs, 1)); font-weight:800; font-family:inherit; cursor:pointer; }
 .nav-alt button.on { background:#fff3e0; color:#c25e00; border-color:#ff9f1a; }
+.nav-alt-ttl { font-size:calc(11px * var(--fs, 1)); font-weight:800; color:#888; margin:2px 0 4px; }
 .nav-dial { font-size:calc(13px * var(--fs, 1)); font-weight:800; color:#444; margin-bottom:6px; }
 .nav-now { border:2px solid #ff9f1a; background:#fff7ec; border-radius:12px; padding:12px; margin-bottom:10px; }
 .nav-st { font-size:calc(13px * var(--fs, 1)); font-weight:800; color:#c25e00; }
@@ -4469,7 +4470,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v273';
+const APP_VERSION   = 'v274';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4691,7 +4692,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.93';
+const APP_LABEL = 'バージョン 3.94';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -7671,10 +7672,10 @@ function navPlan(date, dialOverride){
   const pieces=[], rinji=[]; let other=false;
   if(rec && ((rec.adds && rec.adds.length) || otIsKyu(rec))){
     if(otBaseOf(rec)!=='none') pieces.push({dial:v, part:otBaseOf(rec)});
-    (rec.adds||[]).forEach(function(x){
+    (rec.adds||[]).forEach(function(x, ai){
       if(x.code===OT_RINJI){ rinji.push(x); return; }   // 臨時は行程のデータが無い
       if((x.code||'a')!=='a'){ other=true; return; }
-      pieces.push({dial:parseInt(x.dial,10), part:x.part||'all', v:x.v||''});
+      pieces.push({dial:parseInt(x.dial,10), part:x.part||'all', v:x.v||'', ai:ai});
     });
   }else{
     pieces.push({dial:v, part:'all'});
@@ -7684,6 +7685,7 @@ function navPlan(date, dialOverride){
   const sv = navStoreGet(navAltKey(iso), 0);
   let sel = (sv===true) ? 1 : (typeof sv==='number' ? sv : 0);
   let varLabels=null, items=[], off=true, io=null, nodata='';
+  const forms=[], missing=[];   // 代走で入れた14番などの形の選び直し ／ 行程がまだ無い分
   pieces.forEach(function(pc){
     const ent = NAV.dials && NAV.dials[pc.dial] && NAV.dials[pc.dial][dt];
     if(!ent) return;
@@ -7691,6 +7693,8 @@ function navPlan(date, dialOverride){
     const vs = ent.vars || [{label:'ふだんの日', list:ent.list, in:ent.in, out:ent.out}].concat(ent.alt ? [{label:ent.alt.label, list:ent.alt.list}] : []);
     /* 当日決まる勤務（14番 A〜F）は、時間外で選んだ形を使う。日ごとの形の切り替えには混ぜない */
     let vi = pc.v ? vs.findIndex(function(z){ return z.label===pc.v; }) : -1;
+    /* 代走で入れた分は、ナビからも形を選び直せる（2026-11-04 乗務員さんより）。時間外の記録も一緒に直す */
+    if(pc.v && pc.ai!=null && vs.length>1) forms.push({ai:pc.ai, dial:pc.dial, v:pc.v, labels:vs.map(function(z){ return z.label; })});
     if(vi<0){
       if(vs.length>1 && !varLabels) varLabels = vs.map(function(v,i){ return v.label || ('形'+(i+1)); });
       if(sel>=vs.length) sel=0;
@@ -7701,7 +7705,7 @@ function navPlan(date, dialOverride){
     /* 臨時や他のダイヤも走る日は、この1本の出勤・退勤がその日の出勤・退勤ではないので出さない */
     if(pieces.length===1 && pc.part==='all' && vs[vi].in && !rinji.length && !other) io={in:vs[vi].in, out:vs[vi].out};
     /* 奈良学園の C〜E のように、勤務系統表に行程が載っていない形 */
-    if(vs[vi].nodata) nodata = vs[vi].label || '?';
+    if(vs[vi].nodata){ nodata = vs[vi].label || '?'; missing.push(pc); }
     /* 前半だけ・後半だけ乗る日は、出退勤表の解放の時刻で分ける */
     if(pc.part==='first' || pc.part==='second'){
       const sl = otSlotOf('a', pc.dial, date, pc.v);
@@ -7779,12 +7783,17 @@ function navPlan(date, dialOverride){
     items.push({k:'回送', f:last.t, t:'営', d:last.a, a:navHm(a), key:a0 + 0.2, syn:true, dial:last.dial});
   });
   items.sort(function(a,b){ return a.key-b.key; });
-  return {items:items, other:other, off:off, varLabels:varLabels, sel:sel, io:io, nodata:nodata,
+  return {items:items, other:other, off:off, varLabels:varLabels, sel:sel, io:io, nodata:nodata, forms:forms, missing:missing,
           dials:pieces.map(function(p){ return p.dial; }),
           /* 「51番前半＋28番」「臨時＋31番」のような呼び名。乗る順（始まりが早い順）に並べる */
           label:pieces.map(function(p){
               const f=items.find(function(x){ return x.dial===p.dial && x.k!=='休'; });
-              return {k:(f ? f.key : 1e9), t:p.dial+'番'+(p.v||'')+(p.part==='first'?'前半':p.part==='second'?'後半':'')};
+              let k = f ? f.key : 1e9;
+              if(!f){   // 行程がまだ無い形（14番C など）は、出退勤表の出勤時刻で並べる
+                const sl=otSlotOf('a', p.dial, date, p.v), g=sl ? rcSegs(sl, p.part)[0] : null;
+                if(g) k=rcMin(g.s);
+              }
+              return {k:k, t:p.dial+'番'+(p.v||'')+(p.part==='first'?'前半':p.part==='second'?'後半':'')};
             }).concat(rinji.map(function(x){
               const t=otRinjiParse(x.dial);
               return {k:(t ? t.s : 1e9), t:'臨時'};
@@ -7882,6 +7891,34 @@ function navSetAlt(i){
   navStoreSet(navAltKey(_navPv ? _navPv.iso : toISO(new Date())), i);
   renderNav();
 }
+/* 代走で入れた14番（奈良学園）の形を、ナビから選び直す（2026-11-04）。
+   時間外の記録の形も直す。時間外が自動で出た値のままなら計算し直し、手で直した値ならそのまま */
+function navSetForm(ai, k){
+  const iso = _navPv ? _navPv.iso : toISO(new Date());
+  const all = otLoad(), rec = all[iso];
+  if(!rec || !rec.adds || !rec.adds[ai]) return;
+  const p = iso.split('-').map(Number);
+  const d = new Date(p[0], p[1]-1, p[2]); d.setHours(0,0,0,0);
+  const a = rec.adds[ai];
+  const before = otCalc(d, otBaseOf(rec), rec.adds, otIsKyu(rec));
+  const auto = !!(before.ok && before.ot!==null && before.ot===rec.min);
+  a.v = k;
+  /* 中間解放の無い形（C・D・F）に前半・後半は無いので、まるごとにする */
+  const z = otVarsFor(a.code||'a', a.dial, d).find(function(x){ return x.k===k; });
+  if(z && rcSegs({o:z.o},'all').length<2) a.part='all';
+  let msg = a.dial+'番の形を'+k+'にしました';
+  if(auto){
+    const after = otCalc(d, otBaseOf(rec), rec.adds, otIsKyu(rec));
+    if(after.ok && after.ot!==null){ rec.min = after.ot; msg += '（時間外 '+otFmt(after.ot)+'）'; }
+  }else{
+    msg += '（時間外は手で入れた値のままです）';
+  }
+  all[iso] = rec;
+  if(!otSave(all)){ showToast('保存できませんでした'); return; }
+  showToast(msg);
+  try{ renderOtPane(); refreshOtButtons(); updateTodayPreview(); }catch(e){}
+  renderNav();
+}
 
 /* 出し直す部分。ナビの窓には入力欄が無いので、まるごと作り直してよい */
 function renderNav(){
@@ -7901,11 +7938,17 @@ function renderNav(){
     + (pl.varLabels ? '<div class="nav-alt">'
         + pl.varLabels.map(function(lb,i){
             return '<button class="'+(i===pl.sel?'on':'')+'" onclick="navSetAlt('+i+')">'+lb+'</button>'; }).join('')
-        + '</div>' : '');
+        + '</div>' : '')
+    + (pl.forms||[]).map(function(f){
+        return '<div class="nav-alt-ttl">'+f.dial+'番の形（代走）</div><div class="nav-alt">'
+          + f.labels.map(function(lb){
+              return '<button class="'+(lb===f.v?'on':'')+'" onclick="navSetForm('+f.ai+',\''+lb+'\')">'+lb+'</button>'; }).join('')
+          + '</div>';
+      }).join('');
 
   const trips=pl.items.filter(function(x){ return x.k!=='休'; });
   if(pl.nodata && !trips.length){
-    let m='この形（'+pl.nodata+'）の行程は、勤務系統表に載っていません';
+    let m='この形（'+pl.nodata+'）の行程は、まだ入っていません';
     if(pl.io){
       m+='<br><br>'+pl.io.in.map(function(x,i){
         return (pl.io.in.length>1?(i===0?'前半　':'後半　'):'')+'出勤 <b>'+x+'</b> ／ 退勤 <b>'+(pl.io.out[i]||'')+'</b>'; }).join('<br>');
@@ -8080,6 +8123,12 @@ function renderNav(){
       +'</div>';
   }
   if(pl.other) h+='<div class="nav-then">※ 他のダイヤで走る分は、行程のデータが無いので出していません</div>';
+  /* 代走の14番C など、形の行程がまだ入っていない分（2026-11-04） */
+  (pl.missing||[]).forEach(function(pc){
+    const sl=otSlotOf('a', pc.dial, now, pc.v);
+    const seg=sl ? rcSegs(sl, pc.part).map(function(g){ return g.s+'〜'+g.e; }).join('・') : '';
+    h+='<div class="nav-then">※ '+pc.dial+'番'+(pc.v||'')+(seg?' '+seg:'')+' は、行程がまだ入っていないので一覧に出していません</div>';
+  });
   (pl.rinji||[]).forEach(function(x){
     const sl=otSlotOf(OT_RINJI, x.dial, now);
     if(sl) h+='<div class="nav-then">※ 臨時 '+sl.o+' は、行程のデータが無いので一覧に出していません</div>';
