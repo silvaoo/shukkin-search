@@ -5352,6 +5352,7 @@ function otCalc(date, base, adds, forceKyu){
       if(code===OT_RINJI) return {ok:false, msg:'臨時の始まりと終わりの時刻を入れてください'};
       const vs=otVarsFor(code, a.dial, date);
       if(vs.length) return {ok:false, msg:a.dial+'番は 走った形（'+vs[0].k+'〜'+vs[vs.length-1].k+'）を選んでください'};
+      if(isHol(date) && otUndecidedSlot(code, a.dial, date)) return {ok:false, msg:a.dial+'番は 祝日で奈良学園が休みです'};
       return {ok:false, msg:(code!=='{{ID}}'?otDiaName(code)+' ':'')
                           +a.dial+'番は この日 公休か、時刻が確定していません'};
     }
@@ -5766,7 +5767,7 @@ function otSlotOf(code, num, date, v){
   /* 当日決まる勤務（学園前Ａ 14番の奈良学園 A〜F）は、選んだ形の時刻を使う（2026-11-04）。
      形を選んでいなければ時刻が分からないので null */
   if(slot && String(slot.o)==='—'){
-    const fv = v ? otVarsOf(slot).find(function(z){ return z.k===v; }) : null;
+    const fv = (v && !isHol(date)) ? otVarsOf(slot).find(function(z){ return z.k===v; }) : null;   // 祝日は奈良学園が休み
     return fv ? {o:fv.o, w:fv.w, n:'', v:fv.k} : null;
   }
   return (slot && slot.o && String(slot.o)!=='—') ? slot : null;
@@ -5781,12 +5782,20 @@ function otVarsOf(slot){
   while((m=re.exec(slot.n))) out.push({k:m[1], o:m[2].replace(/\s/g,''), w:m[3].replace(/\s/g,'')});
   return out;
 }
-/* その番号のその日が当日決まる勤務なら、形の一覧。そうでなければ空 */
-function otVarsFor(code, num, date){
-  if(code===OT_RINJI || num==='' || num==null) return [];
+/* その番号のその日の勤務が「当日決まる」もの（時刻が「—」）なら、その勤務。そうでなければ null */
+function otUndecidedSlot(code, num, date){
+  if(code===OT_RINJI || num==='' || num==null) return null;
   const j = (code==='{{ID}}') ? {dials:DB} : OTHER_DB[code];
   const rec = j && j.dials && j.dials[String(parseInt(num,10))];
-  return otVarsOf(rec && rec[dayType(date)]);
+  const sl = rec && rec[dayType(date)];
+  return (sl && String(sl.o)==='—') ? sl : null;
+}
+/* その番号のその日が当日決まる勤務なら、形の一覧。そうでなければ空。
+   14番（奈良学園）は曜日に関係なく A〜F のどれかで走り、祝日だけ学校が休み（2026-11-04 乗務員さんより）。
+   日祝のデータは日曜と祝日の両方に使われるので、祝日かどうかはここで見分ける */
+function otVarsFor(code, num, date){
+  if(isHol(date)) return [];
+  return otVarsOf(otUndecidedSlot(code, num, date));
 }
 /* そのダイヤの番号の上限 */
 function otMaxOf(code){
@@ -6064,6 +6073,7 @@ function otPreview(){
     hint.textContent =
         (otKind==='kyu' && dataSlot) ? '指定公休として扱います。出たダイヤの拘束時間×0.8で計算します。'
       : isLeave ? '年休として記録します。この日は勤務時間を出さず、次の出勤を表示します。'
+      : (otKind==='work' && undecided && isHol(date)) ? '祝日で奈良学園が休みの日です。代わりに走ったダイヤを入れてください。公出ではなく、時間外も付きません。'
       : (otKind==='work' && undecided) ? '奈良学園のように当日決まる勤務の日です。代わりに走ったダイヤを入れてください。公出ではなく、時間外も付きません。'
       : '';
   }
@@ -7686,7 +7696,9 @@ function navPlan(date, dialOverride){
   let sel = (sv===true) ? 1 : (typeof sv==='number' ? sv : 0);
   let varLabels=null, items=[], off=true, io=null, nodata='';
   const forms=[], missing=[];   // 代走で入れた14番などの形の選び直し ／ 行程がまだ無い分
+  let holOff=false;              // 祝日で奈良学園が休み（14番）
   pieces.forEach(function(pc){
+    if(isHol(date) && otUndecidedSlot('{{ID}}', pc.dial, date)){ holOff=true; off=false; return; }
     const ent = NAV.dials && NAV.dials[pc.dial] && NAV.dials[pc.dial][dt];
     if(!ent) return;
     off=false;
@@ -7700,12 +7712,22 @@ function navPlan(date, dialOverride){
       if(sel>=vs.length) sel=0;
       vi = sel;
     }
-    let list = vs[vi].list;
+    let use = vs[vi];
+    /* 14番（奈良学園）は曜日に関係なく同じ形で走る（2026-11-04 乗務員さんより）。
+       勤務系統表ではこの曜日の行に載っていない形でも、ほかの曜日の行にあればそれを使う */
+    if(use.nodata && use.label && otUndecidedSlot('{{ID}}', pc.dial, date)){
+      const alt = ['平','土','日祝'].filter(function(t){ return t!==dt; }).map(function(t){
+          const e = NAV.dials[pc.dial][t], vv = e && e.vars;
+          return vv ? vv.find(function(z){ return z.label===use.label && !z.nodata && z.list && z.list.length; }) : null;
+        }).find(Boolean);
+      if(alt) use = Object.assign({}, use, {list:alt.list, nodata:false});
+    }
+    let list = use.list;
     /* 出勤・退勤（中間解放があれば2つずつ）。1本だけまるごと乗る日に使う */
     /* 臨時や他のダイヤも走る日は、この1本の出勤・退勤がその日の出勤・退勤ではないので出さない */
-    if(pieces.length===1 && pc.part==='all' && vs[vi].in && !rinji.length && !other) io={in:vs[vi].in, out:vs[vi].out};
-    /* 奈良学園の C〜E のように、勤務系統表に行程が載っていない形 */
-    if(vs[vi].nodata){ nodata = vs[vi].label || '?'; missing.push(pc); }
+    if(pieces.length===1 && pc.part==='all' && use.in && !rinji.length && !other) io={in:use.in, out:use.out};
+    /* 奈良学園の C〜E のように、行程がまだ入っていない形 */
+    if(use.nodata){ nodata = use.label || '?'; missing.push(pc); }
     /* 前半だけ・後半だけ乗る日は、出退勤表の解放の時刻で分ける */
     if(pc.part==='first' || pc.part==='second'){
       const sl = otSlotOf('{{ID}}', pc.dial, date, pc.v);
@@ -7783,7 +7805,7 @@ function navPlan(date, dialOverride){
     items.push({k:'回送', f:last.t, t:'営', d:last.a, a:navHm(a), key:a0 + 0.2, syn:true, dial:last.dial});
   });
   items.sort(function(a,b){ return a.key-b.key; });
-  return {items:items, other:other, off:off, varLabels:varLabels, sel:sel, io:io, nodata:nodata, forms:forms, missing:missing,
+  return {items:items, other:other, off:off, varLabels:varLabels, sel:sel, io:io, nodata:nodata, forms:forms, missing:missing, holOff:holOff,
           dials:pieces.map(function(p){ return p.dial; }),
           /* 「51番前半＋28番」「臨時＋31番」のような呼び名。乗る順（始まりが早い順）に並べる */
           label:pieces.map(function(p){
@@ -7947,6 +7969,10 @@ function renderNav(){
       }).join('');
 
   const trips=pl.items.filter(function(x){ return x.k!=='休'; });
+  if(pl.holOff && !trips.length){
+    st.innerHTML='<div class="nav-msg">祝日は奈良学園が休みです。<br>代わりに走るダイヤは「時間外・代走」で入れてください</div>';
+    lb.innerHTML=''; return;
+  }
   if(pl.nodata && !trips.length){
     let m='この形（'+pl.nodata+'）の行程は、まだ入っていません';
     if(pl.io){
