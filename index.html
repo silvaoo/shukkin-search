@@ -4470,7 +4470,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v275';
+const APP_VERSION   = 'v276';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4692,7 +4692,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.95';
+const APP_LABEL = 'バージョン 3.96';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -5330,6 +5330,14 @@ function otEval(slot, part){
   const h = otHeldPart(slot.o, part) * 0.8;
   return Math.max(l, h);
 }
+/* 付いた分の評価時間。14番（奈良学園）の形 A〜F は、出退勤表の労働時間で計算する（2026-11-05 乗務員さんより）。
+   中間のA・B・Eも、日勤のC・Dも同じ。ただし公休出勤のF（学校休）だけは、ふつうのダイヤと同じく拘束×0.8 を見る。
+   kyu: 公休出勤の日か */
+const OT_FORM_HELD_KYU = {F:true};
+function otEvalAdd(slot, part, kyu){
+  if(slot && slot.v && !(kyu && OT_FORM_HELD_KYU[slot.v])) return otPart(slot.w, part);
+  return otEval(slot, part);
+}
 
 /* 時間外を計算する。
    base : 本来のダイヤをどう乗ったか 'all'（まるごと）|'first'|'second'|'none'
@@ -5343,7 +5351,7 @@ function otCalc(date, base, adds, forceKyu){
   const baseSlot=forceKyu ? null : otBaseSlot(date);
   const baseDial=otBaseDial(date);
   const rows=[];
-  let addEval=0, addLabor=0, addHeld=0;
+  let addEval=0, addLabor=0, addHeld=0, formLab=[];
 
   for(const a of (adds||[])){
     const code=a.code||'a';
@@ -5356,7 +5364,8 @@ function otCalc(date, base, adds, forceKyu){
       return {ok:false, msg:(code!=='a'?otDiaName(code)+' ':'')
                           +a.dial+'番は この日 公休か、時刻が確定していません'};
     }
-    addEval  += otEval(slot, a.part);
+    addEval  += otEvalAdd(slot, a.part, !baseSlot);
+    if(slot.v && !(!baseSlot && OT_FORM_HELD_KYU[slot.v])) formLab.push(a.dial+'番'+slot.v);
     addLabor += otPart(slot.w, a.part);
     addHeld  += otHeldPart(slot.o, a.part);
     rows.push({dial:a.dial, part:a.part, o:slot.o, w:slot.w, code:code, v:a.v});
@@ -5402,6 +5411,9 @@ function otCalc(date, base, adds, forceKyu){
     const useLabor = addLabor >= addHeld*0.8;
     if(rinjiHow) return {ok:true, kind:'公休出勤', baseDial:baseDial, baseLabel:'公休',
                          rows:rows, ot:Math.max(0,Math.round(addEval)), how:rinjiHow};
+    if(formLab.length) return {ok:true, kind:'公休出勤', baseDial:baseDial, baseLabel:'公休',
+            rows:rows, ot:Math.max(0,Math.round(addEval)),
+            how:formLab.join('・')+' は出退勤表の労働時間で計算しました'};
     return {ok:true, kind:'公休出勤', baseDial:baseDial, baseLabel:'公休',
             rows:rows, ot:Math.max(0,Math.round(addEval)),
             how:'労働 '+otFmt(addLabor)+' と 拘束 '+otFmt(addHeld)+'×0.8（'
@@ -5431,7 +5443,8 @@ function otCalc(date, base, adds, forceKyu){
     : '付いた分 '+otFmt(Math.round(addEval))+' がそのまま時間外';
   return {ok:true, kind:(base==='all'?'追加':'振替'), baseDial:baseDial,
           baseLabel:baseSlot.o+'（労働 '+baseSlot.w+'）／'+baseWord,
-          rows:rows, ot:ot, how:(rinjiHow ? rinjiHow+'。' : '')+howTxt};
+          rows:rows, ot:ot, how:(rinjiHow ? rinjiHow+'。' : '')+howTxt
+            +(formLab.length ? '（'+formLab.join('・')+' は出退勤表の労働時間）' : '')};
 }
 
 /* 拘束時間のうち、指定した側だけを取り出す */
