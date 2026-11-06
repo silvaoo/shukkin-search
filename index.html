@@ -47,6 +47,8 @@ try{
   --note: #ffd479;    /* 備考。同上 */
   --dim: var(--label);
   --border: rgba(0,245,255,0.2);
+  --tm-sub: #ffab5c;  /* 代走・付いたダイヤの出退勤時刻（2026-11-06） */
+  --tm-kyu: #6ec1ff;  /* 公休出勤の出退勤時刻 */
 }
 /* ==== ライトモード ==== */
 body.light {
@@ -65,6 +67,8 @@ body.light {
   --note: #5c3b00;    /* 備考。同上 */
   --dim: var(--label);
   --border: rgba(0,119,187,0.3);
+  --tm-sub: #b45309;
+  --tm-kyu: #1d4ed8;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -1157,6 +1161,15 @@ body.multi .only-single{ display:none !important; }
 .rv-pill.sub{ background:var(--orange); color:#231402; }
 .rv-tbl tr.has-ot td{ background:rgba(255,212,121,.07); }
 .rv-ot-t{ font-size:calc(11.5px * var(--fs, 1)); color:var(--note); margin-top:2px; }
+/* 代走・公出で走ったダイヤの出退勤時刻（2026-11-06）。代走＝橙、公出＝青 */
+.rv-add{ margin-top:3px; font-weight:800; line-height:1.35; }
+.rv-add-n{ display:inline-block; padding:0 5px; margin-right:5px; border-radius:4px; border:1px solid currentColor;
+  font-size:calc(11.5px * var(--fs, 1)); }
+.rv-add-t{ font-size:calc(14px * var(--fs, 1)); font-variant-numeric:tabular-nums; }
+.rv-seg{ display:inline-block; white-space:nowrap; margin-right:6px; }
+.rv-add.sub{ color:var(--tm-sub); }
+.rv-add.kyu{ color:var(--tm-kyu); }
+.rv-off{ opacity:.45; }
 .rv-del{ background:none; border:none; color:var(--dim); font-size:calc(15px * var(--fs, 1));
   cursor:pointer; padding:0 0 0 8px; }
 .rv-per-t{ cursor:pointer; }
@@ -1274,6 +1287,14 @@ body.multi .only-single{ display:none !important; }
   font-size:calc(13px * var(--fs, 1)); line-height:1.8; color:var(--text); }
 .ot-big{ font-size:calc(26px * var(--fs, 1)); font-weight:bold; color:var(--note); }
 .ot-sub{ font-size:calc(12px * var(--fs, 1)); color:var(--dim); }
+/* 出退勤時刻（2026-11-06）。本来のダイヤはふつうの色、付いた分は 代走＝橙・公出＝青 */
+.ot-io-row{ margin:6px 0 8px; }
+.ot-io-h{ font-size:calc(12.5px * var(--fs, 1)); color:var(--dim); }
+.ot-io{ font-size:calc(21px * var(--fs, 1)); font-weight:900; line-height:1.3; color:var(--text);
+  font-variant-numeric:tabular-nums; }
+.ot-io.sub{ color:var(--tm-sub); }
+.ot-io.kyu{ color:var(--tm-kyu); }
+.ot-io.off{ text-decoration:line-through; opacity:.45; }
 .ot-save{ width:100%; padding:14px; margin-top:18px; border:none; border-radius:10px;
   background:linear-gradient(135deg,#ff8c00,#ff6a00); color:#fff;
   font-size:calc(16px * var(--fs, 1)); font-weight:bold; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
@@ -4470,7 +4491,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v276';
+const APP_VERSION   = 'v277';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4692,7 +4713,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 3.96';
+const APP_LABEL = 'バージョン 3.97';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -5443,6 +5464,7 @@ function otCalc(date, base, adds, forceKyu){
     : '付いた分 '+otFmt(Math.round(addEval))+' がそのまま時間外';
   return {ok:true, kind:(base==='all'?'追加':'振替'), baseDial:baseDial,
           baseLabel:baseSlot.o+'（労働 '+baseSlot.w+'）／'+baseWord,
+          baseO:baseSlot.o, baseW:baseSlot.w, baseKeep:base, baseWord:baseWord,
           rows:rows, ot:ot, how:(rinjiHow ? rinjiHow+'。' : '')+howTxt
             +(formLab.length ? '（'+formLab.join('・')+' は出退勤表の労働時間）' : '')};
 }
@@ -6152,12 +6174,28 @@ function otPreview(){
        + '。275時間まであと '+otFmt(LIMIT_HELD_MONTH-tot.held)+' です。</div>';
   }
 
+  /* 出退勤時刻は大きく、色を変えて出す（2026-11-06 乗務員さんより）。
+     前半だけ・後半だけは、その側の時刻だけ。付いた分は 代走＝橙、公出＝青 */
+  const tmCls = (r.kind==='公休出勤') ? 'kyu' : 'sub';
+  const ioTx = function(o, part){
+    const g = rcSegs({o:o}, part||'all');
+    return g.length ? g.map(function(z){ return z.s+'〜'+z.e; }).join('<br>') : String(o);
+  };
+  const labTx = function(w, part){ const m=otPart(w, part||'all'); return m ? navHm(m) : String(w); };
   box.innerHTML =
-     '<div class="ot-sub">本来：'+r.baseLabel+'</div>'
+     (r.baseO
+       ? '<div class="ot-io-row"><div class="ot-io-h">本来 '+r.baseDial+'番（'+r.baseWord+'）</div>'
+         +'<div class="ot-io'+(r.baseKeep==='none'?' off':'')+'">'
+         +ioTx(r.baseO, (r.baseKeep==='first'||r.baseKeep==='second') ? r.baseKeep : 'all')+'</div>'
+         +'<div class="ot-sub">労働 '+labTx(r.baseW, (r.baseKeep==='first'||r.baseKeep==='second') ? r.baseKeep : 'all')+'</div></div>'
+       : '<div class="ot-sub">本来：'+r.baseLabel+'</div>')
     +r.rows.map(function(x){
         const nm=(x.code && x.code!=='a') ? (otDiaName(x.code)+' ') : '';
-        if(x.code===OT_RINJI) return '<div class="ot-sub">＋ 臨時 '+x.o+'（労働時間は分かりません）</div>';
-        return '<div class="ot-sub">＋ '+nm+otDN(x)+' '+partLb[x.part]+' '+x.o+'（労働 '+x.w+'）</div>';
+        if(x.code===OT_RINJI) return '<div class="ot-io-row"><div class="ot-io-h">＋ 臨時</div>'
+          +'<div class="ot-io '+tmCls+'">'+ioTx(x.o,'all')+'</div><div class="ot-sub">労働時間は分かりません</div></div>';
+        return '<div class="ot-io-row"><div class="ot-io-h">＋ '+nm+otDN(x)+' '+partLb[x.part]+'</div>'
+          +'<div class="ot-io '+tmCls+'">'+ioTx(x.o, x.part)+'</div>'
+          +'<div class="ot-sub">労働 '+labTx(x.w, x.part)+'</div></div>';
       }).join('')
     +'<div class="ot-sub">'+r.how+'</div>'
     +'<div class="ot-big">時間外 '+(r.ot===null?'（手で入れてください）':otFmt(r.ot))+'</div>'
@@ -6433,17 +6471,38 @@ function renderRevPane(){
         col=(m&&parseInt(m[1],10)<12)?'#ff9e4a':'#5b8dff';
         time=String(r.slot.o); w=(r.slot.w||'')+'h';
       }
-      let pill='';
+      let pill='', addTx='';
+      const rvIo = function(o, part){   // 中間ダイヤの2つの時間帯は、途中で折り返さないように1つずつ包む
+        const g = rcSegs({o:o}, part||'all');
+        return g.length ? g.map(function(z){ return '<span class="rv-seg">'+z.s+'〜'+z.e+'</span>'; }).join('') : String(o);
+      };
       if(otIsKyu(r.ot)) pill='<span class="rv-pill kyu">公出</span>';
       else if(otIsLeave(r.ot)) pill='<span class="rv-pill leave">年休</span>';
-      else if(r.ot && r.ot.adds && r.ot.adds.length){
-        pill='<span class="rv-pill sub">'+r.ot.adds.map(function(x){return otDN(x);}).join('＋')+'</span>';
+      /* 代走・公出で走ったダイヤも、出退勤時刻を色を変えて出す（2026-11-06 乗務員さんより）。
+         本来のダイヤは、乗った側だけ（乗っていなければ取り消し線） */
+      if(r.ot && r.ot.adds && r.ot.adds.length && !otIsLeave(r.ot)){
+        const kyu = otIsKyu(r.ot), cls = kyu ? 'kyu' : 'sub';
+        const pd = r.iso.split('-').map(Number), dd = new Date(pd[0], pd[1]-1, pd[2]);
+        if(!kyu && r.slot){
+          const bp = otBaseOf(r.ot);
+          if(bp==='none') time='<s class="rv-off">'+time+'</s>';
+          else if(bp==='first' || bp==='second') time=rvIo(r.slot.o, bp);
+        }
+        addTx = r.ot.adds.map(function(x){
+          const rin = (x.code===OT_RINJI);
+          const sl = otSlotOf(x.code||'a', x.dial, dd, x.v);
+          const nm = rin ? '臨時'
+                   : ((x.code && x.code!=='a') ? otDiaName(x.code)+' ' : '')+otDN(x)
+                     +(x.part==='first'?'前半':x.part==='second'?'後半':'');
+          return '<div class="rv-add '+cls+'"><span class="rv-add-n">'+nm+'</span>'
+            +'<span class="rv-add-t">'+(sl ? rvIo(sl.o, rin ? 'all' : x.part) : '—')+'</span></div>';
+        }).join('');
       }
       const otT = r.ot ? ('<div class="rv-ot-t">⏱ '+otFmt(r.ot.min)+'</div>') : '';
       h+='<tr class="'+(r.ot?'has-ot':'')+'">'
         +'<td class="rv-d" onclick="otFromDetail(\''+r.iso+'\')">'+r.m+'/'+r.d+'（'+r.dw+'）</td>'
         +'<td class="rv-n" onclick="otFromDetail(\''+r.iso+'\')"><span class="rv-mk" style="background:'+col+'"></span>'+(r.n||'')+'</td>'
-        +'<td class="rv-t" onclick="otFromDetail(\''+r.iso+'\')">'+time+pill+otT+'</td>'
+        +'<td class="rv-t" onclick="otFromDetail(\''+r.iso+'\')">'+time+pill+addTx+otT+'</td>'
         +'<td class="rv-w">'+w
         +(r.ot?'<button class="rv-del" onclick="event.stopPropagation();otDelete(\''+r.iso+'\')">🗑</button>':'')
         +'</td></tr>';
