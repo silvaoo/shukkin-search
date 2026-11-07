@@ -425,13 +425,8 @@ body {
 .dial-nav-btn:active { transform:scale(0.96); }
 .rcd-dial .dial-nav-btn { background:#fff3e0; color:#c25e00; border-color:#ff9f1a; }
 
-/* ==== 指定して検索・カレンダー ==== */
-.range-label {
-  margin-top: 10px; text-align: center; font-size: calc(12px * var(--fs, 1));
-  color: var(--dim); font-weight: 700;
-}
-.range-label.set { color: var(--cyan); }
-
+/* ==== 全画面の白いカード（私のカレンダー・今日のナビなどが使う） ====
+   「指定して検索」の日付選びは 2026-11-07 に削除した */
 .cal-modal {
   display: none; position: fixed; inset: 0; z-index: 10002;
   background: rgba(0,0,0,0.92); padding: 14px; overflow-y: auto;
@@ -449,10 +444,6 @@ body {
 .cal-x {
   background: #f0f0f5; border: 1px solid #d8d8e0; color: var(--label);
   border-radius: 8px; padding: 5px 10px; font-size: calc(12px * var(--fs, 1)); font-weight: 800; cursor: pointer;
-}
-.cal-hint {
-  font-size: calc(10.5px * var(--fs, 1)); color: var(--note); text-align: center; margin-bottom: 10px;
-  line-height: 1.5;
 }
 .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .cal-arrow {
@@ -481,29 +472,8 @@ body {
 .cal-day.sun { color: #d92626; }
 .cal-day.sat { color: #2660d9; }
 .cal-day.today { border-color: #ff8c00; border-width: 2px; font-weight: 800; }
-.cal-day.inrange { background: #d8f5e6; }
-.cal-day.edge { background: var(--cyan); color: #04202a; font-weight: 800; }
-
-.cal-sel {
-  margin-top: 10px; text-align: center; font-size: calc(13px * var(--fs, 1)); font-weight: 700;
-  color: #1a1a2e; padding: 9px;
-  background: #f0f0f5; border-radius: 8px;
-}
-.cal-actions { display: flex; gap: 6px; margin-top: 10px; }
-.cal-btn {
-  flex: 1; padding: 12px 4px; border-radius: 8px; font-size: calc(12.5px * var(--fs, 1));
-  font-weight: 800; cursor: pointer; border: 1px solid #d8d8e0;
-  background: #f0f0f5; color: var(--label);
-}
-.cal-ok { background: var(--cyan); color: #04202a; border-color: var(--cyan); flex: 1.3; }
-.cal-ok:disabled { opacity: 0.35; cursor: default; }
 
 /* ==== 検索結果カレンダー（番号と出退勤時間を一覧表示） ==== */
-.act-cal {
-  background: rgba(0,230,118,0.16); color: var(--cyan);
-  border: 1px solid rgba(0,230,118,0.55);
-}
-.act-cal:active { background: rgba(0,230,118,0.85); color: #002; }
 /* 画面の縦を目一杯使って、マスと文字を大きくする */
 .rescal-grid .cal-day {
   position: relative;            /* 公出・年休の印を中央に重ねるため */
@@ -848,13 +818,6 @@ input[type="date"] {
   padding: 11px 12px; border-radius: 10px; font-size: 16px;
   font-family: 'Noto Sans JP', sans-serif; width: 100%; outline: none;
 }
-.search-btn {
-  background: linear-gradient(135deg, var(--cyan), var(--purple));
-  border: none; color: #fff; padding: 13px; border-radius: 10px; cursor: pointer;
-  font-size: calc(15px * var(--fs, 1)); font-family: 'Noto Sans JP', sans-serif; font-weight: 700;
-  width: 100%; margin-top: 6px; letter-spacing: 1px; transition: all 0.15s;
-}
-.search-btn:active { transform: scale(0.98); }
 
 /* ==== 結果エリア ==== */
 .res-summary { font-size: calc(11px * var(--fs, 1)); color: var(--dim); margin-bottom: 10px; letter-spacing: 0.5px; }
@@ -971,13 +934,22 @@ input[type="date"] {
 #resCalModal .rescal-grid .cal-day.sat .rc-date{ color:#1f4fa8; }
 #resCalModal .rescal-grid .cal-day.sun .rc-date,
 #resCalModal .rescal-grid .cal-day.hol .rc-date{ color:#c0261f; }
-#resCalModal .rescal-grid .rc-dno{ margin-left:auto; max-width:100%; font-size:calc(12.5px * var(--u)); font-weight:900; line-height:1.3;
-  letter-spacing:-.3px; color:#1c2a4f; background:linear-gradient(180deg,#eef2f8,#dbe3ef); border:1px solid rgba(28,42,79,.2);
-  border-radius:999px; padding:1px 5px; box-shadow:inset 0 1px 0 #fff, 0 1px 1px rgba(0,0,0,.15); }
+/* 番号の札は、ぷっくり浮き出たボタンのように（2026-11-07 乗務員さんより）。
+   札の上を明るく・下を濃くして、下に厚みの影を付ける。札が目に入りやすくなる。
+   数字そのものには影をかけない（小さい数字に影をかけると、にじんで逆に読みにくい）。
+   代わりに字を濃くし、ふちを少し足して太くする */
+#resCalModal .rescal-grid .rc-dno{ margin-left:auto; margin-bottom:2px; max-width:100%; font-size:calc(12.5px * var(--u)); font-weight:900; line-height:1.3;
+  letter-spacing:-.3px; color:#0f1a33; -webkit-text-stroke:calc(.25px * var(--u)) currentColor;
+  background:linear-gradient(180deg,#ffffff 0%,#edf1f7 40%,#d3dcea 100%); border:1px solid #9aabc6;
+  border-radius:999px; padding:1px 6px;
+  box-shadow:inset 0 1px 0 #fff, inset 0 -2px 2px rgba(28,42,79,.10), 0 2px 0 #8798b5, 0 3px 4px rgba(20,30,60,.28); }
 /* 出退勤時刻：明朝の極太・濃紺。いちばん大きく */
 #resCalModal .rescal-grid .rc-body{ justify-content:center; padding:4px 1px 5px; gap:0; }
+/* 出退勤の数字をもう少し太く（2026-11-07 乗務員さんより）。
+   iPhoneの明朝（ヒラギノ明朝）は W6 より太い字が無いので、字のふちを少し足して太く見せる */
 #resCalModal .rescal-grid .rc-line{ font-family:var(--mincho); font-size:calc(16.5px * var(--u)); font-weight:900; line-height:1.22;
-  color:#14213d; letter-spacing:-.4px; justify-content:center; text-shadow:0 1px 0 rgba(255,255,255,.8); }
+  color:#14213d; letter-spacing:-.4px; justify-content:center; text-shadow:0 1px 0 rgba(255,255,255,.8);
+  -webkit-text-stroke:calc(.55px * var(--u)) currentColor; }
 #resCalModal .rescal-grid .rc-line.rc-sm{ font-size:calc(14px * var(--u)); }
 #resCalModal .rc-sep{ border-top:1px dashed rgba(160,128,64,.7); margin:2px 6px; }
 /* 札：中間＝朱の文字 / 代走・振替＝紫 / 公出＝青 / 年休＝紅。時刻の上の段に置く（重ねない） */
@@ -1672,12 +1644,12 @@ body.multi .only-single{ display:none !important; }
 .act-tts { border-color: var(--yellow); color: var(--yellow); }
 .act-tts:active { background: var(--yellow); color: #000; }
 .act-tts.speaking { background: rgba(255,0,128,0.15); color: var(--pink); border-color: var(--pink); }
-.act-cal, .act-more {
+.act-more {
   background: var(--bg-card2);
   border: 1px solid var(--blue);
   color: var(--blue);
 }
-.act-cal:active, .act-more:active { background: var(--blue); color: #fff; }
+.act-more:active { background: var(--blue); color: #fff; }
 
 /* ==== フッター ==== */
 .footer { text-align: center; font-size: calc(11px * var(--fs, 1)); color: var(--dim); margin-top: 10px; line-height: 1.8; }
@@ -2001,46 +1973,10 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
     <!-- 「1ヶ月」→「カレンダー」（2026-11-07 乗務員さんの依頼書より）。1回で私のカレンダーを開く -->
     <button class="qbtn" onclick="quickCal()">カレンダー</button>
   </div>
-</div>
-
-<!-- 指定して検索（タップするとカレンダーが開く） -->
-<div class="card">
-  <div class="card-title">指定して検索</div>
-  <button class="search-btn" onclick="openCal()">📅 指定して検索</button>
-  <!-- 選んだ期間の保持用（画面には出さないが、他の処理がここを参照する） -->
+  <!-- 検索した期間の保持用（画面には出さないが、続けて検索などがここを参照する）。
+       「指定して検索」は使う人が少なく、2026-11-07 にカードごと削除した -->
   <input type="hidden" id="dateFrom">
   <input type="hidden" id="dateTo">
-</div>
-
-<!-- 全画面カレンダー（開始日→終了日をタップで選ぶ） -->
-<div id="calModal" class="cal-modal">
-  <div class="cal-inner">
-    <div class="cal-top">
-      <div class="cal-title">📅 日付を指定</div>
-      <button class="cal-x" onclick="closeCal()">✕</button>
-    </div>
-
-    <div class="cal-hint" id="calHint">1回目のタップ＝開始日 / 2回目のタップ＝終了日<br>同じ日を2回タップすると、その日1日だけになります</div>
-
-    <div class="cal-nav">
-      <button class="cal-arrow" onclick="calMove(-1)">‹</button>
-      <div class="cal-month" id="calMonth"></div>
-      <button class="cal-arrow" onclick="calMove(1)">›</button>
-    </div>
-
-    <div class="cal-dw">
-      <div class="sun">日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="sat">土</div>
-    </div>
-    <div class="cal-grid" id="calGrid"></div>
-
-    <div class="cal-sel" id="calSel">開始日を選んでください</div>
-
-    <div class="cal-actions">
-      <button class="cal-btn cal-today" onclick="calToday()">今日に戻る</button>
-      <button class="cal-btn cal-clear" onclick="calClear()">選び直す</button>
-      <button class="cal-btn cal-ok" id="calOk" onclick="applyCal()">設定</button>
-    </div>
-  </div>
 </div>
 
 <!-- 検索結果をカレンダーで見る -->
@@ -2074,7 +2010,7 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
     <div class="cal-grid rescal-grid" id="resCalGrid"></div>
     <div class="rescal-legend">
       上段＝ダイヤ番号 ／ 下段＝出退勤時間<br>
-      <span class="rc-legend-off">緑は公休</span>・薄い日は検索範囲外です
+      <span class="rc-legend-off">緑は公休</span>・⭐は表示中の月を保存します
     </div>
     <button class="rc-save-btn only-single" onclick="saveCurrentCal()">⭐ マイページに保存</button>
   </div>
@@ -2277,7 +2213,7 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
       <div class="guide-step">
         <h3>② 「明日」「10日後」「カレンダー」を押す</h3>
         <p>押すだけで勤務が出ます。「明日」は明日1日だけ、<b>「10日後」は今日を入れて10日分</b>をまとめて表示します。<b>「カレンダー」は1回押すだけで、今日から1ヶ月分のカレンダーが開きます。</b>次の日以降は、番号が1日ずつ進んだ状態で出ます。</p>
-        <img src="images/guide-2.jpg" alt="クイック検索と指定して検索">
+        <img src="images/guide-2.jpg" alt="クイック検索">
       </div>
 
       <div class="guide-step">
@@ -2289,30 +2225,19 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
       <div class="guide-sec">もっと便利に（読まなくてもOK）</div>
 
       <div class="guide-step">
-        <h3>④ 日にちを指定して調べる</h3>
-        <p>「📅 指定して検索」を押すとカレンダーが開きます。<b>1回目のタップ＝開始日、2回目のタップ＝終了日</b>。その間をまとめて調べられます。期間の長さに<b>制限はありません</b>ので、何ヶ月先でも指定できます。</p>
-        <img src="images/guide-cal.jpg" alt="カレンダーで期間を指定する">
-        <div class="guide-note">
-          同じ日を2回タップすれば、その日1日だけを調べられます。<br>
-          ‹ › で月を移動できるので、月をまたいだ期間もOKです。カレンダーを<b>左右に指ではらっても</b>月を移動できます。<br>
-          「設定」を押すと結果が出て、画面が自動で下まで流れます。
-        </div>
-      </div>
-
-      <div class="guide-step">
-        <h3>⑤ カレンダーで見る・保存・スマホに登録</h3>
-        <p>クイック検索の「カレンダー」を押すと、<b>1ヶ月分が一目で分かります</b>（「指定して検索」のあとは、結果の一番下の「📅 カレンダーを作る」からも開けます）。マスをタップすると大きく表示され、分割勤務の詳しい時間も読めます。土曜は青、日曜・祝日は赤、公休は緑、代走・振替は紫、中間は朱で色分けされます。見出しの飾りは季節で変わります。</p>
+        <h3>④ カレンダーで見る・保存・スマホに登録</h3>
+        <p>クイック検索の「カレンダー」を押すと、<b>1ヶ月分が一目で分かります</b>。マスをタップすると大きく表示され、分割勤務の詳しい時間も読めます。土曜は青、日曜・祝日は赤、公休は緑、代走・振替は紫、中間は朱で色分けされます。見出しの飾りは季節で変わります。</p>
         <div class="guide-note"><b>‹ › で何ヶ月でも前後に動かせます。</b>検索していない月でも、覚えた番号から勤務が出ます。<b>過去の日をタップすれば、付け忘れた時間外もその場で足せます。</b>月の表示を押すと今月に戻ります。</div>
-        <img src="images/guide-rescal.jpg" alt="検索結果をカレンダーで一覧">
+        <img src="images/guide-rescal.jpg" alt="私のカレンダー">
         <div class="guide-note">
-          この画面の<b>「⭐ マイページに保存」</b>で検索結果を保存でき、あとで<b>「📝 マイページ」→「保存したカレンダー」</b>からいつでも開けます。<br>
+          この画面の<b>「⭐ マイページに保存」</b>で<b>いま表示している月</b>を保存でき、あとで<b>「📝 マイページ」→「保存したカレンダー」</b>からいつでも開けます。<br>
           さらに<b>「📅 カレンダーアプリに一括保存」</b>を押すと、勤務を<b>スマホのカレンダーにまとめて登録</b>できます（出勤1時間前のお知らせ付き。公休の日も番号入りで入ります）。<br>
           ※ 押すとファイル（勤務カレンダー.ics）がダウンロードされるので、それを開いてカレンダーに追加してください。<b>追加した後のファイルは削除して大丈夫です</b>（ダウンロードフォルダに溜まっていくので、ときどき消してください）。
         </div>
       </div>
 
       <div class="guide-step">
-        <h3>⑥ メモを残す</h3>
+        <h3>⑤ メモを残す</h3>
         <p>各日の「📝 メモを追加」から書けます。2種類あります。</p>
         <img src="images/guide-4.jpg" alt="メモ機能">
         <div class="guide-note">
@@ -2324,7 +2249,7 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
       </div>
 
       <div class="guide-step">
-        <h3>⑦ マイページ</h3>
+        <h3>⑥ マイページ</h3>
         <p>下の「📝 マイページ」を押すと開きます。<b>時間外・メモ・保存したカレンダー</b>がタブで分かれています。</p>
         <img src="images/guide-mypage.jpg" alt="マイページ">
         <div class="guide-note">
@@ -2333,7 +2258,7 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
       </div>
 
       <div class="guide-step">
-        <h3>⑧ 時間外を記録する</h3>
+        <h3>⑦ 時間外を記録する</h3>
         <p>マイページの「ふりかえり」、または<b>検索結果の各日にある「⏱ 時間外」</b>から入れられます。</p>
         <p>入れるのは3つだけです。</p>
         <ul>
@@ -2351,7 +2276,7 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
       </div>
 
       <div class="guide-step">
-        <h3>⑨ ふりかえり</h3>
+        <h3>⑧ ふりかえり</h3>
         <p>マイページの「ふりかえり」で、<b>16日〜翌月15日</b>の勤務をまとめて見られます。時間外の登録もここでします。</p>
         <ul>
           <li>労働時間の合計と、1日あたりの平均</li>
@@ -2365,12 +2290,12 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
       </div>
 
       <div class="guide-step">
-        <h3>⑩ 年休を入れておく</h3>
+        <h3>⑨ 年休を入れておく</h3>
         <p>「この日は？」で<b>年休</b>を選ぶと、その日は勤務時間の代わりに<b>次の出勤日と時間</b>が出ます。連続した年休や公休は飛ばして、本当に出る日を探します。</p>
       </div>
 
 <div class="guide-step">
-        <h3>⑪ 圏外でも使えます</h3>
+        <h3>⑩ 圏外でも使えます</h3>
         <p>一度オンラインで開いておけば、その後は圏外や機内モードでも起動できます。</p>
         <div class="guide-note">「🔄 新しいバージョンがあります」と出たらタップしてください。最新バージョンのアプリに更新されます。</div>
       </div>
@@ -4611,7 +4536,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v282';
+const APP_VERSION   = 'v283';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4833,7 +4758,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.02';
+const APP_LABEL = 'バージョン 4.03';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -6699,13 +6624,38 @@ function exportCalendarICS(rows){
     showToast('📅 '+count+'件をカレンダー用に書き出しました');
   }catch(e){ showToast('書き出しに失敗しました'); }
 }
+/* 「⭐ マイページに保存」は、いま表示している月（1日〜末日）を保存する（2026-11-07）。
+   これまでは検索した期間（今日から30日など）を保存していたので、月の途中から始まり翌月にまたがっていた。
+   検索していない日は、カレンダーの表示と同じく覚えた番号から作る。
+   同じ月をもう一度保存したら、前のものと入れ替える（同じ月が何個も並ばないように） */
 function saveCurrentCal(){
-  const rows=window._lastRows;
-  if(!rows||!rows.length){ showToast('先に検索してください'); return; }
+  if(!_rcYM){ showToast('先にカレンダーを開いてください'); return; }
+  const y=_rcYM.getFullYear(), m=_rcYM.getMonth()+1;
+  const byIso={}; (window._lastRows||[]).forEach(function(r){ byIso[r.iso]=r; });
+  const days=new Date(y,m,0).getDate();
+  const rows=[];
+  for(let d=1; d<=days; d++){
+    const dt=new Date(y,m-1,d);
+    const r=byIso[toISO(dt)] || rcMakeRow(dt);
+    if(r) rows.push(r);
+  }
+  if(!rows.length){ showToast('この月の勤務が出せません（ダイヤ番号を入れてください）'); return; }
+  const ym=y+'-'+String(m).padStart(2,'0');
   const list=loadCalList();
-  list.push({ id:'c'+Date.now(), savedAt:Date.now(), rows });
+  const idx=list.findIndex(function(c){ return c.ym===ym; });
+  const item={ id:'c'+Date.now(), savedAt:Date.now(), ym:ym, rows:rows };
+  if(idx>=0) list[idx]=item; else list.push(item);
   saveCalList(list);
-  showToast('⭐ カレンダー保存しました！マイページからご覧下さい');
+  showToast('⭐ '+y+'年'+m+'月を'+(idx>=0 ? '保存し直しました' : '保存しました')+'！マイページからご覧下さい');
+}
+/* 保存したカレンダーの名前。月ごとに保存したものは「2026年11月」、
+   前の形（検索した期間）で保存したものは「11/7〜12/6」と出す */
+function savedCalName(c){
+  if(c.ym){ const p=c.ym.split('-'); return p[0]+'年'+Number(p[1])+'月'; }
+  const r=c.rows||[];
+  if(!r.length) return '';
+  const a=r[0], b=r[r.length-1];
+  return a.m+'/'+a.d+'〜'+b.m+'/'+b.d;
 }
 function openSavedCal(id){
   const item=loadCalList().find(c=>c.id===id);
@@ -6802,7 +6752,7 @@ function renderMemoList(){
   const cals=loadCalList();
   let h3='';
   if(cals.length===0){
-    h3='<div class="ml-empty">保存したカレンダーはまだありません。<br>「検索くん 私のカレンダー」を開いて⭐で保存すると、ここに並びます。</div>';
+    h3='<div class="ml-empty">保存したカレンダーはまだありません。<br>クイック検索の「カレンダー」を開いて⭐で保存すると、表示している月がここに並びます。</div>';
   }else{
     h3=`<div class="ml-count">${cals.length}件</div>`;
     cals.forEach((c,i)=>{
@@ -6810,7 +6760,7 @@ function renderMemoList(){
       const sub=`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} 保存`;
       h3+=`<div class="ml-item">
         <div class="ml-top">
-          <div class="ml-key">検索くん 私のカレンダー${i+1}<span class="ml-sub">${sub}</span></div>
+          <div class="ml-key">私のカレンダー ${savedCalName(c)}<span class="ml-sub">${sub}</span></div>
           <div class="ml-acts">
             <button class="ml-act" onclick="openSavedCal('${c.id}')">開く</button>
             <button class="ml-act del" onclick="deleteSavedCal('${c.id}')">削除</button>
@@ -7036,11 +6986,10 @@ function render(rows){
   if(rows.length>1&&totalMin>0){
     html+=`<div class="res-total">📊 合計労働時間 ${Math.floor(totalMin/60)}時間${String(totalMin%60).padStart(2,'0')}分<small>勤務${wkCnt}日ぶんの合計です</small></div>`;
   }
-  /* 「📅 カレンダーを作る」は、クイック検索の結果では出さない（2026-11-07 乗務員さんの依頼書より）。
-     クイック検索の「カレンダー」から1回で開けるため。指定して検索の結果には残す（その期間を保存できるように） */
+  /* 「📅 カレンダーを作る」は 2026-11-07 に削除。
+     カレンダーはクイック検索の「カレンダー」から1回で開ける */
   html+=`<div class="action-row">
     <button class="act-btn act-more" onclick="continueSearch()">➕ 続けて検索</button>
-    ${_resFromQuick ? '' : '<button class="act-btn act-cal" onclick="openResultCal()">📅 カレンダーを作る</button>'}
   </div>`;
 
   el.innerHTML=html;
@@ -7169,163 +7118,8 @@ function feedbackQuick(days){
   if(navigator.vibrate)navigator.vibrate(40);
 }
 
-/* ==== 全画面カレンダー ====
-   1回目のタップで開始日、2回目で終了日。同じ日を2回タップすればその日だけになる。 */
-let _calView=null;      // 表示中の月
-let _selStart=null;     // 選択した開始日(YYYY-MM-DD)
-let _selEnd=null;       // 選択した終了日(YYYY-MM-DD)
-
-function openCal(){
-  const dial=parseInt(document.getElementById('todayInput').value);
-  if(!dial||dial<1||dial>CUR_MAX){showToast('先に今日のダイヤ番号を入力してください');return;}
-  const t=new Date();t.setHours(0,0,0,0);
-  // デフォルトは今日
-  if(!_selStart){ _selStart=toISO(t); _selEnd=toISO(t); }
-  _calView=new Date(_selStart+'T00:00:00');
-  renderCal();
-  attachCalSwipe(document.getElementById('calGrid'), calMove);   // 横スワイプで月移動
-  document.getElementById('calModal').classList.add('active');
-  document.body.style.overflow='hidden';
-}
-function closeCal(){
-  document.getElementById('calModal').classList.remove('active');
-  document.body.style.overflow='';
-}
-function calMove(n){
-  _calView=addMonths(_calView,n);
-  renderCal();
-}
-function calToday(){
-  const t=new Date();t.setHours(0,0,0,0);
-  _calView=new Date(t);
-  _selStart=toISO(t); _selEnd=toISO(t);
-  renderCal();
-}
-function calClear(){
-  _selStart=null; _selEnd=null;
-  renderCal();
-}
-/* 日付をタップした時 */
-function calTap(iso){
-  if(!_selStart || (_selStart && _selEnd)){
-    _selStart=iso; _selEnd=null;             // 1回目: 開始日
-  }else if(iso < _selStart){
-    _selStart=iso; _selEnd=null;             // 開始日より前を選んだら選び直し
-  }else{
-    _selEnd=iso;                             // 2回目: 終了日(同じ日ならその日だけ)
-  }
-  beep(880,60,0);
-  if(navigator.vibrate)navigator.vibrate(15);
-  renderCal();
-}
-
-function renderCal(){
-  const y=_calView.getFullYear(), m=_calView.getMonth();
-  document.getElementById('calMonth').textContent=`${y}年 ${m+1}月`;
-  const first=new Date(y,m,1);
-  const days=new Date(y,m+1,0).getDate();
-  const t=new Date();t.setHours(0,0,0,0);
-  const todayIso=toISO(t);
-  let html='';
-  for(let i=0;i<first.getDay();i++) html+='<div class="cal-day empty"></div>';
-  for(let d=1;d<=days;d++){
-    const dt=new Date(y,m,d);
-    const iso=toISO(dt);
-    const dw=dt.getDay();
-    let cls='cal-day';
-    if(dw===0)cls+=' sun'; if(dw===6)cls+=' sat';
-    if(iso===todayIso)cls+=' today';
-    if(_selStart&&_selEnd&&iso>_selStart&&iso<_selEnd)cls+=' inrange';
-    if(iso===_selStart||iso===_selEnd)cls+=' edge';
-    html+=`<div class="${cls}" onclick="calTap('${iso}')">${d}</div>`;
-  }
-  document.getElementById('calGrid').innerHTML=html;
-
-  // 選択状況の表示
-  const sel=document.getElementById('calSel');
-  const ok=document.getElementById('calOk');
-  if(!_selStart){
-    sel.textContent='開始日を選んでください'; ok.disabled=true;
-  }else if(!_selEnd){
-    sel.textContent=`${fmtJp(_selStart)} 〜 （終了日を選ぶ）`; ok.disabled=true;
-  }else if(_selStart===_selEnd){
-    sel.textContent=`${fmtJp(_selStart)} の1日だけ`; ok.disabled=false;
-  }else{
-    const n=Math.round((new Date(_selEnd)-new Date(_selStart))/86400000)+1;
-    sel.textContent=`${fmtJp(_selStart)} 〜 ${fmtJp(_selEnd)}（${n}日間）`; ok.disabled=false;
-  }
-}
-function fmtJp(iso){
-  const d=new Date(iso+'T00:00:00');
-  return `${d.getMonth()+1}/${d.getDate()}(${DW[d.getDay()]})`;
-}
-
-/* 「設定」を押した時: カレンダーを閉じて、バーン！と鳴らして検索する */
-function applyCal(){
-  if(!_selStart)return;
-  if(!_selEnd)_selEnd=_selStart;
-  const from=new Date(_selStart+'T00:00:00');
-  const to=new Date(_selEnd+'T00:00:00');
-  if((to-from)/86400000>120){showToast('検索は最大120日間までです');return;}
-  const dial=parseInt(document.getElementById('todayInput').value);
-  if(!dial||dial<1||dial>CUR_MAX){showToast('今日のダイヤ番号を入力してください');return;}
-
-  document.getElementById('dateFrom').value=_selStart;
-  document.getElementById('dateTo').value=_selEnd;
-  updateRangeLabel();
-  closeCal();
-
-  boomSound();                       // バーン！
-  if(navigator.vibrate)navigator.vibrate([60,40,90]);
-  launchMultipleFireworks(4);
-  try{_lastPeriodDays=Math.max(Math.round((to-from)/86400000)+1,1);}catch(e){_lastPeriodDays=null;}
-  _resFromQuick=false;
-  buildAndRender(dial,from,to);
-  autoScrollResults();               // 上から下まで自動で流す
-}
-function updateRangeLabel(){
-  const el=document.getElementById('rangeLabel');
-  if(!el)return;
-  if(_selStart&&_selEnd){
-    el.textContent = _selStart===_selEnd
-      ? `期間：${fmtJp(_selStart)} の1日`
-      : `期間：${fmtJp(_selStart)} 〜 ${fmtJp(_selEnd)}`;
-    el.classList.add('set');
-  }else{
-    el.textContent='期間：未指定'; el.classList.remove('set');
-  }
-}
-
-/* 「バーン！」という低い破裂音（余韻を長めに） */
-function boomSound(){
-  try{
-    const ctx=getAudioCtx(); if(!ctx)return;
-    const now=ctx.currentTime;
-    // 低音のドン（ゆっくり下がって長く残る）
-    const o=ctx.createOscillator(), g=ctx.createGain();
-    o.type='sine'; o.frequency.setValueAtTime(200,now);
-    o.frequency.exponentialRampToValueAtTime(32,now+1.1);
-    g.gain.setValueAtTime(0.55,now);
-    g.gain.exponentialRampToValueAtTime(0.001,now+1.4);
-    o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now+1.5);
-    // 少し高めの余韻を重ねて厚みを出す
-    const o2=ctx.createOscillator(), g2=ctx.createGain();
-    o2.type='triangle'; o2.frequency.setValueAtTime(90,now);
-    o2.frequency.exponentialRampToValueAtTime(28,now+1.2);
-    g2.gain.setValueAtTime(0.3,now);
-    g2.gain.exponentialRampToValueAtTime(0.001,now+1.3);
-    o2.connect(g2); g2.connect(ctx.destination); o2.start(now); o2.stop(now+1.4);
-    // 破裂のノイズ（じわっと消える）
-    const len=Math.floor(ctx.sampleRate*1.0);
-    const buf=ctx.createBuffer(1,len,ctx.sampleRate);
-    const data=buf.getChannelData(0);
-    for(let i=0;i<len;i++) data[i]=(Math.random()*2-1)*Math.pow(1-i/len,1.6);
-    const src=ctx.createBufferSource(); src.buffer=buf;
-    const ng=ctx.createGain(); ng.gain.setValueAtTime(0.4,now);
-    ng.gain.exponentialRampToValueAtTime(0.001,now+0.9);
-    src.connect(ng); ng.connect(ctx.destination); src.start(now);
-  }catch(e){}
-}
+/* 「指定して検索」の日付選び（開始日→終了日をタップ）は 2026-11-07 に削除。
+   クイック検索の「カレンダー」と私のカレンダーで足りるため */
 
 /* 検索結果を上から下まで自動でスクロールし、最後に終了日が見えるようにする */
 function autoScrollResults(){
@@ -8547,7 +8341,7 @@ function buildRows(dial,from,to){
 }
 /* クイック検索の「カレンダー」（2026-11-07 乗務員さんの依頼書より）。
    これまでの「1ヶ月」で検索 →「📅 カレンダーを作る」の2段を、1回にまとめる。
-   中身はこれまでと同じ: 今日から30日分の行を作り（マイページに保存できるように）、私のカレンダーを開く。
+   中身はこれまでと同じ: 今日から30日分の行を作り、私のカレンダーを開く（今月から表示される）。
    下の検索結果の一覧は出さない。前の検索結果が残っていると、保存やコピーの中身と食い違うので消しておく */
 function quickCal(){
   const dial=parseInt(document.getElementById('todayInput').value);
@@ -8556,9 +8350,7 @@ function quickCal(){
   const from=new Date(t), to=new Date(t); to.setDate(t.getDate()+29);   // 今日から30日間（これまでの「1ヶ月」と同じ）
   document.getElementById('dateFrom').value=toISO(from);
   document.getElementById('dateTo').value=toISO(to);
-  _selStart=toISO(from); _selEnd=toISO(to);
   _lastPeriodDays=30;
-  updateRangeLabel();
   clearRangeResults();
   window._lastRows=buildRows(dial,from,to);
   openResultCal();
@@ -8576,20 +8368,14 @@ function quickSearch(type){
   else if(type==='month1'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+29);}  // 今日から30日間(1ヶ月)
   document.getElementById('dateFrom').value=toISO(from);
   document.getElementById('dateTo').value=toISO(to);
-  _selStart=toISO(from); _selEnd=toISO(to); // カレンダー側にも反映
   _lastPeriodDays=Math.max(Math.round((to-from)/86400000)+1,1);   // 続けて検索はこの幅ずつ伸ばす
   feedbackQuick(_lastPeriodDays); // 検索する日数に合わせた長さで鳴らす
-  updateRangeLabel();
-  _resFromQuick=true;
   buildAndRender(dial,from,to);
   autoScrollResults();   // 結果の一番下(ボタン)まで自動で流す
 }
 
 /* 続けて検索で伸ばす幅(日数) */
 let _lastPeriodDays=null;
-/* いまの検索結果がクイック検索から出たものか。「📅 カレンダーを作る」を出すかに使う。
-   続けて検索は、元の検索のままにする */
-let _resFromQuick=false;
 /* 表示中の期間を、同じ幅だけ後ろに伸ばして検索し直す */
 function continueSearch(){
   const dial=parseInt(document.getElementById('todayInput').value);
@@ -8601,9 +8387,8 @@ function continueSearch(){
   const unit=_lastPeriodDays||span;              // 最初に検索した幅を引き継ぐ
   const ne=new Date(ed); ne.setDate(ed.getDate()+unit);
   document.getElementById('dateTo').value=toISO(ne);
-  _selEnd=toISO(ne); _lastPeriodDays=unit;
+  _lastPeriodDays=unit;
   feedbackQuick(unit);   // 追加する日数に合わせた長さで鳴らす
-  updateRangeLabel();
   buildAndRender(dial,sd,ne);
   autoScrollResults();
   showToast('📅 '+unit+'日分を追加しました');
@@ -9144,11 +8929,9 @@ window.onload=async function(){
     }
   }catch(e){}
   const t=new Date();t.setHours(0,0,0,0);
-  // カレンダーの初期値は「今日」
-  _selStart=toISO(t); _selEnd=toISO(t);
-  document.getElementById('dateFrom').value=_selStart;
-  document.getElementById('dateTo').value=_selEnd;
-  updateRangeLabel();
+  // 期間の初期値は「今日」
+  document.getElementById('dateFrom').value=toISO(t);
+  document.getElementById('dateTo').value=toISO(t);
 };
 </script>
 
