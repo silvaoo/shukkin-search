@@ -1418,12 +1418,6 @@ body.multi .only-single{ display:none !important; }
   font-size:calc(15.5px * var(--fs, 1)); font-weight:800; cursor:pointer;
   font-family:'Noto Sans JP',sans-serif; }
 .rcd-memo:active{ background:#d3e4f7; }
-/* 今日の枠の中から時間外・代走を入れる／直す／消す（2026-10-12） */
-.today-ot-acts{ display:flex; gap:8px; margin-top:12px; }
-.today-ot-btn{ flex:1; padding:9px 8px; border-radius:9px; border:1px solid var(--note); background:transparent;
-  color:var(--note); font-size:calc(13px * var(--fs, 1)); font-weight:800; font-family:inherit; cursor:pointer; }
-.today-ot-btn.del{ flex:0 0 auto; padding:9px 12px; border-color:var(--border); color:var(--dim); }
-.today-ot-btn:active{ background:rgba(255,212,121,0.18); }
 .ot-delbtn{ width:100%; padding:11px; margin-top:10px; border-radius:10px; border:1px solid var(--border);
   background:transparent; color:var(--dim); font-size:calc(14px * var(--fs, 1)); font-weight:700;
   font-family:'Noto Sans JP',sans-serif; cursor:pointer; }
@@ -2756,25 +2750,11 @@ function getShiftType(o){
 }
 
 /* ==== 今日のダイヤ入力欄：ライブプレビュー ==== */
+/* 今日の枠の中の「⏱ 時間外・代走を入れる」「✏️ 時間外・代走を直す」「🗑 消す」は
+   2026-11-07 に削除（乗務員さんより）。時間外はマイページの「⏱ 時間外を追加」と、
+   検索結果・カレンダーの各日の「⏱ 時間外」から入れる。今日の枠は見るだけ */
 function updateTodayPreview(){
   _updateTodayPreview();
-  /* 今日の枠の中から、時間外・代走をすぐ入れたり直したりできるように（2026-10-12）。
-     番号を入れ間違えた・当日に変わった、というときにマイページまで行かずに済む */
-  if(IS_MULTI) return;
-  const v=parseInt(document.getElementById('todayInput').value);
-  const box=document.getElementById('todayPreviewBox');
-  if(!box || !v || v<1 || v>CUR_MAX) return;
-  const iso=toISO(new Date());
-  const has=!!otLoad()[iso];
-  box.insertAdjacentHTML('beforeend',
-    '<div class="today-ot-acts">'
-    + '<button class="today-ot-btn" onclick="otFromToday()">'+(has?'✏️ 時間外・代走を直す':'⏱ 時間外・代走を入れる')+'</button>'
-    + (has?'<button class="today-ot-btn del" onclick="otDelete(\''+iso+'\')">🗑 消す</button>':'')
-    + '</div>');
-}
-function otFromToday(){
-  otFromMyPage=false;
-  openOt(toISO(new Date()));
 }
 function _updateTodayPreview(){
   const v=parseInt(document.getElementById('todayInput').value);
@@ -6447,12 +6427,10 @@ function renderRevPane(){
       +(now>maxAt ? '⛔ 上限を '+otFmt(now-maxAt)+' 超えています'
                   : 'あと '+otFmt(maxAt-now))+'</div></div>';
   }
-  const m3=ot3Months(toISO(from));
-  const p3=m3.from.split('-').map(Number);
-  const lb3=p3[1]+'月からの3期間';
+  /* 「時間外 ◯月からの3期間 / 240時間」の棒は 2026-11-07 に削除（乗務員さんより。要らない）。
+     時間外の入力画面の「直近3期間」の注意（180時間を超えた時だけ出る）は残している */
   h+='<div class="rv-lims">'
     + bar(lim.ot,   LIMIT_OT_WARN,   LIMIT_OT_MONTH,   '時間外', '90時間')
-    + bar(m3.sum,   LIMIT_OT_3M_WARN, LIMIT_OT_3M,     '時間外 '+lb3, '240時間')
     + bar(lim.held, LIMIT_HELD_WARN, LIMIT_HELD_MONTH, '拘束',   '275時間')
     + '</div>';
 
