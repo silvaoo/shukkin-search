@@ -1027,27 +1027,19 @@ input[type="date"] {
 .dual-chg{ font-size:calc(14px * var(--fs, 1)); font-weight:800; color:var(--orange);
   margin-bottom:8px; }
 
-/* 代走・振替の日に、実際に出るものと本来のダイヤを並べて出す */
+/* 代走・振替の日に、実際に出るものを出す（下の「本来のダイヤ」の枠は 2026-11-07 に削除） */
 .dual{ margin-top:10px; padding:11px 12px; border-radius:11px; }
 .dual.real{ background:rgba(255,159,74,.12); border:2px solid var(--orange); }
-.dual.base{ background:var(--bg-card2); border:1px solid var(--border); opacity:.9; }
 .dual-ttl{ font-size:calc(12px * var(--fs, 1)); font-weight:bold; margin-bottom:6px; }
 .dual.real .dual-ttl{ color:var(--orange); }
-.dual.base .dual-ttl{ color:var(--dim); }
 .dual-row{ display:flex; flex-wrap:wrap; align-items:baseline; gap:6px; margin-bottom:3px; }
 .dual-dial{ font-size:calc(19px * var(--fs, 1)); font-weight:900; color:var(--text); }
 .dual-part{ font-size:calc(12px * var(--fs, 1)); color:var(--dim); }
 .dual-time{ font-size:calc(17px * var(--fs, 1)); font-weight:bold; color:var(--text);
   font-variant-numeric:tabular-nums; }
-.dual.base .dual-time{ font-size:calc(15px * var(--fs, 1)); font-weight:normal; color:var(--dim); }
 .dual-w{ font-size:calc(12px * var(--fs, 1)); color:var(--dim); }
 .dual-first{ margin-top:6px; font-size:calc(14px * var(--fs, 1)); color:var(--text); }
 .dual-first b{ font-size:calc(22px * var(--fs, 1)); color:var(--orange); }
-.dual-note{ font-size:calc(12px * var(--fs, 1)); color:var(--dim); margin-top:3px; }
-/* 指定公休の日の本来のダイヤ。乗らないので目立たせない */
-.dual.base.off{ opacity:.55; padding:8px 12px; }
-.dual.base.off .dual-dial{ font-size:calc(15px * var(--fs, 1)); color:var(--dim); }
-.dual.base.off .dual-time{ text-decoration:line-through; }
 
 /* マイページの入口。よく使うので大きめにしてある。 */
 .mypage-btn{
@@ -3497,13 +3489,14 @@ function otForDate(date){
 }
 /* 登録した内容を、今日の表示に足して出す */
 function otTodayHtml(v,m,d,dtLabel,r){
-  /* 代走や振替を登録した日は、当日ならびに前日に見たとき
-     「本来のダイヤ」と「実際に出るダイヤ」を必ず両方出す。
-     片方しか出ないと、間違えて本来の時間に出勤してしまう。 */
+  /* 代走や振替を登録した日は、「この日に出るのは」（オレンジの枠）に、実際に乗るものを全部出す。
+     本来のダイヤも、乗る分（まるごと／前半／後半）だけそこに並ぶ。
+     下の「📋 本来のダイヤ」の枠は、上の入力欄の番号とオレンジの枠の中身で分かるので
+     2026-11-07 に削除した（乗務員さんより）。
+     その代わり、自分の番号に乗らない日は、オレンジの枠に「◯番には乗りません」と必ず出す
+     （本来の時間に出勤してしまわないように）。 */
   const dt=dayType(new Date());
   const partLb={all:'',first:'（前半）',second:'（後半）'};
-  const baseWord={all:'まるごと乗ります',first:'前半だけ乗ります',
-                  second:'後半だけ乗ります',none:'乗りません'}[otBaseOf(r)]||'';
 
   const rec0=DB[v], slot0=(rec0&&rec0[dt]&&String(rec0[dt].o)!=='—')?rec0[dt]:null;
 
@@ -3548,9 +3541,17 @@ function otTodayHtml(v,m,d,dtLabel,r){
     else if(a0.part==='all' && otBaseOf(r)==='none')      whatCh='まるごと '+otDN(a0)+'に替わりました';
     else if(otBaseOf(r)==='all')                          whatCh=otDN(a0)+'が足されました';
   }
+  /* 自分の番号に勤務があるのに乗らない日（まるごと替わった・指定公休）。
+     「まるごと ◯番に替わりました」と出ていれば分かるので、それ以外のときに出す */
+  const shitei = isKyuDay && !!slot0;
+  let notRide='';
+  if(slot0 && otBaseOf(r)==='none' && !whatCh){
+    notRide = shitei ? '指定公休のため '+v+'番には乗りません' : v+'番には乗りません';
+  }
   h+='<div class="dual real"><div class="dual-ttl">🚌 '
     +(isKyuDay?'公休出勤で出るのは':'この日に出るのは')+'</div>'
-    +(whatCh?'<div class="dual-chg">✅ '+whatCh+'</div>':'');
+    +(whatCh?'<div class="dual-chg">✅ '+whatCh+'</div>':'')
+    +(notRide?'<div class="dual-chg">⚠ '+notRide+'</div>':'');
   real.forEach(function(x){
     const t=x.slot?formatDisplayTimePart(x.slot.o, x.part, x.slot.w):'（時刻が確定していません）';
     const one=!x.slot||!String(x.slot.o).includes('/')||x.part==='all';
@@ -3561,18 +3562,6 @@ function otTodayHtml(v,m,d,dtLabel,r){
   });
   if(firstT) h+='<div class="dual-first">⏰ 出勤は <b>'+firstT+'</b> です</div>';
   h+='</div>';
-
-  /* --- 本来のダイヤ（必ず出す。乗らない日も出す） ---
-     指定公休の日（本来のダイヤに勤務があるのに公休）は、時刻を取り消し線にして薄く出す。
-     そのまま出すと、本来のダイヤの時刻に出勤してしまうおそれがあるため。 */
-  const shitei = isKyuDay && !!slot0;
-  h+='<div class="dual base'+(shitei?' off':'')+'"><div class="dual-ttl">📋 本来のダイヤ</div>'
-    +'<div class="dual-row"><span class="dual-dial">'+v+'番</span>'
-    +'<span class="dual-time">'+(slot0?formatDisplayTime(slot0.o):(und0?'当日決まる勤務':'公休'))+'</span>'
-    +'<span class="dual-w">'+(slot0&&!shitei?('　労働 '+(slot0.w||'-')):'')+'</span></div>'
-    +'<div class="dual-note">'
-      +(shitei ? '指定公休のため乗りません' : isKyuDay ? 'この日は本来お休みです' : (baseWord||'—'))
-    +'</div></div>';
 
   h+='<div class="today-note">⏱ 時間外 '+otFmt(r.min)
     +(r.note?' ／ '+escapeHtml(r.note):'')+'</div>';
