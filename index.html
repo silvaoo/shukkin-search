@@ -43,6 +43,7 @@ try{
   --green: #00ff88;
   --orange: #ff8c00;
   --text: #dde0ff;
+  --tb-w: #7fd6ff; --tb-w-bg: rgba(80,180,255,.10); --tb-w-bd: rgba(80,180,255,.35);   /* 労働時間の札 */
   --label: #e8c98a;   /* 小見出し。紫は読みにくいという声があり金系に変更（2026-09-02） */
   --note: #ffd479;    /* 備考。同上 */
   --dim: var(--label);
@@ -63,6 +64,7 @@ body.light {
   --green: #007744;
   --orange: #cc6600;
   --text: #111133;
+  --tb-w: #0b6aa8; --tb-w-bg: rgba(30,120,200,.08); --tb-w-bd: rgba(30,120,200,.35);
   --label: #6b4a10;   /* 小見出し。金は明るい背景に弱いので濃くしてある */
   --note: #5c3b00;    /* 備考。同上 */
   --dim: var(--label);
@@ -1120,30 +1122,29 @@ body.light .stamp { opacity: 0.28; }
   text-shadow: 0 0 10px rgba(255,140,0,0.4); line-height: 1; margin-bottom: 10px;
 }
 .day-dial span { font-size: calc(14px * var(--fs, 1)); color: var(--dim); font-family: 'Noto Sans JP', sans-serif; font-weight: 400; }
-/* 勤務時間と労働時間は、必ず上下に並べる。
-   横に2つ並べると、端末や文字サイズの設定で時刻の後ろが切れる。
-   実機（iPhone）で「8:30〜19:45」が途中までしか出なかった。 */
-.day-boxes { display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; }
-.day-box { background: var(--bg-card2); border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 10px; padding: 10px 12px; min-width: 0; overflow: hidden; }
-/* 「労働時間」が「労働時」「間」に割れていたので、折り返さないようにする */
-.day-box-label { font-size: calc(10px * var(--fs, 1)); color: var(--dim); margin-bottom: 4px;
-  letter-spacing: 1px; white-space: nowrap; }
-/* 出退勤の時間と労働時間は、生駒・北大和Bに合わせて本文と同じ書体にする。
-   以前は英字用の書体を当てていたため、数字の形が他のダイヤと違って見えた。 */
-.day-box-val { font-size: calc(14px * var(--fs, 1)); color: var(--text); line-height: 1.5;
-  overflow-wrap: anywhere; white-space: normal; }
-.day-box-val.holiday-val { color: var(--pink); font-family: 'Noto Sans JP', sans-serif; font-size: calc(17px * var(--fs, 1)); font-weight: 700; }
-/* 今日の表示だけBA風の枠付きカードにする(検索結果の.day-boxesには影響させない) */
-/* 勤務時間と労働時間は、必ず上下に並べる。
-   横に2つ並べると、端末や設定によって時刻の後ろが切れる。
-   実機（iPhone）で「8:30〜19:45」が「8:30〜19」までしか出なかった。
-   幅をまるごと使えば、どんな文字の大きさでも切れない。 */
-.today-boxes { grid-template-columns: minmax(0,1fr); margin-top: 2px; }
-.today-boxes .day-box-val { font-weight: 700; }
-/* 出退勤の時間と労働時間は、今日のカードでも検索結果でも同じ大きさにする。
-   以前は「今日のカードの中だけ」に効く書き方だったため、
-   検索結果では小さいままだった（生駒・北大和Bと見た目が揃っていなかった）。 */
+/* 勤務時間と労働時間は1つの枠に（2026-11-07 乗務員さんより・見本の案B）。
+   勤務時間は左に大きく。労働時間はそれほど大事ではないので、右に水色の小さな札で添える。
+   中間ダイヤも前半・後半をふつうの日と同じ大きさで出し、労働時間はその行の右に付ける。
+   以前、2つの枠を横に並べたら iPhone で「8:30〜19:45」が「8:30〜19」で切れた。
+   今は時刻を折り返さず（nowrap）、入らない時は札だけが下の段（右寄せ）に回る（flex-wrap）ので切れない。
+   幅320px・文字130%で確かめた。検索結果と、トップの今日の枠で使う（timeBoxHtml） */
+.tbox { background: var(--bg-card2); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px; padding: 10px 12px; min-width: 0; container-type: inline-size; }
+.tb-head { display: flex; justify-content: space-between; gap: 8px; font-size: calc(10px * var(--fs, 1));
+  color: var(--dim); letter-spacing: 1px; white-space: nowrap; margin-bottom: 2px; }
+.tb-row { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; }
+.tb-row + .tb-row { margin-top: 2px; }
+/* 「後半」と時刻は離さない（狭いと「後半」だけ上の行に残っていた） */
+.tb-main { display: inline-flex; align-items: baseline; column-gap: 10px; white-space: nowrap; min-width: 0; }
+.tb-lb { flex: 0 0 auto; font-size: calc(11px * var(--fs, 1)); color: var(--dim); font-weight: 700; letter-spacing: 1px; }
+/* 時刻は 24px×倍率。枠が狭くて「後半 14:11〜21:58」が入らない時だけ、枠の幅に合わせて小さくする
+   （cqw＝枠の幅の1%。古いiPhoneで効かなくても 24px×倍率 のまま出る） */
+.tb-t { font-size: calc(24px * var(--fs, 1)); font-size: min(calc(24px * var(--fs, 1)), calc((100cqw - 40px * var(--fs, 1)) / 6.6)); font-weight: 700; color: var(--text); white-space: nowrap; line-height: 1.35; }
+.tb-t.tb-wrap { white-space: normal; overflow-wrap: anywhere; font-size: calc(17px * var(--fs, 1)); }
+.tb-w { margin-left: auto; white-space: nowrap; font-size: calc(13px * var(--fs, 1)); font-weight: 700;
+  color: var(--tb-w); background: var(--tb-w-bg); border: 1px solid var(--tb-w-bd); border-radius: 999px; padding: 1px 9px; }
+.tb-off { font-size: calc(22px * var(--fs, 1)); font-weight: 700; color: var(--pink); line-height: 1.35; }
+.tbox.tb-today { margin-top: 2px; }
 /* 分割勤務のとき、前半・後半を行ごとに見せる。
    「前半」の見出しは小さく添えるだけにして、時刻を読みやすくする。
    （生駒・北大和Bと同じ見せ方） */
@@ -1151,8 +1152,6 @@ body.light .stamp { opacity: 0.28; }
 .sp-lb  { display: inline-block; font-size: calc(10px * var(--fs, 1)); color: var(--dim);
           font-weight: 700; margin-right: 5px; letter-spacing: 1px; }
 
-.day-box-val.is-day   { font-size: calc(24px * var(--fs, 1)); white-space: nowrap; font-weight: 700; }
-.day-box-val.is-split { font-size: calc(15px * var(--fs, 1)); line-height: 1.5; font-weight: 700; }
 .today-head { margin-bottom: 8px; color: var(--text); font-size: calc(13px * var(--fs, 1)); }
 .today-head b { color: var(--orange); font-size: calc(20px * var(--fs, 1)); }
 .today-note { margin-top: 8px; font-size: calc(13px * var(--fs, 1)); color: var(--note); line-height: 1.5; }
@@ -2692,6 +2691,34 @@ function formatDisplayTime(o){
   return o;
 }
 
+/* 勤務時間と労働時間を1つの枠にする（2026-11-07 乗務員さんより・見本の案B）。
+   slot が null なら公休。中間ダイヤ（前半/後半）は2行にして、それぞれの行の右に労働時間の札。
+   extraCls はトップの今日の枠で 'tb-today' を付ける */
+function timeBoxHtml(slot, extraCls){
+  const cls='tbox'+(extraCls?' '+extraCls:'');
+  if(!slot) return '<div class="'+cls+'"><div class="tb-head"><span>勤務時間</span></div><div class="tb-off">公休</div></div>';
+  const o=String(slot.o||'').trim(), w=String(slot.w||'').trim();
+  const pill=t=> (t && t!=='—' && t!=='-') ? '<span class="tb-w">'+t+'h</span>' : '';
+  let rows='';
+  const pr=o.split('〜');
+  if(o.includes('/') && pr.length===2){
+    const st=pr[0].split('/').map(x=>x.trim()), en=pr[1].split('/').map(x=>x.trim());
+    const ws=w.split('/').map(x=>x.trim());
+    if(st.length===2 && en.length===2){
+      // データは「前半出勤/後半出勤 〜 前半退勤/後半退勤」の並び（formatDisplayTime と同じ組み方）
+      rows='<div class="tb-row"><span class="tb-main"><span class="tb-lb">前半</span><span class="tb-t">'+st[0]+'〜'+st[1]+'</span></span>'+pill(ws.length===2?ws[0]:'')+'</div>'
+          +'<div class="tb-row"><span class="tb-main"><span class="tb-lb">後半</span><span class="tb-t">'+en[0]+'〜'+en[1]+'</span></span>'+pill(ws.length===2?ws[1]:'')+'</div>';
+    }
+  }
+  if(!rows){
+    if(!o || o==='—') rows='<div class="tb-row"><span class="tb-t"><span class="warn-text">要確認</span></span></div>';
+    else if(o.includes('/')) rows='<div class="tb-row"><span class="tb-t tb-wrap">'+o+'</span>'+pill(w)+'</div>';  // 3分割以上（いまのデータには無い）
+    else rows='<div class="tb-row"><span class="tb-t">'+o+'</span>'+pill(w)+'</div>';
+  }
+  const hasW=rows.indexOf('tb-w')>=0;
+  return '<div class="'+cls+'"><div class="tb-head"><span>勤務時間</span>'+(hasW?'<span>労働時間</span>':'')+'</div>'+rows+'</div>';
+}
+
 /* 労働時間を画面表示用に整形する（2分割は前半/後半、3分割以上は番号表記） */
 function formatDisplayLabor(w){
   if(!w||w==='—')return '—';
@@ -2790,14 +2817,9 @@ function _updateTodayPreview(){
     box.innerHTML=`<b>${v}番ダイヤ</b> → ${m}/${d}（${dtLabel}）勤務: <span class="warn-text">要確認</span>${slot.n?' 📌'+slot.n:''}`;
     return;
   }
-  const isSplit=slot.o.includes('/');
-  const tcls=isSplit?'is-split':'is-day';
   const noteHtml=slot.n?`<div class="today-note">📌 ${slot.n}</div>`:'';
   box.innerHTML=`<div class="today-head"><b>${v}番ダイヤ</b> ／ ${m}/${d}（${dtLabel}）</div>
-    <div class="day-boxes today-boxes${isSplit?' has-split':''}">
-      <div class="day-box"><div class="day-box-label">勤務時間</div><div class="day-box-val ${tcls}">${formatDisplayTime(slot.o)}</div></div>
-      <div class="day-box"><div class="day-box-label">労働時間</div><div class="day-box-val ${tcls}">${formatDisplayLabor(slot.w)}</div></div>
-    </div>${noteHtml}`;
+    ${timeBoxHtml(slot,'tb-today')}${noteHtml}`;
 }
 
 /* ==== 全ダイヤ早見表（スペシャル検索くんだけ） ====
@@ -4484,7 +4506,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v287';
+const APP_VERSION   = 'v288';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4706,7 +4728,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.07';
+const APP_LABEL = 'バージョン 4.08';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -6893,20 +6915,12 @@ function render(rows){
 
     let bodyHtml;
     if(isOff){
-      bodyHtml=`<div class="day-boxes">
-        <div class="day-box"><div class="day-box-label">勤務時間</div><div class="day-box-val holiday-val">公休</div></div>
-        <div class="day-box"><div class="day-box-label">労働時間</div><div class="day-box-val" style="color:var(--dim)">—</div></div>
-      </div>`;
+      bodyHtml=timeBoxHtml(null);
     }else{
       const slot=r.slot;
-      // 分割勤務かどうかで大きさを変える（今日のカードと同じ扱いにする）
-      const rcls=slot.o.includes('/')?'is-split':'is-day';
       const teiireLabel=TEIIRE[r.dn]?`<div class="teiire-label">🔧 ${TEIIRE[r.dn]}</div>`:'';
       const noteHtml=slot.n?`<div class="day-note">📌 ${slot.n}</div>`:'';
-      bodyHtml=`${teiireLabel}<div class="day-boxes${rcls==='is-split'?' has-split':''}">
-        <div class="day-box"><div class="day-box-label">勤務時間</div><div class="day-box-val ${rcls}">${formatDisplayTime(slot.o)}</div></div>
-        <div class="day-box"><div class="day-box-label">労働時間</div><div class="day-box-val ${rcls}">${formatDisplayLabor(slot.w)}</div></div>
-      </div>${noteHtml}`;
+      bodyHtml=`${teiireLabel}${timeBoxHtml(slot)}${noteHtml}`;
     }
 
     html+=`<div class="day-card">
