@@ -769,6 +769,14 @@ body {
    7文字分と入力欄の幅を、画面の幅から割り出す。 */
 .dial-row span { font-size: min(calc(17px * var(--fs, 1)), calc((100vw - 170px) / 7)); color: var(--text); font-weight: 700;
   white-space: nowrap; flex: none; }
+/* 「今日は 40 番 [ダイヤ内容]」（2026-11-07）。ボタンが付くと横に9文字分ほどになるので、
+   狭い画面で文字を大きくしても1行に入る大きさまでに抑える */
+.dial-row.has-nav { gap: 6px; }
+.dial-row.has-nav span { font-size: min(calc(17px * var(--fs, 1)), calc((100vw - 200px) / 9)); }
+.dial-row-nav { flex: none; white-space: nowrap; min-height: 40px; padding: 6px 8px; border-radius: 9px; cursor: pointer;
+  font-size: min(calc(15px * var(--fs, 1)), calc((100vw - 200px) / 9)); font-weight: 800; font-family: 'Noto Sans JP', sans-serif;
+  color: var(--orange); background: rgba(255,170,0,0.14); border: 1.5px solid rgba(255,170,0,0.6); }
+.dial-row-nav:active { background: rgba(255,170,0,0.28); }
 /* ダイヤ番号の入力欄。大きさ・余白・角丸は生駒・北大和Bに合わせる。
    色だけはこのアプリのもの（オレンジ）を保つ。 */
 #todayInput {
@@ -1847,18 +1855,22 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
   <div class="dial-row">
     <span>今日は</span>
     <input type="number" id="todayInput" min="1" max="{{MAX}}" inputmode="numeric" autocomplete="off">
-    <span>番ダイヤ</span>
+    <span id="dialRowWord">番ダイヤ</span>
+    <!-- 「今日は 40 番 [ダイヤ内容]」（2026-11-07 乗務員さんより）。下の「🧭 ダイヤ内容」と同じ openNav() を開く。
+         ナビのデータがあるときだけ出し、そのときは「番ダイヤ」を「番」にする（navRefreshBtn） -->
+    <button class="dial-row-nav" id="navBtnInline" style="display:none;" onclick="openNav()">ダイヤ内容</button>
   </div>
   <div class="today-preview empty" id="todayPreviewBox">↑ 1〜92の番号を入力してください</div>
   <div class="today-countdown" id="todayCountdown" style="display:none;"></div>
-  <!-- 今日のナビ。好評なので、退勤までのカウントダウンと同じ大きさですぐ下に置く（2026-10-12） -->
-  <button class="speak-today-btn nav-btn" id="navBtn" style="display:none;" onclick="openNav()">🧭 今日のナビ</button>
+  <!-- 今日のナビ。好評なので、退勤までのカウントダウンと同じ大きさですぐ下に置く（2026-10-12）。
+       ボタンの名前は「ダイヤ内容」（2026-11-07）。開く画面は今日のナビのまま -->
+  <button class="speak-today-btn nav-btn" id="navBtn" style="display:none;" onclick="openNav()">🧭 ダイヤ内容</button>
   <div class="mydial-note" id="myDialNote" style="display:none;">
     ✅ この番号を保存し、明日から自動で1つずつ進みます。
     <span class="mydial-forget" onclick="forgetMyDial()">保存を消す</span>
   </div>
-  <button class="speak-today-btn" id="speakTodayBtn" onclick="handleSpeakToday()">🔊 今日の勤務を読み上げ</button>
-  <button class="speak-today-btn card-btn" onclick="shareTodayCard()">🖼 今日の勤務を画像で送る</button>
+  <!-- 「今日の勤務を読み上げ」「今日の勤務を画像で送る」のボタンは外した（2026-11-07 乗務員さんより）。
+       handleSpeakToday / shareTodayCard の処理は残してある -->
 </div>
 
 <!-- お知らせバナー(タップで破裂→中身を表示。×で閉じる)
@@ -7611,8 +7623,16 @@ function navRevOk(){
             && (!IS_MULTI || NAV.meta.code === CUR_DIA));
 }
 function navRefreshBtn(){
+  const ok=navRevOk();
   const b=document.getElementById('navBtn');
-  if(b) b.style.display = navRevOk() ? '' : 'none';
+  if(b) b.style.display = ok ? '' : 'none';
+  /* 「今日は ◯ 番 [ダイヤ内容]」。データが無いときは元の「番ダイヤ」に戻す（2026-11-07） */
+  const bi=document.getElementById('navBtnInline'), w=document.getElementById('dialRowWord');
+  if(bi){
+    bi.style.display = ok ? '' : 'none';
+    if(bi.parentNode) bi.parentNode.classList.toggle('has-nav', ok);
+  }
+  if(w) w.textContent = ok ? '番' : '番ダイヤ';
   /* 検索結果の「ダイヤ内容」ボタン。行程の読み込みが検索より後になったときも出るように、ここで合わせ直す */
   document.querySelectorAll('.dial-nav-btn[data-dial]').forEach(function(x){
     x.style.display = navPvAvail(x.getAttribute('data-iso'), x.getAttribute('data-dial'), x.getAttribute('data-dt'),
