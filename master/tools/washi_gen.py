@@ -1,74 +1,40 @@
-# 和紙の手帳カレンダー用の文様を SVG で作り、CSS の data URI にする
-import math, random, urllib.parse, json
+# 私のカレンダー（和紙の手帳・豪華版）の文様を SVG で作り、CSS の data URI にする（2026-11-07）
+# 使い方: python3 washi_gen.py → washi-uris.json（master.html の #resCalModal の CSS に貼る）
+# 画像ファイルは使わない。形はすべてここで描く。
+import math, random, json, urllib.parse
+
 def uri(svg):
     svg = ' '.join(svg.split())
     return 'url("data:image/svg+xml,' + urllib.parse.quote(svg, safe=" =:/,'.-();") + '")'
 
-# --- 和紙の繊維（細い繊維を散らす。薄く） ---
-def washi(seed=7, size=260, n=70, col='120,95,55'):
+# 和紙の繊維（細い繊維を薄く散らす）
+def washi(seed=9, size=260, n=60, col='140,110,60'):
     r = random.Random(seed); paths=[]
     for i in range(n):
         x=r.uniform(0,size); y=r.uniform(0,size); L=r.uniform(14,46); a=r.uniform(0,math.pi)
         x2=x+L*math.cos(a); y2=y+L*math.sin(a)
         cx=(x+x2)/2+r.uniform(-8,8); cy=(y+y2)/2+r.uniform(-8,8)
-        op=r.uniform(.10,.24); w=r.uniform(.35,.8)
-        paths.append(f"<path d='M{x:.1f} {y:.1f}Q{cx:.1f} {cy:.1f} {x2:.1f} {y2:.1f}' stroke='rgba({col},{op:.2f})' stroke-width='{w:.2f}' fill='none'/>")
+        paths.append(f"<path d='M{x:.1f} {y:.1f}Q{cx:.1f} {cy:.1f} {x2:.1f} {y2:.1f}' stroke='rgba({col},{r.uniform(.10,.24):.2f})' stroke-width='{r.uniform(.35,.8):.2f}' fill='none'/>")
     dots=''.join(f"<circle cx='{r.uniform(0,size):.1f}' cy='{r.uniform(0,size):.1f}' r='{r.uniform(.3,.9):.2f}' fill='rgba({col},{r.uniform(.08,.18):.2f})'/>" for _ in range(50))
     return f"<svg xmlns='http://www.w3.org/2000/svg' width='{size}' height='{size}'>{''.join(paths)}{dots}</svg>"
 
-# --- 青海波（1周期のタイル） ---
-def seigaiha(stroke, bg, W=36, sw=1):
-    R=W/2; H=R/2
-    out=[f"<svg xmlns='http://www.w3.org/2000/svg' width='{W}' height='{H*1:.0f}' viewBox='0 0 {W} {H}'><rect width='{W}' height='{H}' fill='{bg}'/>"]
-    for row in range(-3,5):
-        y=row*H/1
-        off=0 if row%2==0 else R
-        for k in range(-1,3):
-            x=k*W+off
-            out.append(f"<circle cx='{x}' cy='{y}' r='{R}' fill='{bg}'/>")
-            for rr in (R*0.92, R*0.68, R*0.44, R*0.2):
-                out.append(f"<circle cx='{x}' cy='{y}' r='{rr:.2f}' fill='none' stroke='{stroke}' stroke-width='{sw}'/>")
-    out.append("</svg>")
-    return ''.join(out)
-
-# --- 麻の葉（三角の格子と、頂点から重心への線） ---
-def asanoha(stroke, a=24, sw=.7):
-    h=a*math.sqrt(3)/2; W=a; H=2*h
-    lines=[]
-    def tri(p,q,r_):
-        g=((p[0]+q[0]+r_[0])/3,(p[1]+q[1]+r_[1])/3)
-        for A,B in ((p,q),(q,r_),(r_,p)): lines.append((A,B))
-        for A in (p,q,r_): lines.append((A,g))
-    for row in range(-1,3):
-        y0=row*h; off=(a/2 if row%2 else 0)
-        for k in range(-1,2):
-            x0=k*a+off
-            tri((x0,y0),(x0+a,y0),(x0+a/2,y0+h))
-            tri((x0+a/2,y0+h),(x0+a*1.5,y0+h),(x0+a,y0))
-    s=''.join(f"<line x1='{A[0]:.2f}' y1='{A[1]:.2f}' x2='{B[0]:.2f}' y2='{B[1]:.2f}'/>" for A,B in lines)
-    return f"<svg xmlns='http://www.w3.org/2000/svg' width='{W}' height='{H:.2f}' viewBox='0 0 {W} {H:.2f}'><g stroke='{stroke}' stroke-width='{sw}' fill='none'>{s}</g></svg>"
-
-# --- 小さな形 ---
+# 季節の形
 def sakura(cx,cy,r,fill,center,rot=0):
     ps=[]
     for i in range(5):
         a=math.radians(rot+i*72-90)
-        def P(rr,da): 
+        def P(rr,da):
             t=a+math.radians(da); return (cx+rr*math.cos(t), cy+rr*math.sin(t))
-        b1=P(r*0.25,-28); t1=P(r*1.02,-16); n=P(r*0.86,0); t2=P(r*1.02,16); b2=P(r*0.25,28); c1=P(r*0.9,-34); c2=P(r*0.9,34)
+        t1=P(r*1.02,-16); n=P(r*0.86,0); t2=P(r*1.02,16); c1=P(r*0.9,-34); c2=P(r*0.9,34)
         ps.append(f"<path d='M{cx:.1f} {cy:.1f}Q{c1[0]:.1f} {c1[1]:.1f} {t1[0]:.1f} {t1[1]:.1f}L{n[0]:.1f} {n[1]:.1f}L{t2[0]:.1f} {t2[1]:.1f}Q{c2[0]:.1f} {c2[1]:.1f} {cx:.1f} {cy:.1f}Z'/>")
     return f"<g fill='{fill}'>{''.join(ps)}</g><circle cx='{cx:.1f}' cy='{cy:.1f}' r='{r*0.18:.1f}' fill='{center}'/>"
 def momiji(cx,cy,r,fill,rot=0):
-    pts=[]; lobes=7; N=lobes*6
+    pts=[]; N=7*6
     for i in range(N):
         t=2*math.pi*i/N
-        ph=(i%6)/6.0
         tip=1.0 if (i%6)==0 else (0.62 if (i%6) in (2,4) else (0.42 if (i%6)==3 else 0.78))
-        ang=t+math.radians(rot)
-        # 下の2枚は小さめ
-        lob=(i//6)
-        sc=0.62 if lob in (3,4) else (0.85 if lob in (2,5) else 1.0)
-        rr=r*tip*sc
+        lob=i//6; sc=0.62 if lob in (3,4) else (0.85 if lob in (2,5) else 1.0)
+        ang=t+math.radians(rot); rr=r*tip*sc
         pts.append((cx+rr*math.sin(ang), cy-rr*math.cos(ang)))
     d='M'+'L'.join(f"{x:.1f} {y:.1f}" for x,y in pts)+'Z'
     st=(cx+r*0.7*math.sin(math.radians(rot+180)), cy-r*0.7*math.cos(math.radians(rot+180)))
@@ -76,61 +42,80 @@ def momiji(cx,cy,r,fill,rot=0):
 def yukiwa(cx,cy,R,fill,stroke):
     pts=[]
     for i in range(240):
-        t=2*math.pi*i/240
-        k=abs(math.cos(3*t))**10
-        rr=R*(1-0.16*k)
+        t=2*math.pi*i/240; rr=R*(1-0.16*abs(math.cos(3*t))**10)
         pts.append((cx+rr*math.cos(t), cy+rr*math.sin(t)))
-    d='M'+'L'.join(f"{x:.1f} {y:.1f}" for x,y in pts)+'Z'
-    return f"<path d='{d}' fill='{fill}' stroke='{stroke}' stroke-width='1'/>"
-def golddust(r, n, W, H, col='#c9a24a'):
-    return ''.join(f"<rect x='{r.uniform(0,W):.1f}' y='{r.uniform(0,H):.1f}' width='{r.uniform(1,3.2):.1f}' height='{r.uniform(1,3.2):.1f}' fill='{col}' opacity='{r.uniform(.35,.8):.2f}' transform='rotate({r.uniform(0,90):.0f})'/>" for _ in range(n))
+    return f"<path d='M{'L'.join(f'{x:.1f} {y:.1f}' for x,y in pts)}Z' fill='{fill}' stroke='{stroke}' stroke-width='1'/>"
+def ume(cx,cy,r,fill,center):
+    g=''.join(f"<circle cx='{cx+r*0.55*math.cos(math.radians(a-90)):.1f}' cy='{cy+r*0.55*math.sin(math.radians(a-90)):.1f}' r='{r*0.5:.1f}' fill='{fill}'/>" for a in range(0,360,72))
+    return g+f"<circle cx='{cx}' cy='{cy}' r='{r*0.3:.1f}' fill='{center}'/>"
 
+NAVY='#1c2a4f'; GOLD='#c9a24a'; GOLD2='#e2c47a'
+def seig_mound(cx, cy, R, fill, ring1, ring2, sw=1.4):
+    g=[f"<circle cx='{cx}' cy='{cy}' r='{R}' fill='{fill}'/>"]
+    for i,k in enumerate((0.96,0.76,0.56,0.36,0.16)):
+        g.append(f"<circle cx='{cx}' cy='{cy}' r='{R*k:.1f}' fill='none' stroke='{ring1 if i%2==0 else ring2}' stroke-width='{sw}'/>")
+    return ''.join(g)
+def brush(d, w=3, col=GOLD2, op=.8):
+    return f"<path d='{d}' stroke='{col}' stroke-width='{w}' fill='none' stroke-linecap='round' opacity='{op}'/>"
+def flecks(r, n, x0, y0, W, H, col=GOLD2):
+    return ''.join(f"<rect x='{x0+r.uniform(0,W):.1f}' y='{y0+r.uniform(0,H):.1f}' width='{r.uniform(2,5):.1f}' height='{r.uniform(2,5):.1f}' fill='{col}' opacity='{r.uniform(.55,.95):.2f}' transform='rotate({r.uniform(0,90):.0f} {x0+W/2:.0f} {y0+H/2:.0f})'/>" for _ in range(n))
+
+# 月の帯（季節の地色に、金の筆の線・金箔・左下の青海波）
+def band(base, ring, seed):
+    r=random.Random(seed); W,H=400,64
+    g=[f"<rect width='{W}' height='{H}' fill='{base}'/>"]
+    for (x,y,R) in ((-6,74,46),(40,82,38),(86,90,30)):
+        g.append(seig_mound(x,y,R,base,ring,'rgba(255,255,255,.18)',1.2))
+    g.append(brush("M250 8 Q300 2 350 14 T410 6",3.2)); g.append(brush("M268 20 Q320 14 372 24",1.4,op=.6))
+    g.append(brush("M150 60 Q200 50 240 58",1.6,op=.5))
+    g.append(flecks(r,16,120,4,270,56))
+    return f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {W} {H}' preserveAspectRatio='xMidYMid slice'>{''.join(g)}</svg>"
+
+# 空いたマスの飾り（青海波に季節のもの）
 def deco(season):
-    W,H=200,110; r=random.Random(11)
-    g=[]
-    if season=='shogatsu':
-        for (x,y,R) in ((150,118,46),(95,122,40),(185,124,34),(55,128,30)):
-            g.append(f"<circle cx='{x}' cy='{y}' r='{R}' fill='#f3ead6'/>")
-            for k in (1.0,.78,.56,.34):
-                g.append(f"<circle cx='{x}' cy='{y}' r='{R*k:.1f}' fill='none' stroke='{'#b8933a' if k in (1.0,.56) else '#2b3d66'}' stroke-width='1.3'/>")
-        g.append(golddust(r,26,W,70))
+    W,H=220,120; r=random.Random(5); g=[]
+    pal={'shogatsu':('#e9eef6','#c9a24a','#1c2a4f'),'haru':('#f3e9ec','#c9a24a','#b98a96'),'natsu':('#e6eef4','#c9a24a','#5b7fa6'),
+         'aki':('#eaeef3','#c9a24a','#7f93ad'),'fuyu':('#eef1f5','#b9c3cf','#8fa1b6')}[season]
+    for (x,y,R) in ((178,132,58),(112,138,48),(232,136,44),(60,142,36)):
+        g.append(seig_mound(x,y,R,pal[0],pal[1],pal[2],1.5))
+    g.append(flecks(r,14,10,10,200,60))
+    if season=='aki':
+        g.append(brush("M222 14 Q182 26 156 50 Q136 68 112 78",2.6,'#6e4b33',1))
+        g.append(momiji(176,36,20,'#d0573c',15)); g.append(momiji(138,62,15,'#e0873a',-25)); g.append(momiji(204,64,13,'#c24a33',40))
     elif season=='haru':
-        g.append("<path d='M200 18 Q150 30 120 62 Q100 84 70 92' stroke='#8a6a58' stroke-width='2.2' fill='none' stroke-linecap='round'/>")
-        for (x,y,s,rt) in ((150,40,15,10),(112,70,12,40),(176,72,11,-20),(78,86,9,15)):
-            g.append(sakura(x,y,s,'#efc3ca','#c76f80',rt))
-        for (x,y,rt) in ((40,60,30),(60,30,-20),(20,92,70)):
-            g.append(f"<ellipse cx='{x}' cy='{y}' rx='4' ry='2.4' fill='#efc3ca' transform='rotate({rt} {x} {y})'/>")
+        g.append(brush("M222 10 Q180 22 150 46 Q130 62 104 72",2.4,'#7a5a4a',1))
+        for (x,y,s,rt) in ((176,30,14,10),(140,56,11,40),(204,58,10,-20),(112,70,8,15)): g.append(sakura(x,y,s,'#f2c4cc','#c76f80',rt))
     elif season=='natsu':
-        for i,(y,c) in enumerate(((62,'#7d9cc0'),(76,'#5b7fa6'),(90,'#94b2d0'),(104,'#5b7fa6'))):
-            d=f"M0 {y}"+''.join(f" Q{x+12} {y-9+ (i%2)*3} {x+25} {y} T{x+50} {y}" for x in range(0,200,50))
-            g.append(f"<path d='{d}' stroke='{c}' stroke-width='2' fill='none' opacity='.85'/>")
-        for (x,y,R) in ((165,118,40),(120,124,30)):
-            g.append(f"<circle cx='{x}' cy='{y}' r='{R}' fill='#eef3f6'/>")
-            for k in (1.0,.72,.44):
-                g.append(f"<circle cx='{x}' cy='{y}' r='{R*k:.1f}' fill='none' stroke='#5b7fa6' stroke-width='1.2'/>")
-    elif season=='aki':
-        g.append("<path d='M200 20 Q160 32 132 56 Q110 76 84 86' stroke='#6e4b33' stroke-width='2.2' fill='none' stroke-linecap='round'/>")
-        g.append(momiji(150,46,22,'#c8553d',15)); g.append(momiji(108,74,17,'#d9893a',-25)); g.append(momiji(178,80,15,'#b84a35',40)); g.append(momiji(64,96,11,'#d9a441',-10))
+        for (y,c) in ((30,'#7d9cc0'),(44,'#5b7fa6'),(58,'#94b2d0')):
+            d=f"M0 {y}"+''.join(f" Q{x+12} {y-8} {x+25} {y} T{x+50} {y}" for x in range(0,220,50))
+            g.append(f"<path d='{d}' stroke='{c}' stroke-width='2.2' fill='none' opacity='.9'/>")
     elif season=='fuyu':
-        g.append(yukiwa(150,62,30,'#f4f7fa','#9fb1c4')); g.append(yukiwa(98,84,20,'#f4f7fa','#a9b9ca')); g.append(yukiwa(183,95,15,'#f4f7fa','#b7c5d3'))
-        for (x,y) in ((60,50),(40,82),(78,30),(20,40)):
-            g.append(f"<circle cx='{x}' cy='{y}' r='2' fill='#c5d2de'/>")
+        g.append(yukiwa(176,44,24,'#fbfcfd','#9fb1c4')); g.append(yukiwa(132,64,16,'#fbfcfd','#a9b9ca')); g.append(yukiwa(206,74,12,'#fbfcfd','#b7c5d3'))
+    elif season=='shogatsu':
+        g.append(brush("M222 12 Q186 22 160 44 Q142 60 118 70",2.6,'#4a3a2a',1))
+        for (x,y,s) in ((178,30,10),(150,50,8),(204,52,7),(126,64,6)): g.append(ume(x,y,s,'#d8344a' if s>7 else '#fbfbf7','#e9c46a'))
     return f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {W} {H}' preserveAspectRatio='xMidYMax meet'>{''.join(g)}</svg>"
+# 月の初めの空いたマス用（季節の物は入れず、青海波と金箔だけ）
+def deco_lead():
+    W,H=220,120; r=random.Random(21); g=[]
+    for (x,y,R) in ((30,132,52),(92,138,42),(-10,128,40),(150,142,32)):
+        g.append(seig_mound(x,y,R,'#eef1f5','#c9a24a','#8fa1b6',1.4))
+    g.append(flecks(r,12,20,10,190,60)); g.append(brush("M10 22 Q70 10 130 24",1.6,op=.55))
+    return f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {W} {H}' preserveAspectRatio='xMidYMax meet'>{''.join(g)}</svg>"
+# 画面の下の隅（濃紺の青海波に金の輪）
+def corner(flip=False):
+    W,H=200,110; g=[]
+    for (x,y,R) in ((180,118,60),(112,124,50),(48,128,40),(220,96,40)):
+        g.append(seig_mound(x,y,R,NAVY,GOLD,'rgba(226,196,122,.45)',1.5))
+    g.append(flecks(random.Random(3),10,20,10,160,50))
+    t=" transform='translate(200,0) scale(-1,1)'" if flip else ''
+    return f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {W} {H}'><g{t}>{''.join(g)}</g></svg>"
 
-out={
- 'washi': uri(washi()),
- 'seig_gold': uri(seigaiha('rgba(201,162,74,.38)','#1f2d52')),
- 'seig_blue': uri(seigaiha('rgba(91,127,166,.30)','#dbe6ee')),
- 'asa_brown': uri(asanoha('rgba(130,92,52,.22)')),
- 'asa_silver': uri(asanoha('rgba(120,135,155,.25)')),
- 'petals': uri("<svg xmlns='http://www.w3.org/2000/svg' width='90' height='40'>"+sakura(18,14,6,'rgba(214,138,152,.35)','rgba(190,100,120,.4)',0)+sakura(66,28,4.5,'rgba(214,138,152,.3)','rgba(190,100,120,.35)',30)+"</svg>"),
- 'yuki_small': uri("<svg xmlns='http://www.w3.org/2000/svg' width='70' height='36'>"+yukiwa(16,14,7,'rgba(255,255,255,.55)','rgba(150,165,185,.45)')+yukiwa(52,26,5,'rgba(255,255,255,.5)','rgba(150,165,185,.4)')+"</svg>"),
-}
-for s in ('shogatsu','haru','natsu','aki','fuyu'): out['deco_'+s]=uri(deco(s))
-json.dump(out, open('washi-uris.json','w'), ensure_ascii=False)
-for k,v in out.items(): print(k, len(v))
-# 確認用のページ
-html="<html><body style='margin:0;background:#f6f0e2'>"
-for k,v in out.items():
-    html+=f"<div style='display:inline-block;margin:6px;border:1px solid #999;width:220px;height:120px;background:{v};background-size:{'contain' if k.startswith('deco') else 'auto'};background-repeat:{'no-repeat' if k.startswith('deco') else 'repeat'};background-position:center bottom'><span style='font:10px sans-serif;background:#fff'>{k}</span></div>"
-open('washi-preview.html','w').write(html+"</body></html>")
+if __name__=='__main__':
+    out={'washi':uri(washi()), 'corner_l':uri(corner(True)), 'corner_r':uri(corner()), 'deco_lead':uri(deco_lead()),
+         'band_shogatsu':uri(band('#1c2a4f','rgba(226,196,122,.55)',1)), 'band_haru':uri(band('#5a3448','rgba(226,196,122,.5)',2)),
+         'band_natsu':uri(band('#1f3f66','rgba(220,232,245,.45)',3)), 'band_aki':uri(band('#1c2a4f','rgba(226,196,122,.55)',4)),
+         'band_fuyu':uri(band('#2b3445','rgba(210,220,232,.45)',5))}
+    for s in ('shogatsu','haru','natsu','aki','fuyu'): out['deco_'+s]=uri(deco(s))
+    json.dump(out, open('washi-uris.json','w'))
+    for k,v in out.items(): print(k, len(v))
