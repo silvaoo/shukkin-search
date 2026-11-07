@@ -1028,22 +1028,31 @@ input[type="date"] {
   border-radius:6px; font-size:calc(12.5px * var(--fs, 1)); font-weight:bold; white-space:nowrap; }
 .today-badge.kyu{ background:#4aa3ff; color:#04182e; }
 .today-badge.sub{ background:var(--orange); color:#231402; }
-.dual-chg{ font-size:calc(14px * var(--fs, 1)); font-weight:800; color:var(--orange);
-  margin-bottom:8px; }
-
-/* 代走・振替の日に、実際に出るものを出す（下の「本来のダイヤ」の枠は 2026-11-07 に削除） */
-.dual{ margin-top:10px; padding:11px 12px; border-radius:11px; }
-.dual.real{ background:rgba(255,159,74,.12); border:2px solid var(--orange); }
-.dual-ttl{ font-size:calc(12px * var(--fs, 1)); font-weight:bold; margin-bottom:6px; }
-.dual.real .dual-ttl{ color:var(--orange); }
-.dual-row{ display:flex; flex-wrap:wrap; align-items:baseline; gap:6px; margin-bottom:3px; }
-.dual-dial{ font-size:calc(19px * var(--fs, 1)); font-weight:900; color:var(--text); }
-.dual-part{ font-size:calc(12px * var(--fs, 1)); color:var(--dim); }
-.dual-time{ font-size:calc(17px * var(--fs, 1)); font-weight:bold; color:var(--text);
-  font-variant-numeric:tabular-nums; }
-.dual-w{ font-size:calc(12px * var(--fs, 1)); color:var(--dim); }
-.dual-first{ margin-top:6px; font-size:calc(14px * var(--fs, 1)); color:var(--text); }
-.dual-first b{ font-size:calc(22px * var(--fs, 1)); color:var(--orange); }
+/* 代走・公出の日の勤務時間の枠（otActualBoxHtml・2026-11-07）。
+   以前のオレンジの枠（.dual / .real-duty の言葉と小さめの時刻）の代わり。
+   枠のふちで 代走＝橙・公出＝青。付いたダイヤの番号と時刻も同じ色。時刻の大きさはふつうの日と同じ */
+.tbox.k-sub { border: 2px solid var(--tm-sub); }
+.tbox.k-kyu { border: 2px solid var(--tm-kyu); }
+.tb-tag { flex: 0 0 auto; min-width: 3.7em; display: flex; flex-direction: column; line-height: 1.15;
+  font-size: calc(12px * var(--fs, 1)); font-weight: 800; color: var(--dim); }
+.tb-tag b { color: inherit; font-weight: inherit; font-size: inherit; }   /* 今日の枠の b（橙）を受けないように */
+.tb-tag i { font-style: normal; font-size: calc(10.5px * var(--fs, 1)); font-weight: 700; }
+.tb-tag.sub, .tb-t.sub { color: var(--tm-sub); }
+.tb-tag.kyu, .tb-t.kyu { color: var(--tm-kyu); }
+/* 番号の分だけ左が広いので、狭い時に縮める目安も広めにとる */
+.tbox.k-sub .tb-t, .tbox.k-kyu .tb-t { font-size: calc(24px * var(--fs, 1));
+  font-size: min(calc(24px * var(--fs, 1)), calc((100cqw - 70px * var(--fs, 1)) / 6.4)); }
+.tbox.k-sub .tb-t.tb-und, .tbox.k-kyu .tb-t.tb-und { font-size: calc(15px * var(--fs, 1)); color: var(--dim); }
+.tb-first { margin-top: 6px; padding-top: 5px; border-top: 1px dashed rgba(255,255,255,.12);
+  font-size: calc(13px * var(--fs, 1)); color: var(--text); font-weight: 700; }
+body.light .tb-first { border-top-color: rgba(0,0,0,.12); }
+.tb-first b { font-size: calc(19px * var(--fs, 1)); color: var(--orange); margin-left: 4px; }
+/* 公出・代走の印鑑は、勤務時間に重ならないよう日付と番号のあたりへ（検索結果のカード） */
+.day-card > .stamp.stamp-kyu, .day-card > .stamp.stamp-sub { top: calc(66px * var(--fs, 1)); }
+/* トップの今日の枠では、日付の行の右の空いた所に小さく押す（勤務時間に重ならないように） */
+.off-wrap > .stamp.stamp-kyu, .off-wrap > .stamp.stamp-sub { top: calc(30px * var(--fs, 1)); left: 76%;
+  font-size: calc(24px * var(--fs, 1)); border-width: 4px; padding: 2px 12px; letter-spacing: 6px; text-indent: 6px; }
+.off-wrap > .stamp.stamp-shitei { top: calc(36px * var(--fs, 1)); font-size: calc(18px * var(--fs, 1)); padding: 3px 8px; letter-spacing: 4px; text-indent: 4px; }
 
 /* マイページの入口。よく使うので大きめにしてある。 */
 .mypage-btn{
@@ -2721,6 +2730,66 @@ function timeBoxHtml(slot, extraCls){
   return '<div class="'+cls+'"><div class="tb-head"><span>勤務時間</span>'+(hasW?'<span>労働時間</span>':'')+'</div>'+rows+'</div>';
 }
 
+/* 代走・公出の日に、その日に実際に乗るものを1つの枠に並べる（2026-11-07 乗務員さんより）。
+   「この日に実際に出るのは」「上の◯番もまるごと乗ります」などの言葉はやめ、
+   時刻をふつうの日と同じ大きさで出す。並びは出勤の早い順。
+   本来のダイヤは乗る分（まるごと／前半／後半）だけ白で、付いたダイヤは 代走＝橙・公出＝青 の字。
+   枠のふちも 代走＝橙・公出＝青。時刻の左に「14番A 前半」「45番」のように小さく番号を書く。
+   r: 時間外の記録、d: その日（Date）、ownDial/ownSlot: 本来のダイヤの番号とその日の勤務（無ければ null）。
+   extraCls はトップの今日の枠で 'tb-today' */
+function otActualBoxHtml(r, d, ownDial, ownSlot, extraCls){
+  const kind = otIsKyu(r) ? 'kyu' : 'sub';
+  const rows=[];
+  function push(slot, part, tag, k){
+    if(!slot || !slot.o || String(slot.o)==='—'){ rows.push({tag:tag, part:'', t:'', w:'', k:k, start:''}); return; }
+    const o=String(slot.o), w=String(slot.w||'');
+    const pr=o.split('〜');
+    if(o.includes('/') && pr.length===2){
+      const st=pr[0].split('/').map(x=>x.trim()), en=pr[1].split('/').map(x=>x.trim()), ws=w.split('/').map(x=>x.trim());
+      if(st.length===2 && en.length===2){
+        if(part!=='second') rows.push({tag:tag, part:'前半', t:st[0]+'〜'+st[1], w:ws.length===2?ws[0]:'', k:k, start:st[0]});
+        if(part!=='first')  rows.push({tag:tag, part:'後半', t:en[0]+'〜'+en[1], w:ws.length===2?ws[1]:'', k:k, start:en[0]});
+        return;
+      }
+    }
+    rows.push({tag:tag, part:(part==='first'?'前半':part==='second'?'後半':''), t:o, w:w, k:k,
+               start:(o.match(/\d{1,2}:\d{2}/)||[''])[0]});
+  }
+  const b=otBaseOf(r);
+  if(ownSlot && b!=='none') push(ownSlot, b, ownDial+'番', 'own');
+  (r.adds||[]).forEach(function(x){
+    push(otSlotOf(x.code||'{{ID}}', x.dial, d, x.v), x.part, otDN(x), kind);
+  });
+  function toMin(t){ const m=String(t||'').match(/(\d{1,2}):(\d{2})/); return m ? parseInt(m[1],10)*60+parseInt(m[2],10) : 99999; }
+  rows.sort(function(a,c){ return toMin(a.start)-toMin(c.start); });
+  let hasW=false, body='';
+  rows.forEach(function(x){
+    const kc = x.k!=='own' ? ' '+x.k : '';
+    const pill = (x.w && x.w!=='—' && x.w!=='-') ? '<span class="tb-w">'+x.w+'h</span>' : '';
+    if(pill) hasW=true;
+    body+='<div class="tb-row"><span class="tb-main">'
+      +'<span class="tb-tag'+kc+'"><b>'+x.tag+'</b>'+(x.part?'<i>'+x.part+'</i>':'')+'</span>'
+      +(x.t ? '<span class="tb-t'+kc+'">'+x.t+'</span>' : '<span class="tb-t tb-und">時刻未定</span>')
+      +'</span>'+pill+'</div>';
+  });
+  const f=rows.find(function(x){ return x.t; });
+  if(f && f.start) body+='<div class="tb-first">⏰ 出勤 <b>'+f.start+'</b></div>';
+  return '<div class="tbox k-'+kind+(extraCls?' '+extraCls:'')+'"><div class="tb-head"><span>勤務時間</span>'
+    +(hasW?'<span>労働時間</span>':'')+'</div>'+body+'</div>';
+}
+/* 検索結果のカード用。代走・公出の記録があり、カードの番号が本来のダイヤ（覚えた番号）と同じ日だけ。
+   別の番号で検索したカードでは ''（これまでどおり、下にオレンジの枠を出す） */
+function otCardActualHtml(row){
+  if(IS_MULTI) return '';
+  const r=otLoad()[row.iso];
+  if(!r || otIsLeave(r) || !r.adds || !r.adds.length) return '';
+  const d=new Date(row.iso+'T00:00:00');
+  const bd=otBaseDial(d);
+  if(bd===null || Number(bd)!==Number(row.dn)) return '';
+  const own=(row.slot && String(row.slot.o)!=='—') ? row.slot : null;
+  return otActualBoxHtml(r, d, row.dn, own, '');
+}
+
 /* 労働時間を画面表示用に整形する（2分割は前半/後半、3分割以上は番号表記） */
 function formatDisplayLabor(w){
   if(!w||w==='—')return '—';
@@ -3493,32 +3562,13 @@ function otForDate(date){
 }
 /* 登録した内容を、今日の表示に足して出す */
 function otTodayHtml(v,m,d,dtLabel,r){
-  /* 代走や振替を登録した日は、「この日に出るのは」（オレンジの枠）に、実際に乗るものを全部出す。
-     本来のダイヤも、乗る分（まるごと／前半／後半）だけそこに並ぶ。
-     下の「📋 本来のダイヤ」の枠は、上の入力欄の番号とオレンジの枠の中身で分かるので
-     2026-11-07 に削除した（乗務員さんより）。
-     その代わり、自分の番号に乗らない日は、オレンジの枠に「◯番には乗りません」と必ず出す
-     （本来の時間に出勤してしまわないように）。 */
+  /* 代走や振替・公出を登録した日のトップの今日の枠（2026-11-07 作り直し・乗務員さんより）。
+     検索結果のカードと同じ形（otActualBoxHtml）: 実際に乗るものを、ふつうの日と同じ大きさで1つの枠に並べる。
+     本来のダイヤは乗る分だけ（乗らない日は出さない）。付いたダイヤは 代走＝橙・公出＝青。
+     「この日に出るのは」「✅ ◯番が足されました」「◯番には乗りません」などの言葉はやめた。
+     しばらく使って分かりにくければ戻す（乗務員さんと相談済み） */
   const dt=dayType(new Date());
-  const partLb={all:'',first:'（前半）',second:'（後半）'};
-
   const rec0=DB[v], slot0=(rec0&&rec0[dt]&&String(rec0[dt].o)!=='—')?rec0[dt]:null;
-
-  /* 実際に出るもの（本来のダイヤに乗る分＋付いた分） */
-  const real=[];
-  if(slot0 && otBaseOf(r)!=='none'){
-    real.push({dial:v, part:otBaseOf(r), slot:slot0, mine:true});
-  }
-  (r.adds||[]).forEach(function(x){
-    const sl=otSlotOf(x.code||'{{ID}}', x.dial, new Date(), x.v);
-    real.push({dial:x.dial, part:x.part, slot:sl, mine:false,
-               code:x.code||'{{ID}}', v:x.v||''});   // 臨時は x.code が rinji
-  });
-
-  /* 出勤の早い順に並べ替える。朝いちばん早いものを先頭に。後半だけ乗るなら後半の出勤で見る（otPartStart） */
-  real.sort(function(a,b){ return otPartStartMin(a)-otPartStartMin(b); });
-  const f0=real[0];
-  const firstT=(f0&&f0.slot) ? otPartStart(f0.slot.o, f0.part) : '';
 
   /* その日が何なのかで札を変える。公休に出た日を「代走・振替」と呼ぶと分かりにくい。 */
   const und0 = !slot0 && otBaseUndecided(new Date());   // 奈良学園など。公休ではない
@@ -3528,39 +3578,8 @@ function otTodayHtml(v,m,d,dtLabel,r){
     : '<span class="today-badge sub">⏱ 代走・振替あり</span>';
   let h='<div class="off-wrap">'
       + stampHtml(toISO(new Date()), !slot0 && !und0)
-      + '<div class="today-head"><b>'+m+'/'+d+'（'+dtLabel+'）</b>'+badge+'</div>';
-
-  /* --- 実際に出るほう（大きく・目立たせる） --- */
-  /* 何が振り替わったのかを、ひとことで言う */
-  let whatCh='';
-  if(!isKyuDay && r.adds && r.adds.length===1){
-    const a0=r.adds[0];
-    if(a0.part==='second' && otBaseOf(r)==='first') whatCh='後半だけ '+otDN(a0)+'に替わりました';
-    else if(a0.part==='first' && otBaseOf(r)==='second') whatCh='前半だけ '+otDN(a0)+'に替わりました';
-    else if(a0.part==='all' && otBaseOf(r)==='none')      whatCh='まるごと '+otDN(a0)+'に替わりました';
-    else if(otBaseOf(r)==='all')                          whatCh=otDN(a0)+'が足されました';
-  }
-  /* 自分の番号に勤務があるのに乗らない日（まるごと替わった・指定公休）。
-     「まるごと ◯番に替わりました」と出ていれば分かるので、それ以外のときに出す */
-  const shitei = isKyuDay && !!slot0;
-  let notRide='';
-  if(slot0 && otBaseOf(r)==='none' && !whatCh){
-    notRide = shitei ? '指定公休のため '+v+'番には乗りません' : v+'番には乗りません';
-  }
-  h+='<div class="dual real"><div class="dual-ttl">🚌 '
-    +(isKyuDay?'公休出勤で出るのは':'この日に出るのは')+'</div>'
-    +(whatCh?'<div class="dual-chg">✅ '+whatCh+'</div>':'')
-    +(notRide?'<div class="dual-chg">⚠ '+notRide+'</div>':'');
-  real.forEach(function(x){
-    const t=x.slot?formatDisplayTimePart(x.slot.o, x.part, x.slot.w):'（時刻が確定していません）';
-    const one=!x.slot||!String(x.slot.o).includes('/')||x.part==='all';
-    h+='<div class="dual-row"><span class="dual-dial">'+otDN(x)+'</span>'
-      +'<span class="dual-part">'+(partLb[x.part]||'')+'</span>'
-      +'<span class="dual-time">'+t+'</span>'
-      +(one&&x.slot?'<span class="dual-w">　労働 '+(x.slot.w||'-')+'</span>':'')+'</div>';
-  });
-  if(firstT) h+='<div class="dual-first">⏰ 出勤は <b>'+firstT+'</b> です</div>';
-  h+='</div>';
+      + '<div class="today-head"><b>'+m+'/'+d+'（'+dtLabel+'）</b>'+badge+'</div>'
+      + otActualBoxHtml(r, new Date(), v, slot0, 'tb-today');
 
   h+='<div class="today-note">⏱ 時間外 '+otFmt(r.min)
     +(r.note?' ／ '+escapeHtml(r.note):'')+'</div>';
@@ -4115,6 +4134,11 @@ function otPartStartMin(x){
 function realDutyHtml(iso, dn){
   const r=otLoad()[iso];
   if(!r || otIsLeave(r) || !r.adds || !r.adds.length) return '';
+  /* 勤務時間の枠に実際に乗るものを並べた日（otCardActualHtml）は、ここは出さない（2026-11-07） */
+  if(!IS_MULTI && dn!==undefined){
+    const bd0x=otBaseDial(new Date(iso+'T00:00:00'));
+    if(bd0x!==null && Number(bd0x)===Number(dn)) return '';
+  }
   const d=new Date(iso+'T00:00:00');
   const dt=dayType(d);
   const partLb={all:'',first:'（前半）',second:'（後半）'};
@@ -6942,40 +6966,7 @@ function render(rows){
   /* 結果の上の「◯日間 ／ 勤務◯日 ／ 公休◯日」と、労働9時間以上の日の「長時間」の札（カードの縁もピンク）も
      2026-11-07 に削除（乗務員さんより。見ないため） */
   let html='';
-
-  rows.forEach((r,idx)=>{
-    const allKyu=!r.rec;
-    const dayKyu=r.rec&&r.slot===null;
-    const isOff=allKyu||dayKyu;
-
-    let dateClass='day-date',badgeClass='day-badge badge-week',badgeText='平日';
-    if(r.dt==='土'){dateClass+=' saturday';badgeClass='day-badge badge-sat';badgeText=r.obon?'お盆休みで土曜ダイヤ':'土曜';}
-    if(r.dt==='日祝'){dateClass+=' holiday';badgeClass='day-badge badge-hday';badgeText=r.hol?'祝日':'日曜';}
-
-
-    let bodyHtml;
-    if(isOff){
-      bodyHtml=timeBoxHtml(null);
-    }else{
-      const slot=r.slot;
-      const teiireLabel=TEIIRE[r.dn]?`<div class="teiire-label">🔧 ${TEIIRE[r.dn]}</div>`:'';
-      const noteHtml=slot.n?`<div class="day-note">📌 ${slot.n}</div>`:'';
-      bodyHtml=`${teiireLabel}${timeBoxHtml(slot)}${noteHtml}`;
-    }
-
-    html+=`<div class="day-card">
-      ${stampHtml(r.iso, !r.slot)}
-      <div class="day-header">
-        <div class="${dateClass}">${r.m}/${r.d}（${r.dw}）${r.hol?'🎌':''}</div>
-        <div class="${badgeClass}">${badgeText}</div>
-      </div>
-      ${NAV_ON
-        ? `<div class="day-dial has-nav">${r.dn}<span> 番</span><button class="dial-nav-btn" data-iso="${r.iso}" data-dial="${r.dn}" data-dt="${r.dt}" data-off="${isOff?1:0}"${navPvAvail(r.iso, r.dn, r.dt, isOff)?'':' style="display:none"'} onclick="openNavPreview('${r.iso}',${r.dn})">🧭 ダイヤ内容</button></div>`
-        : `<div class="day-dial">${r.dn}<span> 番</span></div>`}
-      ${bodyHtml}
-      ${memoBlockHtml(r.iso,r.dn)}
-    </div>`;
-  });
+  rows.forEach(r=>{ html+=dayCardHtml(r); });
 
   /* 「📅 カレンダーを作る」は 2026-11-07 に削除。
      カレンダーはクイック検索の「カレンダー」から1回で開ける */
@@ -6988,6 +6979,54 @@ function render(rows){
 
   if(kyuCnt>0)launchMultipleFireworks(5);
   setTimeout(()=>{el.scrollIntoView({behavior:'smooth',block:'start'});},100);
+}
+
+/* 検索結果の1日分のカード（2026-11-07 render から分けた）。
+   時間外・代走を保存・削除したら refreshDayCards() でカードごと作り直す
+   （代走・公出の日は、勤務時間の枠の中身が変わるため） */
+function dayCardHtml(r){
+    const allKyu=!r.rec;
+    const dayKyu=r.rec&&r.slot===null;
+    const isOff=allKyu||dayKyu;
+
+    let dateClass='day-date',badgeClass='day-badge badge-week',badgeText='平日';
+    if(r.dt==='土'){dateClass+=' saturday';badgeClass='day-badge badge-sat';badgeText=r.obon?'お盆休みで土曜ダイヤ':'土曜';}
+    if(r.dt==='日祝'){dateClass+=' holiday';badgeClass='day-badge badge-hday';badgeText=r.hol?'祝日':'日曜';}
+
+
+    let bodyHtml;
+    const act=otCardActualHtml(r);   // 代走・公出の日は、実際に乗るものを並べた枠（無ければ ''）
+    if(isOff){
+      bodyHtml=act||timeBoxHtml(null);
+    }else{
+      const slot=r.slot;
+      const teiireLabel=TEIIRE[r.dn]?`<div class="teiire-label">🔧 ${TEIIRE[r.dn]}</div>`:'';
+      const noteHtml=slot.n?`<div class="day-note">📌 ${slot.n}</div>`:'';
+      bodyHtml=`${teiireLabel}${act||timeBoxHtml(slot)}${noteHtml}`;
+    }
+
+    return `<div class="day-card" data-iso="${r.iso}">
+      ${stampHtml(r.iso, !r.slot)}
+      <div class="day-header">
+        <div class="${dateClass}">${r.m}/${r.d}（${r.dw}）${r.hol?'🎌':''}</div>
+        <div class="${badgeClass}">${badgeText}</div>
+      </div>
+      ${NAV_ON
+        ? `<div class="day-dial has-nav">${r.dn}<span> 番</span><button class="dial-nav-btn" data-iso="${r.iso}" data-dial="${r.dn}" data-dt="${r.dt}" data-off="${isOff?1:0}"${navPvAvail(r.iso, r.dn, r.dt, isOff)?'':' style="display:none"'} onclick="openNavPreview('${r.iso}',${r.dn})">🧭 ダイヤ内容</button></div>`
+        : `<div class="day-dial">${r.dn}<span> 番</span></div>`}
+      ${bodyHtml}
+      ${memoBlockHtml(r.iso,r.dn)}
+    </div>`;
+}
+/* 時間外・代走を保存・削除したあと、検索結果のカードを作り直す（印鑑・勤務時間の枠も合わせる） */
+function refreshDayCards(){
+  const rows=window._lastRows;
+  if(!rows || !rows.length) return;
+  const byIso={}; rows.forEach(r=>{ byIso[r.iso]=r; });
+  document.querySelectorAll('#resultsArea .day-card[data-iso]').forEach(c=>{
+    const r=byIso[c.getAttribute('data-iso')];
+    if(r) c.outerHTML=dayCardHtml(r);
+  });
 }
 
 /* ==== 検索時の音・バイブのフィードバック ====
@@ -8265,6 +8304,8 @@ function refreshOtButtons(){
   });
   /* 記録を保存・削除したら「ダイヤ内容」ボタンの出る・出ないも合わせ直す（公休の日の公出など） */
   if(typeof navRefreshBtn==='function') navRefreshBtn();
+  /* 検索結果のカードも作り直す（代走・公出の日の勤務時間の枠と印鑑） */
+  refreshDayCards();
 }
 
 /* カレンダーの日付詳細から、そのままメモを書く。
