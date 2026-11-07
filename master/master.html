@@ -2243,7 +2243,7 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
 
       <div class="guide-step">
         <h3>⑦ 時間外を記録する</h3>
-        <p>マイページの「ふりかえり」、または<b>検索結果の各日にある「⏱ 時間外」</b>から入れられます。</p>
+        <p><b>検索結果や私のカレンダーの各日にある「⏱ 時間外」</b>から入れられます。マイページの「ふりかえり」の「締め日まで一覧表示」で日付をタップしても入れられます。</p>
         <p>入れるのは3つだけです。</p>
         <ul>
           <li><b>この日は？</b>　勤務の日／公休（指定公休も）／年休</li>
@@ -2261,16 +2261,16 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
 
       <div class="guide-step">
         <h3>⑧ ふりかえり</h3>
-        <p>マイページの「ふりかえり」で、<b>16日〜翌月15日</b>の勤務をまとめて見られます。時間外の登録もここでします。</p>
+        <p>マイページの「ふりかえり」で、<b>16日〜翌月15日</b>の勤務をまとめて見られます。</p>
         <ul>
           <li>労働時間の合計と、1日あたりの平均</li>
           <li><b>前の期間との差</b>（時間外も）</li>
           <li>出勤・休み・公出・年休の日数</li>
           <li>早番と遅番のバランス、中間ダイヤ、24時をまたいだ日</li>
         </ul>
-        <p>「日ごとに見る」を開くと1日ずつ並びます。<b>行をタップすれば、その日の時間外を入れ直せます。</b></p>
+        <p>「締め日まで一覧表示」を開くと1日ずつ並びます。<b>日付をタップすれば、その日の時間外を入れ直せます。</b></p>
         <img src="images/guide-mypage.jpg" alt="ふりかえり">
-        <div class="guide-note">◀ ▶ で期間を移せます。<b>次の締め期間まで進めるので、10日ほど先に受けた代走もここで登録できます。</b>ダイヤ改正より前は正しく出せないため、表示されません。<br><b>真ん中の日付を押すと「全期間のまとめ」</b>に切り替わり、これまで登録した時間外を期間ごとに一覧できます。</div>
+        <div class="guide-note">◀ ▶ で期間を移せます。<b>次の締め期間まで進めるので、10日ほど先に受けた代走も一覧から登録できます。</b>ダイヤ改正より前は正しく出せないため、表示されません。<br><b>真ん中の日付を押すと「全期間のまとめ」</b>に切り替わり、これまで登録した時間外を期間ごとに一覧できます。</div>
       </div>
 
       <div class="guide-step">
@@ -2849,7 +2849,7 @@ function getShiftType(o){
 
 /* ==== 今日のダイヤ入力欄：ライブプレビュー ==== */
 /* 今日の枠の中の「⏱ 時間外・代走を入れる」「✏️ 時間外・代走を直す」「🗑 消す」は
-   2026-11-07 に削除（乗務員さんより）。時間外はマイページの「⏱ 時間外を追加」と、
+   2026-11-07 に削除（乗務員さんより）。時間外はふりかえりの「締め日まで一覧表示」の日付と、
    検索結果・カレンダーの各日の「⏱ 時間外」から入れる。今日の枠は見るだけ */
 function updateTodayPreview(){
   _updateTodayPreview();
@@ -6457,8 +6457,7 @@ function renderRevPane(){
 
   // --- 全期間のまとめ ---
   if(revAll){
-    pane.innerHTML = revAllHtml()
-      + '<button class="ot-add-btn" onclick="openOt()">⏱ 時間外を追加</button>';
+    pane.innerHTML = revAllHtml();
     return;
   }
 
@@ -6467,8 +6466,10 @@ function renderRevPane(){
     +'<div class="rv-per-t" onclick="revToggleAll()">'+label
       +'<div class="rv-per-s">締め期間　▸ 全期間を見る</div></div>'
     +'<button onclick="revMove(1)"'+(revOffset>=REV_MAX_AHEAD?' disabled':'')+'>▶</button>'
-    +'</div>'
-    +'<button class="ot-add-btn" onclick="openOt()">⏱ 時間外を追加</button>';
+    +'</div>';
+  /* 「⏱ 時間外を追加」のボタンは 2026-11-07 に削除（乗務員さんより）。
+     ふだんはクイック検索（10日後）やカレンダーの日から入れるので重なっていた。
+     この画面からは「締め日まで一覧表示」の行（日付）をタップして入れられる */
 
   // 覚えた番号が無いと、その期間の勤務を割り出せない
   if(otBaseDial(from)===null){
@@ -6536,7 +6537,7 @@ function renderRevPane(){
     +'</div><div class="rv-bar-k">中間ダイヤ '+now.split+'回 ／ 24時をまたいだ日 '+now.over24+'日</div></div>';
 
   h+='<button class="rv-more" onclick="revToggleDays()">'
-    +(revOpenDays?'▲ 日ごとの表示を閉じる':'▼ 日ごとに見る（'+now.rows.length+'日）')+'</button>';
+    +(revOpenDays?'▲ 一覧を閉じる':'▼ 締め日まで一覧表示（'+now.rows.length+'日）')+'</button>';   // 名前は 2026-11-07 乗務員さんより
 
   if(revOpenDays){
     h+='<table class="rv-tbl">';
