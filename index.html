@@ -820,14 +820,12 @@ input[type="date"] {
 }
 
 /* ==== 結果エリア ==== */
-.res-summary { font-size: calc(11px * var(--fs, 1)); color: var(--dim); margin-bottom: 10px; letter-spacing: 0.5px; }
 .empty { text-align: center; padding: 40px 20px; color: var(--dim); font-size: calc(13px * var(--fs, 1)); }
 
 .day-card {
   background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
   padding: 14px; margin-bottom: 12px; position: relative; overflow: hidden;
 }
-.day-card.long { border-color: rgba(255,0,128,0.4); }
 
 /* カレンダーのマスに出す小さな印 */
 .rc-stamp{ position:absolute; left:50%; top:52%;
@@ -1173,8 +1171,6 @@ body.light .stamp { opacity: 0.28; }
   background: rgba(255,230,0,0.1); border: 1px solid rgba(255,230,0,0.3);
   border-radius: 8px; font-size: calc(11.5px * var(--fs, 1)); color: var(--yellow); font-weight: 700;
 }
-.shift-badge { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: calc(10.5px * var(--fs, 1)); font-weight: 700; margin-left: 6px; }
-.sb-long { background: rgba(255,0,128,0.12); color: var(--pink); border: 1px solid var(--pink); }
 
 /* ==== アクションボタン ==== */
 /* ==== メモ機能 ==== */
@@ -2666,15 +2662,6 @@ function calcDial(target,todayDial){
   const today=new Date();today.setHours(0,0,0,0);
   const diff=Math.round((target-today)/86400000);
   return ((todayDial-1+diff)%CUR_MAX+CUR_MAX)%CUR_MAX+1;
-}
-
-/* 分割勤務の労働時間文字列（例:'3:01/6:25'）を合計時間（数値・h）に変換する */
-function parseTotalHours(w){
-  if(!w||w==='—')return 0;
-  return w.split('/').reduce((sum,part)=>{
-    const m=part.match(/(\d+):(\d+)/);
-    return m?sum+parseInt(m[1])+parseInt(m[2])/60:sum;
-  },0);
 }
 
 /* 出退勤時刻を画面表示用に見やすく整形する（2分割は前半/後半、3分割以上は番号表記） */
@@ -4528,7 +4515,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v284';
+const APP_VERSION   = 'v285';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4750,7 +4737,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.04';
+const APP_LABEL = 'バージョン 4.05';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -6919,12 +6906,13 @@ function switchGuide(which){
 function render(rows){
   const el=document.getElementById('resultsArea');
   if(!rows.length){el.innerHTML='<div class="empty">📋 該当する日がありません</div>';return;}
-  const wkCnt=rows.filter(r=>r.rec&&r.slot&&r.slot.o!=='—').length;
-  const kyuCnt=rows.filter(r=>!r.rec||(r.rec&&r.slot===null)).length;
+  const kyuCnt=rows.filter(r=>!r.rec||(r.rec&&r.slot===null)).length;   // 公休があれば花火を上げる
 
   /* 検索結果の一番下の「📊 合計労働時間」は 2026-11-07 に削除（乗務員さんより）。
      途中の期間の合計は誰も見ない。締め期間の合計はマイページに出ている */
-  let html=`<div class="res-summary">${rows.length}日間 ／ 勤務${wkCnt}日 ／ 公休${kyuCnt}日</div>`;
+  /* 結果の上の「◯日間 ／ 勤務◯日 ／ 公休◯日」と、労働9時間以上の日の「長時間」の札（カードの縁もピンク）も
+     2026-11-07 に削除（乗務員さんより。見ないため） */
+  let html='';
 
   rows.forEach((r,idx)=>{
     const allKyu=!r.rec;
@@ -6935,9 +6923,6 @@ function render(rows){
     if(r.dt==='土'){dateClass+=' saturday';badgeClass='day-badge badge-sat';badgeText=r.obon?'お盆休みで土曜ダイヤ':'土曜';}
     if(r.dt==='日祝'){dateClass+=' holiday';badgeClass='day-badge badge-hday';badgeText=r.hol?'祝日':'日曜';}
 
-    const totalH=(!isOff&&r.slot)?parseTotalHours(r.slot.w):0;
-    const longClass=totalH>=9?' long':'';
-    const longBadge=totalH>=9?'<span class="shift-badge sb-long">長時間</span>':'';
 
     let bodyHtml;
     if(isOff){
@@ -6957,10 +6942,10 @@ function render(rows){
       </div>${noteHtml}`;
     }
 
-    html+=`<div class="day-card${longClass}">
+    html+=`<div class="day-card">
       ${stampHtml(r.iso, !r.slot)}
       <div class="day-header">
-        <div class="${dateClass}">${r.m}/${r.d}（${r.dw}）${r.hol?'🎌':''}${longBadge}</div>
+        <div class="${dateClass}">${r.m}/${r.d}（${r.dw}）${r.hol?'🎌':''}</div>
         <div class="${badgeClass}">${badgeText}</div>
       </div>
       ${NAV_ON
