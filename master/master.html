@@ -2268,7 +2268,7 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
           <li>出勤・休み・公出・年休の日数</li>
           <li>早番と遅番のバランス、中間ダイヤ、24時をまたいだ日</li>
         </ul>
-        <p>「締め日まで一覧表示」を開くと1日ずつ並びます。<b>日付をタップすれば、その日の時間外を入れ直せます。</b></p>
+        <p>上の「締め日まで一覧表示」を開くと1日ずつ並びます（一覧の下の「▲ 一覧を閉じる」でも閉じられます）。<b>日付をタップすれば、その日の時間外を入れ直せます。</b></p>
         <img src="images/guide-mypage.jpg" alt="ふりかえり">
         <div class="guide-note">◀ ▶ で期間を移せます。<b>次の締め期間まで進めるので、10日ほど先に受けた代走も一覧から登録できます。</b>ダイヤ改正より前は正しく出せないため、表示されません。<br><b>真ん中の日付を押すと「全期間のまとめ」</b>に切り替わり、これまで登録した時間外を期間ごとに一覧できます。</div>
       </div>
@@ -6340,7 +6340,11 @@ function revMove(n){ revOffset+=n; revOpenDays=false; renderRevPane(); }
 /* 期間の見出しを押すと、全期間のまとめに切り替わる。
    タブを増やさずに済ませるため、ここに寄せている。 */
 function revToggleAll(){ revAll=!revAll; revOpenDays=false; renderRevPane(); }
-function revToggleDays(){ revOpenDays=!revOpenDays; renderRevPane(); }
+/* 一覧の下の「▲ 一覧を閉じる」から閉じたときは、上のボタンが見える所まで戻す */
+function revToggleDays(toTop){
+  revOpenDays=!revOpenDays; renderRevPane();
+  if(toTop){ const b=document.getElementById('rvListBtn'); if(b) b.scrollIntoView({block:'start'}); }
+}
 
 /* ずらした数だけ前後した期間の始まり（16日）を返す */
 function revStart(off){
@@ -6469,7 +6473,9 @@ function renderRevPane(){
     +'</div>';
   /* 「⏱ 時間外を追加」のボタンは 2026-11-07 に削除（乗務員さんより）。
      ふだんはクイック検索（10日後）やカレンダーの日から入れるので重なっていた。
-     この画面からは「締め日まで一覧表示」の行（日付）をタップして入れられる */
+     その場所に「締め日まで一覧表示」のボタンを置いた（同日・乗務員さんより）。
+     一覧はボタンのすぐ下に開き、一覧の下にも「▲ 一覧を閉じる」を付ける（長い一覧の下から閉じられるように）。
+     行（日付）をタップすると、その日の時間外を入れられる */
 
   // 覚えた番号が無いと、その期間の勤務を割り出せない
   if(otBaseDial(from)===null){
@@ -6485,6 +6491,7 @@ function renderRevPane(){
   }
 
   const now=revCollect(from,to);
+  h+=revListHtml(now);   // 締め日まで一覧表示（ボタンと、開いていれば一覧）
   const pf=revStart(revOffset-1);
   const pt=new Date(pf.getFullYear(), pf.getMonth()+1, 15);
   const canPrev = !(REVISION_ISO && toISO(pt) < REVISION_ISO);
@@ -6536,8 +6543,15 @@ function renderRevPane(){
     +(now.off  ?'<span style="width:'+pc(now.off  )+'%;background:#4a4f66;color:#c9cee8">休 '+now.off+'</span>':'')
     +'</div><div class="rv-bar-k">中間ダイヤ '+now.split+'回 ／ 24時をまたいだ日 '+now.over24+'日</div></div>';
 
-  h+='<button class="rv-more" onclick="revToggleDays()">'
-    +(revOpenDays?'▲ 一覧を閉じる':'▼ 締め日まで一覧表示（'+now.rows.length+'日）')+'</button>';   // 名前は 2026-11-07 乗務員さんより
+  pane.innerHTML=h;
+}
+
+/* ふりかえりの「締め日まで一覧表示」のボタンと一覧（2026-11-07 renderRevPane から分けた） */
+function revListHtml(now){
+  let h='';
+  /* 名前は 2026-11-07 乗務員さんより。30日の期間もあるので日数ではなく「1ヶ月分」 */
+  h+='<button class="ot-add-btn rv-list-btn" id="rvListBtn" onclick="revToggleDays()">'
+    +(revOpenDays?'▲ 一覧を閉じる':'▼ 締め日まで一覧表示（1ヶ月分）')+'</button>';
 
   if(revOpenDays){
     h+='<table class="rv-tbl">';
@@ -6588,9 +6602,10 @@ function renderRevPane(){
     h+='</table><div class="ml-empty" style="padding:10px 4px">'
       +'行をタップすると、その日の時間外を入れられます。'
       +(revOffset>0?'<br>先の期間なので、これから受ける代走もここで登録できます。':'')
-      +'</div>';
+      +'</div>'
+      +'<button class="rv-more" onclick="revToggleDays(true)">▲ 一覧を閉じる</button>';
   }
-  pane.innerHTML=h;
+  return h;
 }
 
 /* 時間外はふりかえりに統合した。呼び出し元を1つずつ直す代わりに、
