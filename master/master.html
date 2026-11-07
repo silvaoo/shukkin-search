@@ -1007,6 +1007,8 @@ input[type="date"] {
 .rd-first b{ font-size:calc(26px * var(--fs, 1)); font-weight:900; color:var(--orange);
   font-variant-numeric:tabular-nums; }
 .rd-note{ margin-top:6px; font-size:calc(11.5px * var(--fs, 1)); color:var(--dim); }
+/* 本来のダイヤを前半だけ・後半だけ・乗らない日は、下の一言を目立たせる（2026-11-07） */
+.rd-note b{ font-size:calc(13px * var(--fs, 1)); color:var(--text); }
 .rd-chg{ font-size:calc(13.5px * var(--fs, 1)); font-weight:800; color:var(--orange); margin-bottom:8px; }
 /* 中間ダイヤで、走る側と走らない側を分ける */
 .sp-row.sp-live{ font-weight:800; }
@@ -3513,15 +3515,10 @@ function otTodayHtml(v,m,d,dtLabel,r){
                code:x.code||'{{ID}}', v:x.v||''});   // 臨時は x.code が rinji
   });
 
-  /* 出勤の早い順に並べ替える。朝いちばん早いものを先頭に。 */
-  function startMin(x){
-    if(!x.slot) return 99999;
-    const mm=String(x.slot.o).match(/(\d{1,2}):(\d{2})/);
-    return mm ? parseInt(mm[1],10)*60+parseInt(mm[2],10) : 99999;
-  }
-  real.sort(function(a,b){ return startMin(a)-startMin(b); });
+  /* 出勤の早い順に並べ替える。朝いちばん早いものを先頭に。後半だけ乗るなら後半の出勤で見る（otPartStart） */
+  real.sort(function(a,b){ return otPartStartMin(a)-otPartStartMin(b); });
   const f0=real[0];
-  const firstT=(f0&&f0.slot)?(String(f0.slot.o).match(/(\d{1,2}):(\d{2})/)||[''])[0]:'';
+  const firstT=(f0&&f0.slot) ? otPartStart(f0.slot.o, f0.part) : '';
 
   /* その日が何なのかで札を変える。公休に出た日を「代走・振替」と呼ぶと分かりにくい。 */
   const und0 = !slot0 && otBaseUndecided(new Date());   // 奈良学園など。公休ではない
@@ -4090,9 +4087,32 @@ function stampHash(n){
   x=x*0x27d4eb2d; x=x^(x>>>15);
   return Math.abs(x);
 }
+/* 乗る分（まるごと／前半／後半）の出勤時刻（"6:13" の形）。
+   中間ダイヤの後半だけ乗るなら、後半の出勤。データは「前半出勤/後半出勤 〜 前半退勤/後半退勤」の並び。
+   以前は前半・後半に関係なく先頭の時刻を見ていたので、後半だけ乗る日の「出勤は」が前半の時刻になっていた（2026-11-07 直し） */
+function otPartStart(o, part){
+  const s=String(o||'');
+  const pr=s.split('〜');
+  if(part==='second' && s.includes('/') && pr.length===2){
+    const en=pr[1].split('/').map(x=>x.trim());
+    if(en.length===2 && /^\d{1,2}:\d{2}$/.test(en[0])) return en[0];
+  }
+  const m=s.match(/(\d{1,2}):(\d{2})/);
+  return m ? m[0] : '';
+}
+function otPartStartMin(x){
+  if(!x || !x.slot) return 99999;
+  const t=otPartStart(x.slot.o, x.part);
+  const m=t.match(/(\d{1,2}):(\d{2})/);
+  return m ? parseInt(m[1],10)*60+parseInt(m[2],10) : 99999;
+}
+
 /* 代走・振替のある日に、検索結果のカードへ「実際に出るのは◯番」を足す。
-   前日に一覧を見たときも気づけるようにするため。 */
-function realDutyHtml(iso){
+   前日に一覧を見たときも気づけるようにするため。
+   dn はカードに出ている番号。本来のダイヤがそれと同じなら、時刻はカードの上の枠に出ているので
+   オレンジの枠には付いた分だけを並べ、本来のダイヤをどう乗るかは下の一言で言う（2026-11-07 乗務員さんより）。
+   「出勤は」は本来のダイヤも含めて、いちばん早い時刻を出す */
+function realDutyHtml(iso, dn){
   const r=otLoad()[iso];
   if(!r || otIsLeave(r) || !r.adds || !r.adds.length) return '';
   const d=new Date(iso+'T00:00:00');
@@ -4102,11 +4122,13 @@ function realDutyHtml(iso){
   /* 実際に出るものを、時刻付きで並べる。
      番号だけでは、何時に出るのか分からず役に立たない。 */
   const list=[];
+  const bdUp=otBaseDial(d);
+  const baseAbove = (dn!==undefined && bdUp!==null && Number(bdUp)===Number(dn));   // 上の枠と同じ番号
   if(otBaseOf(r)!=='none'){
-    const bd=otBaseDial(d);
+    const bd=bdUp;
     const rec=(bd!==null)?DB[bd]:null;
     const sl=(rec&&rec[dt]&&String(rec[dt].o)!=='—')?rec[dt]:null;
-    if(sl) list.push({dial:bd, part:otBaseOf(r), slot:sl});
+    if(sl) list.push({dial:bd, part:otBaseOf(r), slot:sl, base:true});
   }
   r.adds.forEach(function(x){
     const sl=otSlotOf(x.code||'{{ID}}', x.dial, d, x.v);
@@ -4115,16 +4137,10 @@ function realDutyHtml(iso){
   if(!list.length) return '';
 
   /* 出勤の早い順に並べ替える。朝いちばん早いものを先頭に出したい。 */
-  function startMin(x){
-    if(!x.slot) return 99999;
-    const m=String(x.slot.o).match(/(\d{1,2}):(\d{2})/);
-    return m ? parseInt(m[1],10)*60+parseInt(m[2],10) : 99999;
-  }
-  list.sort(function(a,b){ return startMin(a)-startMin(b); });
+  list.sort(function(a,b){ return otPartStartMin(a)-otPartStartMin(b); });
 
   const first=list[0];
-  const firstT=(first && first.slot)
-    ? (String(first.slot.o).match(/(\d{1,2}):(\d{2})/)||[''])[0] : '';
+  const firstT=(first && first.slot) ? otPartStart(first.slot.o, first.part) : '';
 
   /* 公休に出た日は「公休出勤」、勤務の日に付いたなら「代走・振替」と呼び分ける */
   const bd0=otBaseDial(d);
@@ -4146,6 +4162,7 @@ function realDutyHtml(iso){
       + '</div>'
       + (what?'<div class="rd-chg">✅ '+what+'</div>':'');
   list.forEach(function(x){
+    if(x.base && baseAbove) return;   // 本来のダイヤの時刻は上の枠に出ているので、ここには並べない
     h+='<div class="rd-row">'
       +'<span class="rd-dial">'+otDN(x)+'</span>'
       +'<span class="rd-part">'+(partLb[x.part]||'')+'</span>'
@@ -4157,9 +4174,19 @@ function realDutyHtml(iso){
   if(firstT){
     h+='<div class="rd-first">⏰ 出勤は <b>'+firstT+'</b></div>';
   }
-  h+='<div class="rd-note">'
-    +(isKyuDay?'本来はお休みの日です。':'上の枠のダイヤとは別です。間違えないでください。')
-    +'</div>';
+  /* 下の一言。本来のダイヤを並べないときは、上の番号をどう乗るかをここで言う */
+  let note;
+  if(baseAbove && has0){
+    const b=otBaseOf(r);
+    if(isKyuDay)          note='<b>指定公休のため、上の '+bdUp+'番 には乗りません。</b>';
+    else if(b==='all')    note='上の '+bdUp+'番 もまるごと乗ります。';
+    else if(b==='first')  note='<b>上の '+bdUp+'番 は前半だけ乗ります。</b>';
+    else if(b==='second') note='<b>上の '+bdUp+'番 は後半だけ乗ります。</b>';
+    else                  note='<b>上の '+bdUp+'番 には乗りません。</b>';
+  }else{
+    note = isKyuDay ? '本来はお休みの日です。' : '上の枠のダイヤとは別です。間違えないでください。';
+  }
+  h+='<div class="rd-note">'+note+'</div>';
   return h+'</div>';
 }
 
@@ -4185,7 +4212,7 @@ function stampHtml(iso, offDay){
 /* 1日分のカードに差し込むメモ欄のHTML */
 function memoBlockHtml(iso,dn){
   return `<div class="memo-area" data-iso="${iso}" data-dial="${dn}">
-    ${realDutyHtml(iso)}
+    ${realDutyHtml(iso,dn)}
     <div class="memo-view">${memoViewHtml(iso,dn)}</div>
     <div class="memo-btn-row">
       <button class="memo-btn" onclick="toggleMemo('${iso}',${dn})">${memoBtnLabel(iso,dn)}</button>
