@@ -102,10 +102,27 @@ for _repo, _c in apps.items():
                                 "url": "../" + _repo + "/" + re.sub(r"^\./", "", _c["NEXT_JSON"])}
 OTHER_REVS_JS = json.dumps(other_revs, ensure_ascii=False, separators=(",", ":"))
 
+# スペシャル検索くんで、ダイヤを切り替えたらそのダイヤのアプリの色にする（2026-11-09 乗務員さんより）。
+# apps.json の色をダイヤごとにまとめて、全アプリに同じものを入れる（使うのはスペシャルだけ）
+dia_themes = {}
+for _repo, _c in apps.items():
+    if _c.get("ID") and _c.get("ID") != "all":
+        dia_themes[_c["ID"]] = {
+            "d": {"cyan": _c["COLOR_DARK"], "green": _c["GREEN_D"], "orange": _c["ORANGE_D"],
+                  "text": _c["TEXT_D"], "border": _c["BORDER_D"]},
+            "l": {"cyan": _c["COLOR_LIGHT"], "green": _c["GREEN_L"], "orange": _c["ORANGE_L"],
+                  "text": _c["TEXT_L"], "border": _c["BORDER_L"]},
+            "x": {"on-cyan": _c["ON_CYAN"], "band-bg": _c["BAND_BG"], "band-tx": _c["BAND_TX"],
+                  "soon-a": _c["SOON_A"], "soon-b": _c["SOON_B"], "soon-tx": _c["SOON_TX"],
+                  "soon-shadow": _c["SOON_SHADOW"]},
+        }
+DIA_THEMES_JS = json.dumps(dia_themes, ensure_ascii=False, separators=(",", ":"))
+
 for repo, cfg in apps.items():
     cfg = dict(cfg)
     cfg["REPO"] = repo
     cfg["OTHER_REVS"] = OTHER_REVS_JS
+    cfg["DIA_THEMES"] = DIA_THEMES_JS
 
     # --- 版番号を決める -------------------------------------
     # 既存の sw.js から 'a-shukkin-v112' の v112 を取り出す
