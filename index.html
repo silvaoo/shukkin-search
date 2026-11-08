@@ -702,6 +702,16 @@ body {
   background: var(--bg-card2); border-left: 3px solid var(--orange);
   border-radius: 4px; padding: 8px 10px; margin-top: 8px;
 }
+.other-app-sec { font-size: calc(11px * var(--fs, 1)); color: var(--dim); text-align: center; margin: 26px 0 10px; }
+.other-app {
+  display: flex; align-items: center; gap: 12px; text-decoration: none;
+  background: linear-gradient(135deg, #0a2a6e, #051634); border: 1px solid rgba(62,198,255,0.45);
+  border-radius: 12px; padding: 12px 14px;
+}
+.other-app img { width: 48px; height: 48px; border-radius: 12px; flex: none; }
+.other-app b { display: block; font-size: calc(14px * var(--fs, 1)); color: #fff; }
+.other-app small { display: block; font-size: calc(11px * var(--fs, 1)); color: #a9c4ec; line-height: 1.5; }
+.other-app .go { margin-left: auto; font-size: calc(18px * var(--fs, 1)); color: #3ec6ff; }
 .log-item { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--border); }
 .log-item:last-child { border-bottom: none; }
 .log-date { font-size: calc(11px * var(--fs, 1)); color: var(--cyan); font-weight: 800; margin-bottom: 3px; }
@@ -2283,6 +2293,17 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
         <p>一度オンラインで開いておけば、その後は圏外や機内モードでも起動できます。</p>
         <div class="guide-note">「🔄 新しいバージョンがあります」と出たらタップしてください。最新バージョンのアプリに更新されます。</div>
       </div>
+
+      <!-- 使い方の一番下で、さりげなく別のアプリを紹介する（紹介ページへ） -->
+      <div class="other-app-sec">AIタケタニは、こんなアプリも開発しました</div>
+      <a class="other-app" href="https://silvaoo.github.io/honyaku/lp.html" target="_blank" rel="noopener">
+        <img src="https://silvaoo.github.io/honyaku/icon-192.png" alt="" onerror="this.style.display='none'">
+        <span>
+          <b>🌏 ほんやくくん</b>
+          <small>世界と繋がるポケット通訳。外国のお客さんと、話すだけで会話できます</small>
+        </span>
+        <span class="go">›</span>
+      </a>
     </div>
 
 
@@ -4570,7 +4591,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v293';
+const APP_VERSION   = 'v294';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -4792,7 +4813,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.13';
+const APP_LABEL = 'バージョン 4.14';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
