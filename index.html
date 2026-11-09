@@ -710,6 +710,20 @@ body.light .dial-nav-btn, body.light .dial-row-nav, .rcd-dial .dial-nav-btn {
   display: flex; align-items: center; gap: 6px;
 }
 .guide-step p { font-size: calc(12px * var(--fs, 1)); color: var(--text); line-height: 1.7; margin: 0 0 8px; }
+/* 使い方の見出しの番号は自動で振る（2026-11-10）。
+   スペシャル検索くんでは出さない項目があるので、手で①②…と書くと番号が飛んでしまうため。
+   display:none の項目は数えられないので、どのアプリでも 1 から順に並ぶ */
+#paneUse { counter-reset: gstep; }
+#paneUse .guide-step { counter-increment: gstep; }
+#paneUse .guide-step h3::before {
+  content: counter(gstep);
+  flex: none; width: 1.7em; height: 1.7em; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--orange); color: #14141f;
+  font-size: calc(12px * var(--fs, 1)); font-weight: 900; line-height: 1;
+}
+.guide-step ul { margin: 0 0 8px; padding-left: 18px; }
+.guide-step li { font-size: calc(12px * var(--fs, 1)); color: var(--text); line-height: 1.7; margin-bottom: 3px; }
 .guide-step img {
   width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block;
 }
@@ -1230,6 +1244,9 @@ body.light .today-countdown.cd-red  { color: #d42a2a; border-color: rgba(212,42,
 /* 全ダイヤ版では、ダイヤ番号に紐づく機能（メモ）と、
    1つのダイヤを前提にした通知を隠す。 */
 body.multi .only-single{ display:none !important; }
+/* スペシャル検索くんだけに出すもの（使い方の説明など） */
+.only-multi{ display:none !important; }
+body.multi .only-multi{ display:block !important; }
 
 /* ==== ふりかえり ==== */
 .rv-per{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
@@ -2203,6 +2220,9 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
     </div>
 
     <!-- ===== 使い方 ===== -->
+    <!-- 2026-11-10 今のアプリ（v4.19）に合わせて全体を書き直した。
+         ・見出しの番号はCSSで自動で振る（.guide-step h3::before）。順番を入れ替えても番号を直さなくてよい
+         ・only-single＝ふつうの検索くんだけ／only-multi＝スペシャル検索くんだけに出す -->
     <div class="guide-pane on" id="paneUse">
 
       <button class="guide-banner" onclick="switchGuide('inst')">
@@ -2215,57 +2235,88 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
         <ol>
           <li>自分の<b>ダイヤ番号</b>を入れる</li>
           <li>すぐ下に<b>今日の出退勤</b>が出る</li>
-          <li>先の予定は<b>「10日後」など</b>を押す</li>
+          <li>先の予定は<b>「10日後」「カレンダー」</b>を押す</li>
         </ol>
-        <div class="qq">
+        <div class="qq only-single">
           これだけで使えます。番号は保存されるので、次の日からは<b>開くだけ</b>でOKです。<br>
-          ④から下は「もっと便利に使いたい人」向けなので、読まなくても大丈夫です。
+          「もっと便利に」から下は、使いたい人だけ読めば大丈夫です。
+        </div>
+        <div class="qq only-multi">
+          スペシャル検索くんは、先に<b>「ダイヤを選ぶ」</b>で調べたいダイヤを選んでから番号を入れます。<br>
+          同僚のダイヤをさっと調べるためのものなので、番号やメモは保存されません。
         </div>
       </div>
 
       <div class="guide-sec">きほんの使い方</div>
 
+      <div class="guide-step only-multi">
+        <h3>ダイヤを選ぶ</h3>
+        <p>一番上の「ダイヤを選ぶ」で、<b>学園前Ａ・生駒・北大和Ｂ・北大和Ｃ・予備</b>から調べたいダイヤを押します。画面の色も、選んだダイヤの色に変わります。</p>
+        <div class="guide-note"><b>「📋 今日の全ダイヤ早見表」</b>を押すと、今日の全ダイヤの出退勤を一覧で見られます。</div>
+      </div>
+
       <div class="guide-step">
-        <h3>① ダイヤ番号を入れる</h3>
-        <p>一番上の枠に、今日の自分のダイヤ番号(1〜92)を入れるだけ。すぐ下に今日の勤務が出ます。</p>
-        <img src="images/guide-1.jpg" alt="ダイヤ番号を入力する画面">
-        <div class="guide-note">
+        <h3>ダイヤ番号を入れる</h3>
+        <p>一番上の枠に、今日の自分のダイヤ番号を入れるだけ。すぐ下に<b>今日の出退勤</b>が大きく出ます（右の小さな札は労働時間です）。</p>
+        <img src="images/guide-1.jpg" alt="ダイヤ番号を入力する画面" onerror="this.style.display='none'">
+        <div class="guide-note only-single">
           <b>次の日からは入れ直さなくてOK。</b>開くだけで、自動で1つ進んだ番号が入っています。<br>
           番号がズレた時は「保存を消す」を押して入れ直してください。<br>
           ※ 保存されるのはこの端末の中だけです。同僚の番号と混ざることはありません。
         </div>
+        <div class="guide-note">
+          その下に<b>「出勤まで あと◯時間◯分」</b>が出ます（出勤したあとは「退勤まで」）。<br>
+          出勤が近づくと色で知らせます。<b>1時間を切ると青、30分前で黄、10分前で赤</b>になり、点滅も少しずつ速くなります。
+        </div>
       </div>
 
       <div class="guide-step">
-        <h3>② 「明日」「10日後」「カレンダー」を押す</h3>
-        <p>押すだけで勤務が出ます。「明日」は明日1日だけ、<b>「10日後」は今日を入れて10日分</b>をまとめて表示します。<b>「カレンダー」は1回押すだけで、今日から1ヶ月分のカレンダーが開きます。</b>次の日以降は、番号が1日ずつ進んだ状態で出ます。</p>
-        <img src="images/guide-2.jpg" alt="クイック検索">
+        <h3>「明日」「10日後」「カレンダー」を押す</h3>
+        <p>押すだけで勤務が出ます。「明日」は明日1日だけ、<b>「10日後」は今日を入れて10日分</b>をまとめて表示します。<b>「カレンダー」は1回押すだけで、1ヶ月分のカレンダーが開きます。</b>次の日以降は、番号が1日ずつ進んだ状態で出ます。</p>
+        <img src="images/guide-2.jpg" alt="クイック検索" onerror="this.style.display='none'">
       </div>
 
       <div class="guide-step">
-        <h3>③ 結果の見方</h3>
-        <p>日ごとに <b>ダイヤ番号・出退勤の時間・労働時間</b> が並びます。休みの日は「公休」と出ます。</p>
-        <img src="images/guide-3.jpg" alt="検索結果の見方">
+        <h3>結果の見方</h3>
+        <p>日ごとに <b>ダイヤ番号・出退勤の時間</b> が並びます。出退勤の時間は大きく、労働時間は右の小さな札に出ます。中間ダイヤは<b>前半・後半</b>の2行です。休みの日は「公休」と出ます。</p>
+        <img src="images/guide-3.jpg" alt="検索結果の見方" onerror="this.style.display='none'">
+        <div class="guide-note only-single">
+          代走・公出を登録した日（下の「時間外を記録する」）は、<b>その日に実際に乗る時間</b>が出勤の早い順に並びます。付いたダイヤは代走＝橙、公出＝青の字です。<br>
+          日付の横には<b>「代走」「公出」「指定公出」「年休」の印鑑</b>が押されます。
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <h3>ダイヤ内容を見る</h3>
+        <p>番号の横にある<b>銀色の「ダイヤ内容」ボタン</b>を押すと、そのダイヤの行程が開きます。<b>出勤・退勤、最初の便、便の一覧（発車と到着の時刻・行き先・系統番号）</b>が分かります。</p>
+        <img src="images/guide-nav.jpg" alt="ダイヤ内容" onerror="this.style.display='none'">
+        <div class="guide-note">
+          ・<b>色の付いた便は経由に注意</b>する便です（急行など）。<br>
+          ・検索結果の各日にも同じボタンがあるので、<b>明日以降のダイヤも前もって確かめられます</b>。カレンダーのマスを押した詳細からも開けます。<br>
+          ・今日のダイヤを開くと、「出勤まであと何分」「最初の発車は何時にどこから」も出ます。<br>
+          <span class="only-single">・代走や公出を登録した日は、実際に乗るダイヤの内容に替わります。<br></span>
+          ※ 勤務系統表をもとにした目安です。回送の時刻は見積もりのものがあり、系統番号がまだ入っていない便もあります。<b>乗務の前に確かめる用</b>としてお使いください。
+        </div>
       </div>
 
       <div class="guide-sec">もっと便利に（読まなくてもOK）</div>
 
       <div class="guide-step">
-        <h3>④ カレンダーで見る・保存・スマホに登録</h3>
-        <p>クイック検索の「カレンダー」を押すと、<b>1ヶ月分が一目で分かります</b>。マスをタップすると大きく表示され、分割勤務の詳しい時間も読めます。土曜は青、日曜・祝日は赤、公休は緑、代走・振替は紫、中間は朱で色分けされます。見出しの飾りは季節で変わります。</p>
-        <div class="guide-note"><b>‹ › で何ヶ月でも前後に動かせます。</b>検索していない月でも、覚えた番号から勤務が出ます。<b>過去の日をタップすれば、付け忘れた時間外もその場で足せます。</b>月の表示を押すと今月に戻ります。</div>
-        <img src="images/guide-rescal.jpg" alt="私のカレンダー">
-        <div class="guide-note">
-          この画面の<b>「⭐ マイページに保存」</b>で<b>いま表示している月</b>を保存でき、あとで<b>「📝 マイページ」→「保存したカレンダー」</b>からいつでも開けます。<br>
-          さらに<b>「📅 カレンダーアプリに一括保存」</b>を押すと、勤務を<b>スマホのカレンダーにまとめて登録</b>できます（出勤1時間前のお知らせ付き。公休の日も番号入りで入ります）。<br>
+        <h3>カレンダーで見る<span class="only-single">・保存・スマホに登録</span></h3>
+        <p>クイック検索の「カレンダー」を押すと、<b>1ヶ月分が一目で分かります</b>。上の段がダイヤ番号、下の段が出退勤の時間です。マスをタップすると大きく表示され、中間ダイヤの詳しい時間も読めます。土曜は青、日曜・祝日は赤、公休は緑で、見出しの飾りは季節で変わります。</p>
+        <div class="guide-note"><b>‹ › で何ヶ月でも前後に動かせます。</b>月の表示を押すと今月に戻ります。<span class="only-single"><b>過去の日をタップすれば、付け忘れた時間外もその場で足せます。</b></span></div>
+        <img src="images/guide-rescal.jpg" alt="私のカレンダー" onerror="this.style.display='none'">
+        <div class="guide-note only-single">
+          <b>「⭐ マイページに保存」</b>で<b>いま表示している月</b>を保存でき、あとで<b>「📝 マイページ」→「保存したカレンダー」</b>からいつでも開けます（「2026年11月」のように月の名前で並びます）。<br>
+          保存したカレンダーの<b>「📅 カレンダーアプリに一括保存」</b>を押すと、勤務を<b>スマホのカレンダーにまとめて登録</b>できます（出勤1時間前のお知らせ付き。公休の日も番号入りで入ります）。<br>
           ※ 押すとファイル（勤務カレンダー.ics）がダウンロードされるので、それを開いてカレンダーに追加してください。<b>追加した後のファイルは削除して大丈夫です</b>（ダウンロードフォルダに溜まっていくので、ときどき消してください）。
         </div>
       </div>
 
-      <div class="guide-step">
-        <h3>⑤ メモを残す</h3>
+      <div class="guide-step only-single">
+        <h3>メモを残す</h3>
         <p>各日の「📝 メモを追加」から書けます。2種類あります。</p>
-        <img src="images/guide-4.jpg" alt="メモ機能">
+        <img src="images/guide-4.jpg" alt="メモ機能" onerror="this.style.display='none'">
         <div class="guide-note">
           <b>日付のメモ</b>…その日だけに出ます（例：年休申請済み）<br>
           <b>ダイヤ番号のメモ</b>…その番号の日すべてに出ます（例：さつき最終便に注意）<br><br>
@@ -2274,17 +2325,17 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
         </div>
       </div>
 
-      <div class="guide-step">
-        <h3>⑥ マイページ</h3>
-        <p>下の「📝 マイページ」を押すと開きます。<b>時間外・メモ・保存したカレンダー</b>がタブで分かれています。</p>
-        <img src="images/guide-mypage.jpg" alt="マイページ">
+      <div class="guide-step only-single">
+        <h3>マイページ</h3>
+        <p>下の「📝 マイページ」を押すと開きます。<b>ふりかえり・日付のメモ・ダイヤ番号のメモ・保存したカレンダー</b>がタブで分かれています。</p>
+        <img src="images/guide-mypage.jpg" alt="マイページ" onerror="this.style.display='none'">
         <div class="guide-note">
-          メモは「日付のメモ」と「ダイヤ番号のメモ」に分かれています。<b>それぞれの上にある「📝 メモを追加」から、検索しなくてもその場で書けます。</b>書いたメモは編集・削除もできます。過ぎた日には印が付き、<b>🧹 過ぎた日のメモをまとめて削除</b>で一度に片付けられます。
+          メモのタブでは、<b>上にある「📝 メモを追加」から、検索しなくてもその場で書けます。</b>書いたメモは編集・削除もできます。過ぎた日には印が付き、<b>🧹 過ぎた日のメモをまとめて削除</b>で一度に片付けられます。
         </div>
       </div>
 
-      <div class="guide-step">
-        <h3>⑦ 時間外を記録する</h3>
+      <div class="guide-step only-single">
+        <h3>時間外を記録する</h3>
         <p><b>検索結果や私のカレンダーの各日にある「⏱ 時間外」</b>から入れられます。マイページの「ふりかえり」の「締め日まで一覧表示」で日付をタップしても入れられます。</p>
         <p>入れるのは3つだけです。</p>
         <ul>
@@ -2292,40 +2343,57 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
           <li><b>本来のダイヤをどう乗ったか</b>　まるごと／前半だけ／後半だけ／乗ってない</li>
           <li><b>付いたダイヤ番号</b>　何本でも足せます</li>
         </ul>
-        <p>入れた瞬間に時間外が出ます。<b>数字は手で直せます。</b>渋滞や居残りで増えたときは書き換えてください。一度直すと、あとから上書きされません。</p>
+        <p>入れた瞬間に時間外が出ます。<b>数字は手で直せます。</b>渋滞や居残りで増えたときは書き換えてください。一度直すと、あとから上書きされません。間違えたときは「🗑 この日の記録を消す」で消せます。</p>
+        <div class="guide-note">
+          <b>付いたダイヤは、他のダイヤ（学園前・生駒など）からも選べます。</b><br>
+          番号の無い仕事は<b>「臨時＆シャトル等」</b>を選び、始まりと終わりの時刻を入れてください。<br>
+          学園前Ａの14番（奈良学園）は、<b>A〜Fの形</b>を選べます。
+        </div>
         <div class="guide-note">計算は、どの勤務も<b>「労働時間」と「拘束時間×0.8」の多いほう</b>で見ています。公出も振替も同じ考え方です。</div>
         <div class="guide-note">
-          <b>16日〜翌月15日</b>の合計と、公出の回数が出ます。公出の日は青、年休の日は赤の印が付きます。<br>
-          <b>時間外が90時間、拘束が275時間に近づくと警告が出ます。</b>入れる前に分かるので、超えそうなら受ける前に判断できます。<br>
+          <b>時間外が90時間、拘束が275時間に近づくと警告が出ます。</b>1日の拘束が15時間を超えるときも出ます。入れる前に分かるので、超えそうなら受ける前に判断できます。<br>
           ⚠ おおよその計算です。多少のズレがあることはご了承ください。
         </div>
       </div>
 
-      <div class="guide-step">
-        <h3>⑧ ふりかえり</h3>
+      <div class="guide-step only-single">
+        <h3>ふりかえり</h3>
         <p>マイページの「ふりかえり」で、<b>16日〜翌月15日</b>の勤務をまとめて見られます。</p>
         <ul>
           <li>労働時間の合計と、1日あたりの平均</li>
-          <li><b>前の期間との差</b>（時間外も）</li>
+          <li>時間外の合計と、<b>前の期間との差</b></li>
           <li>出勤・休み・公出・年休の日数</li>
           <li>早番と遅番のバランス、中間ダイヤ、24時をまたいだ日</li>
         </ul>
-        <p>上の「締め日まで一覧表示」を開くと1日ずつ並びます（一覧の下の「▲ 一覧を閉じる」でも閉じられます）。<b>日付をタップすれば、その日の時間外を入れ直せます。</b></p>
-        <img src="images/guide-mypage.jpg" alt="ふりかえり">
+        <p>上の<b>「▼ 締め日まで一覧表示（1ヶ月分）」</b>を開くと1日ずつ並びます（一覧の下の「▲ 一覧を閉じる」でも閉じられます）。<b>日付をタップすれば、その日の時間外を入れたり直したりできます。</b></p>
         <div class="guide-note">◀ ▶ で期間を移せます。<b>次の締め期間まで進めるので、10日ほど先に受けた代走も一覧から登録できます。</b>ダイヤ改正より前は正しく出せないため、表示されません。<br><b>真ん中の日付を押すと「全期間のまとめ」</b>に切り替わり、これまで登録した時間外を期間ごとに一覧できます。</div>
       </div>
 
-      <div class="guide-step">
-        <h3>⑨ 年休を入れておく</h3>
-        <p>「この日は？」で<b>年休</b>を選ぶと、その日は勤務時間の代わりに<b>次の出勤日と時間</b>が出ます。連続した年休や公休は飛ばして、本当に出る日を探します。</p>
+      <div class="guide-step only-single">
+        <h3>年休を入れておく</h3>
+        <p>時間外の画面の「この日は？」で<b>年休</b>を選ぶと、その日は勤務時間の代わりに<b>次の出勤日と時間</b>が出ます。連続した年休や公休は飛ばして、本当に出る日を探します。</p>
       </div>
 
-<div class="guide-step">
-        <h3>⑩ 圏外でも使えます</h3>
+      <div class="guide-step">
+        <h3>見やすくする・資料・共有</h3>
+        <ul>
+          <li><b>右上の「🌙/☀️ Aa」</b>　夜・昼の切り替えと、<b>文字の大きさ（70%〜130%）</b>を選べます。次に開いたときもそのままです。</li>
+          <li><b>下の「コチラ」</b>　元になった<b>出退勤表・勤務系統表</b>をその場で開けます。</li>
+          <li><b>左上の「📤」</b>　このアプリを同僚に送れます（LINE・QRコード・リンクのコピー）。</li>
+          <li><b>画面を下に引っ張る</b>　いちばん上で下に引っ張ると、最新の状態に更新します。</li>
+        </ul>
+        <div class="guide-note">
+          <b>📢 お知らせ</b>があるときは、画面に「お知らせがあります」の帯が出ます。タップすると読めます。<br>
+          <span class="only-single"><b>🔔 通知</b>は、ホーム画面に入れたアプリで「受け取る」を選ぶと届きます。あとから下のボタンで止められます。</span>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <h3>圏外でも使えます</h3>
         <p>一度オンラインで開いておけば、その後は圏外や機内モードでも起動できます。</p>
         <div class="guide-note">「🔄 新しいバージョンがあります」と出たらタップしてください。最新バージョンのアプリに更新されます。</div>
         <!-- 2026-11-09 乗務員さんがiPhoneで試して、アプリを消すと保存した内容も消えると分かった -->
-        <div class="guide-note"><span class="warn-mark">⚠️</span> <b class="warn-red">ホーム画面のアプリは消さないでください。</b>消すと、保存した内容（時間外・年休・メモ・保存したカレンダーなど）もいっしょに消えて、元に戻せません。</div>
+        <div class="guide-note only-single"><span class="warn-mark">⚠️</span> <b class="warn-red">ホーム画面のアプリは消さないでください。</b>消すと、保存した内容（時間外・年休・メモ・保存したカレンダーなど）もいっしょに消えて、元に戻せません。</div>
       </div>
     </div>
 
@@ -2351,13 +2419,15 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
         </div></div>
         <div class="inst-step"><div class="inst-num">2</div><div class="inst-txt">
           Safariで開いたら、画面の<b>下の真ん中にある共有ボタン</b> <span class="inst-key">⬆︎</span>（四角から上矢印が出たマーク）を押します。<br>
-          ※ ボタンが出ていない時は、画面を少し下にスワイプすると出てきます。
+          ※ ボタンが出ていない時は、画面を少し下にスワイプすると出てきます。<br>
+          ※ <b>新しいiOS（iOS 26〜）</b>では共有ボタンが見えないことがあります。その時は、画面の下にある <span class="inst-key">⋯</span> を押すと<b>「共有」</b>が出てきます。
         </div></div>
         <div class="inst-step"><div class="inst-num">3</div><div class="inst-txt">
           出てきたメニューを<b>下にスクロール</b>して、<b>「ホーム画面に追加」</b>を押します。
         </div></div>
         <div class="inst-step"><div class="inst-num">4</div><div class="inst-txt">
-          右上の<b>「追加」</b>を押したら完成です。
+          右上の<b>「追加」</b>を押したら完成です。<br>
+          ※「Webアプリとして開く」というスイッチが出たら、<b>オンのまま</b>にしてください。
         </div></div>
         <div class="inst-done">
           ホーム画面に <b>「学A」</b> というアイコンができていればOK。次からはそれを押すだけです。<br>
@@ -4875,7 +4945,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.18';
+const APP_LABEL = 'バージョン 4.19';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
