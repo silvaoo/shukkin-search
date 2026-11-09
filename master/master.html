@@ -1139,12 +1139,24 @@ body.light .stamp { opacity: 0.28; }
   color: var(--cyan); background: rgba(0,230,118,0.07);
   border: 1px solid var(--border); border-radius: 10px; padding: 8px;
 }
-.today-countdown.soon {
-  color: var(--yellow); border-color: rgba(255,230,0,0.5); background: rgba(255,230,0,0.08);
-  animation: cdPulse 1.4s ease-in-out infinite;
+/* 出勤が近づいたら色と点滅で知らせる（2026-11-09 乗務員さんより・全アプリ共通）。
+   1時間前まではいつもどおり → 1時間を切ったら青 → 30分前で黄 → 10分前で赤。
+   点滅はゆっくりから、出勤に近づくほど少しずつ速くする（速さは updateCountdown が --cd-dur に入れる）。
+   いちばん速くても 0.7秒に1回（1秒に3回より遅く、目に負担がかからない速さ）。
+   「動きを減らす」設定の端末では点滅しない */
+.today-countdown.cd-blue, .today-countdown.cd-yellow, .today-countdown.cd-red {
+  animation: cdPulse var(--cd-dur, 2.4s) ease-in-out infinite;
 }
+.today-countdown.cd-blue   { color: #5ab8ff; border-color: rgba(90,184,255,0.55); background: rgba(90,184,255,0.10); }
+.today-countdown.cd-yellow { color: var(--yellow); border-color: rgba(255,230,0,0.5); background: rgba(255,230,0,0.08); }
+.today-countdown.cd-red    { color: #ff5c5c; border-color: rgba(255,92,92,0.65); background: rgba(255,92,92,0.12); }
+body.light .today-countdown.cd-blue { color: #0b63c4; border-color: rgba(11,99,196,0.45); background: rgba(11,99,196,0.07); }
+body.light .today-countdown.cd-yellow { border-color: rgba(170,119,0,0.45); background: rgba(255,214,0,0.12); }
+body.light .today-countdown.cd-red  { color: #d42a2a; border-color: rgba(212,42,42,0.5); background: rgba(212,42,42,0.07); }
 @keyframes cdPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
-@media (prefers-reduced-motion: reduce) { .today-countdown.soon { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .today-countdown.cd-blue, .today-countdown.cd-yellow, .today-countdown.cd-red { animation: none; }
+}
 .day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; }
 .day-date { font-size: calc(18px * var(--fs, 1)); font-weight: 700; color: var(--text); }
 .day-date.holiday { color: var(--pink); }
@@ -4458,19 +4470,26 @@ function updateCountdown(){
   if(!pairs){el.style.display='none';return;}
   const n=new Date();
   const nowMin=n.getHours()*60+n.getMinutes();
-  let msg='',soon=false;
+  let msg='',left=-1;   // left: 出勤まであと何分か（退勤までのときは -1）
   for(let i=0;i<pairs.length;i++){
     const s=cdToMin(pairs[i][0]),e=cdToMin(pairs[i][1]);
     if(s===null||e===null){el.style.display='none';return;}
     const label=pairs.length===2?(i===0?'前半':'後半')
               : pairs.length>2?(i+1)+'本目 ':'';
-    if(nowMin<s){msg=`🚌 ${label}出勤まで ${cdFmt(s-nowMin)}`;soon=(s-nowMin)<=60;break;}
+    if(nowMin<s){msg=`🚌 ${label}出勤まで ${cdFmt(s-nowMin)}`;left=s-nowMin;break;}
     if(nowMin<e){msg=`🏠 ${label}退勤まで ${cdFmt(e-nowMin)}`;break;}
   }
   if(!msg){el.style.display='none';return;} // 全勤務が終わった後は表示しない
   el.style.display='block';
   el.textContent=msg;
-  el.classList.toggle('soon',soon);
+  /* 出勤までの色（1時間を切ったら青・30分前で黄・10分前で赤） */
+  const lv = (left<0||left>=60) ? '' : left<=10 ? 'cd-red' : left<=30 ? 'cd-yellow' : 'cd-blue';   // 「あと1時間0分」まではいつもどおり
+  ['cd-blue','cd-yellow','cd-red'].forEach(function(c){ el.classList.toggle(c, c===lv); });
+  /* 点滅の速さ: 60分前は2.6秒に1回 → 0分で0.7秒に1回。1分ごとに少しずつ速くなる */
+  if(lv){
+    const dur=(0.7 + (Math.max(0,Math.min(60,left))/60)*1.9).toFixed(2)+'s';
+    if(el.style.getPropertyValue('--cd-dur')!==dur) el.style.setProperty('--cd-dur',dur);
+  }
 }
 
 /* ==== 本日の日付＋時刻(24時間表示・秒あり) ====
