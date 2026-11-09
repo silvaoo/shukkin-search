@@ -1818,6 +1818,11 @@ a.source-link:visited {
 }
 .guide-sec::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 /* ==== 入れ方(ホーム画面に追加) ==== */
+/* 「ホーム画面のアプリは消さないでください」は大事なので赤、⚠️ は黄（2026-11-09 乗務員さんより）。
+   ⚠️ は絵文字なので iPhone・Android とも黄色の三角で出る。文字で出る端末でも黄色になるよう色も付ける */
+.warn-red { color: #ff4d4d !important; }
+body.light .warn-red { color: #d42a2a !important; }
+.warn-mark { color: #ffc400; }
 .inst-lead { font-size: calc(12.5px * var(--fs, 1)); color: var(--text); line-height: 1.8; margin: 0 0 12px; }
 .inst-lead b { color: var(--orange); }
 .inst-warn {
@@ -2320,7 +2325,7 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
         <p>一度オンラインで開いておけば、その後は圏外や機内モードでも起動できます。</p>
         <div class="guide-note">「🔄 新しいバージョンがあります」と出たらタップしてください。最新バージョンのアプリに更新されます。</div>
         <!-- 2026-11-09 乗務員さんがiPhoneで試して、アプリを消すと保存した内容も消えると分かった -->
-        <div class="guide-note">⚠ <b>ホーム画面のアプリは消さないでください。</b>消すと、保存した内容（時間外・年休・メモ・保存したカレンダーなど）もいっしょに消えて、元に戻せません。</div>
+        <div class="guide-note"><span class="warn-mark">⚠️</span> <b class="warn-red">ホーム画面のアプリは消さないでください。</b>消すと、保存した内容（時間外・年休・メモ・保存したカレンダーなど）もいっしょに消えて、元に戻せません。</div>
       </div>
     </div>
 
@@ -2388,7 +2393,7 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
       </div>
       <!-- 2026-11-09 乗務員さんがiPhoneで試して、アプリを消すと保存した内容も消えると分かった -->
       <div class="inst-warn" style="margin-top:12px; margin-bottom:0;">
-        <b>⚠ ホーム画面のアプリは消さないでください</b><br>
+        <span class="warn-mark">⚠️</span> <b class="warn-red">ホーム画面のアプリは消さないでください</b><br>
         アプリを消すと、<b>中に保存した内容（覚えた番号・時間外・年休・メモ・保存したカレンダーなど）もいっしょに消えます</b>。消えた内容は元に戻せません（iPhoneで確かめました）。<br>
         アイコンが古い色のままでも、消さずにそのまま使ってください。中の画面は自動で新しくなります。
       </div>
