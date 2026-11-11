@@ -2261,6 +2261,7 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
         <img src="images/guide-1.jpg" alt="ダイヤ番号を入力する画面" onerror="this.style.display='none'">
         <div class="guide-note only-single">
           <b>次の日からは入れ直さなくてOK。</b>開くだけで、自動で1つ進んだ番号が入っています。<br>
+          <b>退勤が24時を過ぎる日は、退勤するまで次の日の番号に切り替わりません。</b><br>
           番号がズレた時は「保存を消す」を押して入れ直してください。<br>
           ※ 保存されるのはこの端末の中だけです。同僚の番号と混ざることはありません。
         </div>
@@ -2798,10 +2799,52 @@ function isObon(d){return OBON_DAYS.has(toISO(d));}
 /* 日付の種別（平日／土曜／日祝）を判定する（お盆期間は土曜日ダイヤ扱い） */
 function dayType(d){const w=d.getDay();if(isObon(d))return '土';if(w===0||isHol(d))return '日祝';if(w===6)return '土';return '平';}
 
+/* ==== 勤務日（2026-11-12 乗務員さんより） ====
+   遅番で退勤が24時を過ぎる日（24:24 など）は、日付が変わっても退勤するまでは「前の日の勤務」のまま。
+   これまでは0時ちょうどに次の日のダイヤへ切り替わっていた。
+   dutyDate() が「いまは何日の勤務か」を返す。日付だけが前の日になり、時・分・秒はいまのまま。
+   ・前の日の番号は、保存した番号（{dial, iso}）から数える。入力欄の番号は使わない（入力欄の番号自体がこの日付で決まるため）
+   ・代走・公出を登録した日は、実際に乗る分の一番遅い退勤で見る
+   ・昼を過ぎたら必ずその日（24時をまたぐ勤務でも、昼まで続くものは無い）
+   ・スペシャル検索くんは番号を保存しないので、これまでどおり0時で切り替わる */
+function dutyDate(){
+  const n=new Date();
+  if(IS_MULTI) return n;
+  const nowMin=n.getHours()*60+n.getMinutes();
+  if(nowMin>=12*60) return n;
+  let o=null;
+  try{ o=JSON.parse(localStorage.getItem(MYDIAL_KEY)||'null'); }catch(e){ o=null; }
+  if(!o||!o.dial||!o.iso) return n;
+  const y=new Date(n); y.setDate(y.getDate()-1); y.setHours(0,0,0,0);
+  const diff=Math.round((y-new Date(o.iso+'T00:00:00'))/86400000);
+  const dy=((o.dial-1+diff)%CUR_MAX+CUR_MAX)%CUR_MAX+1;
+  let pairs=null;
+  try{ pairs=shiftPairsForDate(dy, y); }catch(e){ pairs=null; }
+  if(!pairs) return n;
+  let end=-1;
+  pairs.forEach(function(pr){
+    const st=cdToMin(pr[0]), en=cdToMin(pr[1]);
+    if(st===null||en===null) return;
+    end=Math.max(end, en<st ? en+1440 : en);     // 「0:24」と書いてあっても24時過ぎとして見る
+  });
+  if(end>1440 && nowMin+1440<end){
+    const r=new Date(y); r.setHours(n.getHours(), n.getMinutes(), n.getSeconds(), 0);
+    return r;
+  }
+  return n;
+}
+/* いまが前の日の勤務の続きか */
+function dutyShifted(){ return toISO(dutyDate())!==toISO(new Date()); }
+/* 勤務日の0時から数えた、いまの分（前の日の続きなら24時間足す。例：0:16→24:16） */
+function dutyNowMin(){
+  const n=new Date();
+  return n.getHours()*60+n.getMinutes()+(dutyShifted()?1440:0);
+}
+
 /* 「今日のダイヤ番号」を起点に、対象日のダイヤ番号を計算する
    実際の端末の「今日」からの日数差で計算するので、基準日が多少古くなってもズレない */
 function calcDial(target,todayDial){
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=dutyDate();today.setHours(0,0,0,0);   // 24時過ぎの退勤までは前の日が「今日」
   const diff=Math.round((target-today)/86400000);
   return ((todayDial-1+diff)%CUR_MAX+CUR_MAX)%CUR_MAX+1;
 }
@@ -3011,7 +3054,7 @@ function _updateTodayPreview(){
   box.classList.remove('empty'); // 実際のシフト内容を表示する時は枠を戻す
   launchFireworks(); // 有効な番号が入力されたら花火1発
   rocketFirework(); // ロケット花火風の音
-  const today=new Date();
+  const today=dutyDate();   // 24時過ぎの退勤までは前の日の勤務を出す
   const m=today.getMonth()+1,d=today.getDate();
   const dw=DW[today.getDay()];
   const dtLabel=isObon(today)?`${dw}（お盆休みで土曜ダイヤ）`:isHol(today)?`${dw}・祝`:dw;
@@ -3036,7 +3079,7 @@ function _updateTodayPreview(){
   }
   const noteHtml=slot.n?`<div class="today-note">📌 ${slot.n}</div>`:'';
   box.innerHTML=`<div class="today-head"><b>${v}番ダイヤ</b> ／ ${m}/${d}（${dtLabel}）</div>
-    ${timeBoxHtml(slot,'tb-today')}${noteHtml}`;
+    ${timeBoxHtml(slot,'tb-today')}${noteHtml}${dutyCarryHtml()}`;
 }
 
 /* ==== 全ダイヤ早見表（スペシャル検索くんだけ） ====
@@ -3651,11 +3694,16 @@ function nextWorkDay(from){
   return null;
 }
 
+/* 24時を過ぎて前の日の勤務を出しているときの一言 */
+function dutyCarryHtml(){
+  return dutyShifted() ? '<div class="today-note duty-carry">🌙 退勤までは前の日の勤務を表示しています</div>' : '';
+}
+
 /* 公休の日の表示。次の出勤までの残り時間も出す（公休の印鑑は 2026-11-07 にやめた） */
 function offDayHtml(v,m,d,dtLabel){
-  const nx=nextWorkDay(new Date());
+  const nx=nextWorkDay(dutyDate());
   let h='<div class="off-wrap">'
-    + stampHtml(toISO(new Date()), true)
+    + stampHtml(toISO(dutyDate()), true)
     + `<div class="off-line"><b>${v}番ダイヤ</b> → ${m}/${d}（${dtLabel}）は `
     + '<span class="ok-text">🎉 公休</span> です</div>';
   if(nx){
@@ -3682,7 +3730,7 @@ function untilNextHtml(nx){
 
 /* 年休の日の表示。勤務時間は出さず、次の出勤を案内する。 */
 function otLeaveHtml(m,d,dtLabel,r){
-  const nx=nextWorkDay(new Date());
+  const nx=nextWorkDay(dutyDate());
   let next='';
   if(nx){
     const nm=nx.date.getMonth()+1, nd=nx.date.getDate(), nw=DW[nx.date.getDay()];
@@ -3693,7 +3741,7 @@ function otLeaveHtml(m,d,dtLabel,r){
     next='<div class="today-next">次の出勤は分かりませんでした</div>';
   }
   return '<div class="off-wrap">'
-       + stampHtml(toISO(new Date()), true)
+       + stampHtml(toISO(dutyDate()), true)
        + '<div class="today-head"><span class="leave-tag">年休</span> '
        + m+'/'+d+'（'+dtLabel+'）</div>'
        + (r && r.note ? '<div class="today-note">'+escapeHtml(r.note)+'</div>' : '')
@@ -3713,22 +3761,23 @@ function otTodayHtml(v,m,d,dtLabel,r){
      本来のダイヤは乗る分だけ（乗らない日は出さない）。付いたダイヤは 代走＝橙・公出＝青。
      「この日に出るのは」「✅ ◯番が足されました」「◯番には乗りません」などの言葉はやめた。
      しばらく使って分かりにくければ戻す（乗務員さんと相談済み） */
-  const dt=dayType(new Date());
+  const dd0=dutyDate();   // 24時過ぎの退勤までは前の日
+  const dt=dayType(dd0);
   const rec0=DB[v], slot0=(rec0&&rec0[dt]&&String(rec0[dt].o)!=='—')?rec0[dt]:null;
 
   /* その日が何なのかで札を変える。公休に出た日を「代走・振替」と呼ぶと分かりにくい。 */
-  const und0 = !slot0 && otBaseUndecided(new Date());   // 奈良学園など。公休ではない
+  const und0 = !slot0 && otBaseUndecided(dd0);   // 奈良学園など。公休ではない
   const isKyuDay = otIsKyu(r) || (!slot0 && !und0);
   const badge = isKyuDay
     ? '<span class="today-badge kyu">🔵 公休出勤</span>'
     : '<span class="today-badge sub">⏱ 代走・振替あり</span>';
   let h='<div class="off-wrap">'
-      + stampHtml(toISO(new Date()), !slot0 && !und0)
+      + stampHtml(toISO(dd0), !slot0 && !und0)
       + '<div class="today-head"><b>'+m+'/'+d+'（'+dtLabel+'）</b>'+badge+'</div>'
-      + otActualBoxHtml(r, new Date(), v, slot0, 'tb-today');
+      + otActualBoxHtml(r, dd0, v, slot0, 'tb-today');
 
   h+='<div class="today-note">⏱ 時間外 '+otFmt(r.min)
-    +(r.note?' ／ '+escapeHtml(r.note):'')+'</div>';
+    +(r.note?' ／ '+escapeHtml(r.note):'')+'</div>'+dutyCarryHtml();
   return h+'</div>';
 }
 
@@ -4507,8 +4556,9 @@ function shiftPairsOf(o){
 /* 今日のカウントダウンに使う勤務ペアを返す。
    年休の日は出さない。代走・公休出勤の日は、実際に出るほうで数える。
    本来のダイヤだけを見ていたため、年休でも出勤まで◯分と出ていた（2026-09-15 修正）。 */
-function todayShiftPairs(v){
-  const today=new Date();
+function todayShiftPairs(v){ return shiftPairsForDate(v, dutyDate()); }
+/* その日に実際に乗る出勤・退勤の組。代走・公出の登録があればそれも入れる（dutyDate からも使う） */
+function shiftPairsForDate(v, today){
   const dt=dayType(today);
   const rec0=otLoad()[toISO(today)];
 
@@ -4551,8 +4601,7 @@ function updateCountdown(){
   const v=parseInt(document.getElementById('todayInput').value);
   const pairs=(v>=1&&v<=CUR_MAX)?todayShiftPairs(v):null;
   if(!pairs){el.style.display='none';return;}
-  const n=new Date();
-  const nowMin=n.getHours()*60+n.getMinutes();
+  const nowMin=dutyNowMin();   // 前の日の勤務の続きなら 24:16 のように数える
   let msg='',left=-1;   // left: 出勤まであと何分か（退勤までのときは -1）
   for(let i=0;i<pairs.length;i++){
     const s=cdToMin(pairs[i][0]),e=cdToMin(pairs[i][1]);
@@ -4591,11 +4640,12 @@ function updateClock(){
   updateCountdown(); // A案: カウントダウンも毎秒更新
 
   // 日付が変わったら今日の勤務表示も作り直す(日をまたいでも正しく表示させるため)
-  const key=toISO(n);
+  // 24時過ぎの退勤がある日は、退勤した時に切り替わる（2026-11-12）
+  const key=toISO(dutyDate());
   if(window._clockDay && window._clockDay!==key){
     restoreMyDial();   // 日付が変わったら番号も1つ進める
     updateTodayPreview();
-    const t=new Date();t.setHours(0,0,0,0);
+    const t=dutyDate();t.setHours(0,0,0,0);
     const df=document.getElementById('dateFrom');
     if(df && df.value===window._clockDay) df.value=toISO(t); // 未変更なら開始日も今日に更新
   }
@@ -7355,7 +7405,7 @@ function saveMyDial(){
   const v=parseInt(document.getElementById('todayInput').value);
   if(!v||v<1||v>CUR_MAX)return;
   try{
-    localStorage.setItem(MYDIAL_KEY, JSON.stringify({dial:v, iso:toISO(new Date())}));
+    localStorage.setItem(MYDIAL_KEY, JSON.stringify({dial:v, iso:toISO(dutyDate())}));   // 入力欄の番号は勤務日の番号
   }catch(e){}
   showMyDialNote(true);
 }
@@ -7364,7 +7414,7 @@ function restoreMyDial(){
   let o=null;
   try{ const raw=localStorage.getItem(MYDIAL_KEY); if(!raw)return false; o=JSON.parse(raw); }catch(e){ return false; }
   if(!o||!o.dial||!o.iso)return false;
-  const t=new Date(); t.setHours(0,0,0,0);
+  const t=dutyDate(); t.setHours(0,0,0,0);   // 24時過ぎの退勤までは前の日の番号のまま
   const base=new Date(o.iso+'T00:00:00');
   const diff=Math.round((t-base)/86400000);
   const d=((o.dial-1+diff)%CUR_MAX+CUR_MAX)%CUR_MAX+1;   // 1日ごとに1つ進む(1〜10を繰り返す)
@@ -8123,13 +8173,13 @@ function closeNav(){
   _navPv = null;
 }
 function navSetAlt(i){
-  navStoreSet(navAltKey(_navPv ? _navPv.iso : toISO(new Date())), i);
+  navStoreSet(navAltKey(_navPv ? _navPv.iso : toISO(dutyDate())), i);
   renderNav();
 }
 /* 代走で入れた14番（奈良学園）の形を、ナビから選び直す（2026-11-04）。
    時間外の記録の形も直す。時間外が自動で出た値のままなら計算し直し、手で直した値ならそのまま */
 function navSetForm(ai, k){
-  const iso = _navPv ? _navPv.iso : toISO(new Date());
+  const iso = _navPv ? _navPv.iso : toISO(dutyDate());
   const all = otLoad(), rec = all[iso];
   if(!rec || !rec.adds || !rec.adds[ai]) return;
   const p = iso.split('-').map(Number);
@@ -8161,8 +8211,8 @@ function renderNav(){
   if(!head) return;
   /* pv: 検索結果の「ダイヤ内容」。時刻で動く部分（いまどこ・あと何分）は出さず、行程を並べるだけ */
   const pv=_navPv;
-  const now = pv ? new Date(pv.iso+'T00:00:00') : new Date();
-  const iso=toISO(now), nm = pv ? -1 : now.getHours()*60+now.getMinutes();
+  const now = pv ? new Date(pv.iso+'T00:00:00') : dutyDate();
+  const iso=toISO(now), nm = pv ? -1 : dutyNowMin();   // 24時過ぎは 24:16 のように数える
   const dayWord = pv ? 'この日' : '今日';
   const pl=navPlan(now, pv ? pv.dial : null);
   if(pl.err){ head.innerHTML=''; st.innerHTML='<div class="nav-msg">'+pl.err+'</div>'; lb.innerHTML=''; return; }
@@ -8231,7 +8281,7 @@ function renderNav(){
   let curTrip=null, nextTrip=null, place='', gapMove=null;
   if(pv){
     /* ダイヤ内容：出勤・退勤、最初と最後の便、経由の注意 */
-    const todayIso = toISO(new Date());
+    const todayIso = toISO(dutyDate());
     h+='<div class="nav-st">📋 '+(pv.iso===todayIso ? '今日の' : '')+pl.label+'の行程です</div>';
     if(pl.byRec) h+='<div class="nav-then">⏱ 時間外・代走の記録どおりに出しています（本来は '+pv.dial+'番）</div>';
     const ioRec = (pl.byRec && (!pl.io || pl.rinji.length || pl.other)) ? navIoByRec(pl.rec, now) : '';
@@ -8394,7 +8444,7 @@ function renderNav(){
 
 /* 着いた時刻を残す。もう一度押すと取り消す */
 function navArrived(dep){
-  const now=new Date(), iso=toISO(now), nm=now.getHours()*60+now.getMinutes();
+  const now=dutyDate(), iso=toISO(now), nm=dutyNowMin();
   const arr=navStoreGet(navArrKey(iso), {});
   if(arr[dep]!=null){
     if(!confirm('着いた時刻を取り消しますか？')) return;
@@ -8547,7 +8597,7 @@ function buildRows(dial,from,to){
 function quickCal(){
   const dial=parseInt(document.getElementById('todayInput').value);
   if(!dial||dial<1||dial>CUR_MAX){showToast('今日のダイヤ番号を入力してください');return;}
-  const t=new Date();t.setHours(0,0,0,0);
+  const t=dutyDate();t.setHours(0,0,0,0);
   const from=new Date(t), to=new Date(t); to.setDate(t.getDate()+29);   // 今日から30日間（これまでの「1ヶ月」と同じ）
   document.getElementById('dateFrom').value=toISO(from);
   document.getElementById('dateTo').value=toISO(to);
@@ -8559,7 +8609,7 @@ function quickCal(){
 function quickSearch(type){
   const dial=parseInt(document.getElementById('todayInput').value);
   if(!dial||dial<1||dial>CUR_MAX){showToast('今日のダイヤ番号を入力してください');return;}
-  const t=new Date();t.setHours(0,0,0,0);
+  const t=dutyDate();t.setHours(0,0,0,0);   // 入力欄の番号の日から数える
   let from,to;
   if(type==='today'){from=to=t;}
   else if(type==='mid'){from=new Date(t);to=new Date(t);to.setDate(t.getDate()+{{QUICK2_DAYS}}-1);}   // 真ん中のボタン。日数は apps.json で決める
