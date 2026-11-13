@@ -880,3 +880,9 @@ apps.json の NEXT_REV / NEXT_JSON
 - 使っている所: calcDial、今日の枠（公休・年休・代走も）、todayShiftPairs、updateClock の切り替え、saveMyDial / restoreMyDial、quickSearch / quickCal、renderNav / navArrived / navSetForm。
   カレンダーの「今日」の印・ふりかえり・メモは本当の日付のまま。
 - 前の日の続きの間は、今日の枠に「🌙 退勤までは前の日の勤務を表示しています」（.duty-carry）。
+
+## v4.21（2026-11-13）「振替」の印鑑、ボタンの言葉
+- 乗務員さんより: 本来のダイヤを乗らずに別の（長い）ダイヤを走る日は「振替」。予備バー（長い勤務）から短いダイヤに替わる日も、時間外は付かないが「振替」。
+- `otSubWord(r)`: 本来のダイヤを まるごと乗る＝「代走」、それ以外（乗らない・前半だけ・後半だけ）＝「振替」。otCalc の kind（追加／振替）と同じ分け方。
+  使っている所: stampHtml（検索結果・今日の枠の印鑑）、カレンダーの印鑑と札（rc-stamp / rc-subl）、今日の枠の札（⏱ 振替／⏱ 代走あり）。色は代走と同じ紫。
+- 時間外の画面のボタン: 「まるごと乗った」→「まるごと乗る」、「乗ってない」→「乗らない」（baseWord も同じ言葉に）。

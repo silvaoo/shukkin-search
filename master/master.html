@@ -2172,10 +2172,10 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
       <div id="otBaseWrap">
         <label class="ot-lb">本来のダイヤは、どう乗りましたか？</label>
         <div class="ot-parts">
-          <button class="ot-part on" id="otBaseAll"    onclick="otSetBase('all')">まるごと乗った</button>
+          <button class="ot-part on" id="otBaseAll"    onclick="otSetBase('all')">まるごと乗る</button>
           <button class="ot-part"    id="otBaseFirst"  onclick="otSetBase('first')">前半だけ</button>
           <button class="ot-part"    id="otBaseSecond" onclick="otSetBase('second')">後半だけ</button>
-          <button class="ot-part"    id="otBaseNone"   onclick="otSetBase('none')">乗ってない</button>
+          <button class="ot-part"    id="otBaseNone"   onclick="otSetBase('none')">乗らない</button>
         </div>
       </div>
 
@@ -2283,7 +2283,7 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
         <img src="images/guide-3.jpg" alt="検索結果の見方" onerror="this.style.display='none'">
         <div class="guide-note only-single">
           代走・公出を登録した日（下の「時間外を記録する」）は、<b>その日に実際に乗る時間</b>が出勤の早い順に並びます。付いたダイヤは代走＝橙、公出＝青の字です。<br>
-          日付の横には<b>「代走」「公出」「指定公出」「年休」の印鑑</b>が押されます。
+          日付の横には<b>「代走」「振替」「公出」「指定公出」「年休」の印鑑</b>が押されます。本来のダイヤをまるごと乗った上で付いたら「代走」、本来のダイヤを乗らずに（前半だけ・後半だけも）別のダイヤを走ったら「振替」です。
         </div>
       </div>
 
@@ -2341,7 +2341,7 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
         <p>入れるのは3つだけです。</p>
         <ul>
           <li><b>この日は？</b>　勤務の日／公休（指定公休も）／年休</li>
-          <li><b>本来のダイヤをどう乗ったか</b>　まるごと／前半だけ／後半だけ／乗ってない</li>
+          <li><b>本来のダイヤをどう乗ったか</b>　まるごと乗る／前半だけ／後半だけ／乗らない</li>
           <li><b>付いたダイヤ番号</b>　何本でも足せます</li>
         </ul>
         <p>入れた瞬間に時間外が出ます。<b>数字は手で直せます。</b>渋滞や居残りで増えたときは書き換えてください。一度直すと、あとから上書きされません。間違えたときは「🗑 この日の記録を消す」で消せます。</p>
@@ -3770,7 +3770,7 @@ function otTodayHtml(v,m,d,dtLabel,r){
   const isKyuDay = otIsKyu(r) || (!slot0 && !und0);
   const badge = isKyuDay
     ? '<span class="today-badge kyu">🔵 公休出勤</span>'
-    : '<span class="today-badge sub">⏱ 代走・振替あり</span>';
+    : '<span class="today-badge sub">⏱ '+(otSubWord(r)==='振替'?'振替':'代走あり')+'</span>';
   let h='<div class="off-wrap">'
       + stampHtml(toISO(dd0), !slot0 && !und0)
       + '<div class="today-head"><b>'+m+'/'+d+'（'+dtLabel+'）</b>'+badge+'</div>'
@@ -4419,7 +4419,7 @@ function otIsShiteiKyu(iso, r){
   const sl=rec?rec[dayType(d)]:null;
   return !!(sl && String(sl.o)!=='—');
 }
-/* 印鑑は 年休・公出・指定公出・代走 だけ。
+/* 印鑑は 年休・公出・指定公出・代走・振替 だけ。
    ふつうの公休の印鑑（緑の「公 休」）は 2026-11-07 にやめた（乗務員さんより。要らない）。
    offDay は前の名残で、いまは使っていない */
 function stampHtml(iso, offDay){
@@ -4428,7 +4428,7 @@ function stampHtml(iso, offDay){
   if(otIsLeave(r)){ cls='stamp-leave'; txt='年休'; }
   else if(otIsShiteiKyu(iso, r)){ cls='stamp-kyu stamp-shitei'; txt='<span>指定</span><span>公出</span>'; }   // 2026-11-07 追加
   else if(otIsKyu(r)){ cls='stamp-kyu'; txt='公出'; }
-  else if(r && r.adds && r.adds.length){ cls='stamp-sub'; txt='代走'; }
+  else if(r && r.adds && r.adds.length){ cls='stamp-sub'; txt=otSubWord(r); }   // 代走 か 振替
   else return '';
   /* 日付から傾きを決める。同じ日はいつ見ても同じ、隣の日とは違う傾きになる。
      右にも左にも倒れるようにして、押し方の雑さを出す。 */
@@ -5529,6 +5529,12 @@ function otBaseOf(r){
   if(!r || otIsKyu(r) || otIsLeave(r)) return 'none';
   return r.base || 'all';
 }
+/* 勤務の日に付いたダイヤの呼び方（2026-11-13 乗務員さんより）。
+   本来のダイヤをまるごと乗って、その上に付いた＝「代走」。
+   本来のダイヤを乗らない（前半だけ・後半だけも）で、代わりに別のダイヤを走った＝「振替」。
+   長いダイヤに替わる日も、予備バーのように長い勤務から短いダイヤに替わる日（時間外は付かない）も振替。
+   時間外の計算（otCalc の kind）と同じ分け方。 */
+function otSubWord(r){ return otBaseOf(r)==='all' ? '代走' : '振替'; }
 function otLoad(){ try{ return JSON.parse(localStorage.getItem(OT_KEY)||'{}'); }catch(e){ return {}; } }
 function otSave(o){ try{ localStorage.setItem(OT_KEY,JSON.stringify(o)); return true; }catch(e){ return false; } }
 
@@ -5738,8 +5744,8 @@ function otCalc(date, base, adds, forceKyu){
   const dropVal = dropped ? otHeldPart(baseSlot.o, dropped) * 0.8 : 0;
   const ot = Math.max(0, Math.round(addEval - dropVal));
 
-  const baseWord = base==='all'?'まるごと乗った':base==='none'?'乗っていない'
-                 : base==='first'?'前半だけ乗った':'後半だけ乗った';
+  const baseWord = base==='all'?'まるごと乗る':base==='none'?'乗らない'
+                 : base==='first'?'前半だけ乗る':'後半だけ乗る';   // ボタンと同じ言葉（2026-11-13）
   const howTxt = dropped
     ? '付いた分 '+otFmt(Math.round(addEval))+' − 走らなかった分 '
       +otFmt(Math.round(dropVal))+'（拘束×0.8）'
@@ -7622,7 +7628,7 @@ function renderResultCal(){
         rcSegs(x.slot, x.part).forEach(function(s){ segs.push(s); });
       });
       segs.sort(function(a,b){ return rcMin(a.s)-rcMin(b.s); });
-      body = isKyu ? `<div class="rc-subl kyu">公出</div>` : `<div class="rc-subl sub">代走</div>`;
+      body = isKyu ? `<div class="rc-subl kyu">公出</div>` : `<div class="rc-subl sub">${otSubWord(stRec)}</div>`;
       if(segs.length===1){
         body+=`<div class="rc-line"><span>${segs[0].s}</span></div>`
             + `<div class="rc-line"><span>${segs[0].e}</span></div>`;
@@ -7676,7 +7682,7 @@ function renderResultCal(){
       : (otIsKyu(stRec)
       ? `<span class="rc-stamp kyu" style="transform:translate(-50%,-50%) rotate(${sdeg}deg)">公出</span>`
       : (isSub
-      ? `<span class="rc-stamp sub" style="transform:translate(-50%,-50%) rotate(${sdeg}deg)">代走</span>` : ''));
+      ? `<span class="rc-stamp sub" style="transform:translate(-50%,-50%) rotate(${sdeg}deg)">${otSubWord(stRec)}</span>` : ''));
     html+=`<div class="${cls}${stCls}"${r?` onclick="openRcDetail('${iso}')"`:''}>`
         + `<div class="rc-head"><span class="rc-date">${d}</span>`
         + `<span class="rc-dno">${dnTxt}</span></div>`
