@@ -2350,7 +2350,7 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
           番号の無い仕事は<b>「臨時＆シャトル等」</b>を選び、始まりと終わりの時刻を入れてください。<br>
           学園前Ａの14番（奈良学園）は、<b>A〜Fの形</b>を選べます。
         </div>
-        <div class="guide-note">計算は、どの勤務も<b>「労働時間」と「拘束時間×0.8」の多いほう</b>で見ています。公出も振替も同じ考え方です。</div>
+        <div class="guide-note">計算は、どの勤務も<b>「労働時間」と「拘束時間×0.8」の多いほう</b>で見ています。公出も振替も同じ考え方です。<br>2本を乗り継ぐ日（例：79番前半＋31番）は、<b>後の乗務は前と同じバスなので、点検の10分を自動で引いて</b>計算します。出勤時刻はそのままです。</div>
         <div class="guide-note">
           <b>時間外が90時間、拘束が275時間に近づくと警告が出ます。</b>1日の拘束が15時間を超えるときも出ます。入れる前に分かるので、超えそうなら受ける前に判断できます。<br>
           ⚠ おおよその計算です。多少のズレがあることはご了承ください。
@@ -4577,7 +4577,7 @@ function shiftPairsForDate(v, today){
       }
     }
     rec0.adds.forEach(function(a){
-      const s2=otSlotOf(a.code||'{{ID}}', a.dial, (typeof date!=='undefined'?date:(typeof today!=='undefined'?today:new Date())), a.v);
+      const s2=otSlotOf(a.code||'{{ID}}', a.dial, today, a.v);
       if(!s2) return;
       const pr=shiftPairsOf(s2.o);
       if(!pr) return;
@@ -5643,6 +5643,85 @@ function otEval(slot, part){
    中間のA・B・Eも、日勤のC・Dも同じ。ただし公休出勤のF（学校休）だけは、ふつうのダイヤと同じく拘束×0.8 を見る。
    kyu: 公休出勤の日か */
 const OT_FORM_HELD_KYU = {F:true};
+/* ==== 前と同じバス（2026-11-14 乗務員さんより） ====
+   2本以上をつないで乗る日（例: 56番の代わりに 79番前半 6:02〜9:04 ＋ 31番 16:35〜24:26）、
+   後の乗務は前と同じバスなので、出庫の点検が要らない。会社はそのぶん出勤を10分遅く数える。
+   実例: 上の日、アプリは時間外4:02、会社は3:52。31番を16:45出勤として数えると3:54でほぼ合う。
+   会社に聞くと出退勤は 6:02〜9:04／16:35〜24:26 のまま。出勤時刻は変わらず、時間外の計算だけで点検の10分が引かれているらしい。
+   どの日が同じバスかはアプリでは分からないが、選ぶ項目は増やしたくない（乗務員さんより）ので、自動でこう決める:
+     ・その日に乗るものを時刻の順に並べ、前と別のダイヤから乗り継ぐ乗務は、時間外の計算でだけ出勤を SAME_BUS_MIN 分遅く数える
+     ・画面の出勤時刻・カウントダウン・カレンダーは本来の時刻のまま（遅らせて出ると遅刻になる）
+     ・同じダイヤの前半→後半（中間ダイヤ）はそのまま。もとの数字に点検が入っているため
+     ・前の乗務の退勤（前半側）は変えない
+     ・臨時＆シャトル等が入る日は時刻が分からないので何もしない */
+const SAME_BUS_MIN = 10;
+function sbMin(t){ const m=String(t||'').match(/^(\d{1,2}):(\d{2})$/); return m ? parseInt(m[1],10)*60+parseInt(m[2],10) : null; }
+function sbHm(n){ return Math.floor(n/60)+':'+String(n%60).padStart(2,'0'); }
+/* 1つの勤務から、乗る部分を {half, s, e} で取り出す。half は first／second（中間ダイヤ）か one */
+function sbSegs(slot, part){
+  if(!slot || !slot.o || String(slot.o)==='—') return [];
+  const sp=String(slot.o).split('〜');
+  const st=sp[0].split('/').map(function(x){ return x.trim(); });
+  const en=(sp[1]||'').split('/').map(function(x){ return x.trim(); });
+  if(st.length===2 && en.length===2){
+    const a={half:'first', s:st[0], e:st[1]}, b={half:'second', s:en[0], e:en[1]};
+    return part==='first' ? [a] : part==='second' ? [b] : [a,b];
+  }
+  if(st.length===1 && en.length===1 && st[0] && en[0]) return [{half:'one', s:st[0], e:en[0]}];
+  return [];
+}
+/* 勤務の、指定した側の出勤を n 分遅らせた写しを作る。労働も n 分減らす。o0 に元の時刻を残す */
+function sbShiftSlot(slot, half, n){
+  const sp=String(slot.o).split('〜');
+  const st=sp[0].split('/').map(function(x){ return x.trim(); });
+  const en=(sp[1]||'').split('/').map(function(x){ return x.trim(); });
+  const ws=String(slot.w||'').split('/').map(function(x){ return x.trim(); });
+  const late=function(t){ const m=sbMin(t); return m===null ? t : sbHm(m+n); };
+  const less=function(t){ const m=sbMin(t); return m===null ? t : sbHm(Math.max(0,m-n)); };
+  let o, w, from;
+  if(half==='second'){
+    from=en[0]; o=st.join('/')+'〜'+late(en[0])+'/'+en[1];
+    w = ws.length===2 ? ws[0]+'/'+less(ws[1]) : slot.w;
+  }else if(half==='first' && st.length===2){
+    from=st[0]; o=late(st[0])+'/'+st[1]+'〜'+en.join('/');
+    w = ws.length===2 ? less(ws[0])+'/'+ws[1] : slot.w;
+  }else{
+    from=st[0]; o=late(st[0])+'〜'+en[0];
+    w = less(ws[0]);
+  }
+  const r=Object.assign({}, slot, {o:o, w:w});
+  r.o0=slot.o; r.w0=slot.w; r.sbFrom=from; r.sbHalf=half;
+  return r;
+}
+/* その日の「前と同じバス」を当てはめる。
+   ownSlot: 本来のダイヤの勤務（無ければ null）、base: otBaseOf の値、adds: 付いたもの
+   返す値: own（遅らせた本来の勤務か元のまま）、adds（付いたものの勤務を同じ順で。読めないものは null）、
+          ownCut（本来のダイヤ側で遅らせた分。時間外から引く）、any（どこか遅らせたか） */
+function otSameBus(date, ownSlot, base, adds){
+  const out={own:ownSlot, adds:[], ownCut:0, any:false};
+  const list=(adds||[]).map(function(a){
+    return (a.code===OT_RINJI) ? null : otSlotOf(a.code||'{{ID}}', a.dial, date, a.v);
+  });
+  out.adds=list.slice();
+  if((adds||[]).some(function(a){ return a.code===OT_RINJI; })) return out;
+  const segs=[];
+  if(ownSlot && base && base!=='none') sbSegs(ownSlot, base).forEach(function(g){ g.src='own'; segs.push(g); });
+  (adds||[]).forEach(function(a,i){
+    sbSegs(list[i], a.part||'all').forEach(function(g){ g.src=i; segs.push(g); });
+  });
+  if(segs.length<2) return out;
+  segs.sort(function(a,b){ return (sbMin(a.s)||0)-(sbMin(b.s)||0); });
+  for(let i=1;i<segs.length;i++){
+    const g=segs[i], pv=segs[i-1];
+    if(g.src===pv.src) continue;                                   // 同じダイヤの前半→後半
+    if(sbMin(g.s)===null || sbMin(pv.e)===null || sbMin(g.s)<sbMin(pv.e)) continue;   // 重なるものは触らない
+    out.any=true;
+    if(g.src==='own'){ out.own=sbShiftSlot(out.own, g.half, SAME_BUS_MIN); out.ownCut+=SAME_BUS_MIN; }
+    else out.adds[g.src]=sbShiftSlot(out.adds[g.src], g.half, SAME_BUS_MIN);
+  }
+  return out;
+}
+
 function otEvalAdd(slot, part, kyu){
   if(slot && slot.v && !(kyu && OT_FORM_HELD_KYU[slot.v])) return otPart(slot.w, part);
   return otEval(slot, part);
@@ -5661,10 +5740,14 @@ function otCalc(date, base, adds, forceKyu){
   const baseDial=otBaseDial(date);
   const rows=[];
   let addEval=0, addLabor=0, addHeld=0, formLab=[];
+  /* 前と同じバスの乗務は、出勤を10分遅く数える（2026-11-14） */
+  const sb=otSameBus(date, baseSlot, baseSlot ? (base||'all') : 'none', adds);
+  let ai=-1;
 
   for(const a of (adds||[])){
+    ai++;
     const code=a.code||'{{ID}}';
-    const slot=otSlotOf(code, a.dial, date, a.v);
+    const slot=(code===OT_RINJI) ? otSlotOf(code, a.dial, date, a.v) : sb.adds[ai];
     if(!slot){
       if(code===OT_RINJI) return {ok:false, msg:'臨時の始まりと終わりの時刻を入れてください'};
       const vs=otVarsFor(code, a.dial, date);
@@ -5677,7 +5760,7 @@ function otCalc(date, base, adds, forceKyu){
     if(slot.v && !(!baseSlot && OT_FORM_HELD_KYU[slot.v])) formLab.push(a.dial+'番'+slot.v);
     addLabor += otPart(slot.w, a.part);
     addHeld  += otHeldPart(slot.o, a.part);
-    rows.push({dial:a.dial, part:a.part, o:slot.o, w:slot.w, code:code, v:a.v});
+    rows.push({dial:a.dial, part:a.part, o:(slot.o0||slot.o), w:(slot.w0||slot.w), code:code, v:a.v});   // 見せるのは本来の時刻
   }
   /* 臨時＆シャトル等が入る日（2026-10-28 乗務員さんより）。臨時は労働時間が分からないので、
      付いた分の「いちばん早い始まり〜いちばん遅い終わり」の通しの拘束×0.8 を付いた分とする。
@@ -5716,18 +5799,19 @@ function otCalc(date, base, adds, forceKyu){
   }
 
   // --- 公休の日に出た ---
+  const sbHow = sb.any ? '。🚌 前と別のダイヤに乗り継ぐ乗務は同じバスなので、点検の10分を引いて計算しています（出勤時刻はそのまま）' : '';
   if(!baseSlot){
     const useLabor = addLabor >= addHeld*0.8;
     if(rinjiHow) return {ok:true, kind:'公休出勤', baseDial:baseDial, baseLabel:'公休',
                          rows:rows, ot:Math.max(0,Math.round(addEval)), how:rinjiHow};
     if(formLab.length) return {ok:true, kind:'公休出勤', baseDial:baseDial, baseLabel:'公休',
             rows:rows, ot:Math.max(0,Math.round(addEval)),
-            how:formLab.join('・')+' は出退勤表の労働時間で計算しました'};
+            how:formLab.join('・')+' は出退勤表の労働時間で計算しました'+sbHow};
     return {ok:true, kind:'公休出勤', baseDial:baseDial, baseLabel:'公休',
             rows:rows, ot:Math.max(0,Math.round(addEval)),
             how:'労働 '+otFmt(addLabor)+' と 拘束 '+otFmt(addHeld)+'×0.8（'
                +otFmt(Math.round(addHeld*0.8))+'）のうち '
-               +(useLabor?'労働':'拘束×0.8')+' を採用'};
+               +(useLabor?'労働':'拘束×0.8')+' を採用'+sbHow};
   }
 
   // --- 勤務の日に付いた／振り替わった ---
@@ -5742,19 +5826,22 @@ function otCalc(date, base, adds, forceKyu){
                 : (base==='first') ? 'second'      // 前半だけ乗った＝後半を降りた
                 : 'first';                         // 後半だけ乗った＝前半を降りた
   const dropVal = dropped ? otHeldPart(baseSlot.o, dropped) * 0.8 : 0;
-  const ot = Math.max(0, Math.round(addEval - dropVal));
+  // 本来のダイヤ側が「前と同じバス」で10分遅くなったら、そのぶん実際に働いた時間が減る
+  const ot = Math.max(0, Math.round(addEval - dropVal - sb.ownCut));
 
   const baseWord = base==='all'?'まるごと乗る':base==='none'?'乗らない'
                  : base==='first'?'前半だけ乗る':'後半だけ乗る';   // ボタンと同じ言葉（2026-11-13）
-  const howTxt = dropped
+  const howTxt = (dropped
     ? '付いた分 '+otFmt(Math.round(addEval))+' − 走らなかった分 '
       +otFmt(Math.round(dropVal))+'（拘束×0.8）'
-    : '付いた分 '+otFmt(Math.round(addEval))+' がそのまま時間外';
+    : '付いた分 '+otFmt(Math.round(addEval))+' がそのまま時間外')
+    + (sb.ownCut ? ' − 同じバスの点検 0時間'+String(sb.ownCut).padStart(2,'0')+'分' : '');
   return {ok:true, kind:(base==='all'?'追加':'振替'), baseDial:baseDial,
           baseLabel:baseSlot.o+'（労働 '+baseSlot.w+'）／'+baseWord,
           baseO:baseSlot.o, baseW:baseSlot.w, baseKeep:base, baseWord:baseWord,
           rows:rows, ot:ot, how:(rinjiHow ? rinjiHow+'。' : '')+howTxt
-            +(formLab.length ? '（'+formLab.join('・')+' は出退勤表の労働時間）' : '')};
+            +(formLab.length ? '（'+formLab.join('・')+' は出退勤表の労働時間）' : '')
+            +(sb.any ? '。🚌 前と別のダイヤに乗り継ぐ乗務は同じバスなので、点検の10分を引いて計算しています（出勤時刻はそのまま）' : '')};
 }
 
 /* 拘束時間のうち、指定した側だけを取り出す */
@@ -6474,7 +6561,8 @@ function otPreview(){
      (r.baseO
        ? '<div class="ot-io-row"><div class="ot-io-h">本来 '+r.baseDial+'番（'+r.baseWord+'）</div>'
          +'<div class="ot-io'+(r.baseKeep==='none'?' off':'')+'">'
-         +ioTx(r.baseO, (r.baseKeep==='first'||r.baseKeep==='second') ? r.baseKeep : 'all')+'</div>'
+         +ioTx(r.baseO, (r.baseKeep==='first'||r.baseKeep==='second') ? r.baseKeep : 'all')
++'</div>'
          +'<div class="ot-sub">労働 '+labTx(r.baseW, (r.baseKeep==='first'||r.baseKeep==='second') ? r.baseKeep : 'all')+'</div></div>'
        : '<div class="ot-sub">本来：'+r.baseLabel+'</div>')
     +r.rows.map(function(x){
@@ -7528,12 +7616,10 @@ function rcRealList(rec, date){
   if(!rec || otIsLeave(rec) || !rec.adds || !rec.adds.length) return null;
   const dt=dayType(date);
   const list=[];
-  if(otBaseOf(rec)!=='none'){
-    const bd=otBaseDial(date);
-    const b=(bd!==null)?DB[bd]:null;
-    const sl=(b&&b[dt]&&String(b[dt].o)!=='—')?b[dt]:null;
-    if(sl) list.push({dial:bd, part:otBaseOf(rec), slot:sl});
-  }
+  const bd=otBaseDial(date);
+  const b=(bd!==null)?DB[bd]:null;
+  const sl0=(b&&b[dt]&&String(b[dt].o)!=='—')?b[dt]:null;
+  if(otBaseOf(rec)!=='none' && sl0) list.push({dial:bd, part:otBaseOf(rec), slot:sl0});
   rec.adds.forEach(function(x){
     if(x.dial===''||x.dial==null) return;
     list.push({dial:x.dial, part:x.part, code:x.code||'{{ID}}', v:x.v||'',
