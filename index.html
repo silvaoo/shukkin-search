@@ -357,6 +357,7 @@ body {
   background:#f4f4f8; color:#555; font-size:calc(12px * var(--fs, 1)); font-weight:800; font-family:inherit; cursor:pointer; }
 .nav-alt button.on { background:#fff3e0; color:#c25e00; border-color:#ff9f1a; }
 .nav-alt-ttl { font-size:calc(11px * var(--fs, 1)); font-weight:800; color:#888; margin:2px 0 4px; }
+.nav-chugata { display:inline-block; white-space:nowrap; color:#d92626; font-weight:900; margin-left:6px; }
 .nav-kindai { display:inline-block; font-size:calc(12px * var(--fs, 1)); font-weight:800; color:#1f6b45; background:#e6f5ec; border:1px solid #b9e0c8; border-radius:999px; padding:3px 10px; margin:4px 0 4px; }
 .nav-dial { font-size:calc(13px * var(--fs, 1)); font-weight:800; color:#444; margin-bottom:6px; }
 .nav-now { border:2px solid #ff9f1a; background:#fff7ec; border-radius:12px; padding:12px; margin-bottom:10px; }
@@ -4820,7 +4821,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v304';
+const APP_VERSION   = 'v305';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -5042,7 +5043,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.24';
+const APP_LABEL = 'バージョン 4.25';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -7995,6 +7996,20 @@ function navViaWarn(x){
   return (x && x.v && !x.k && NAV && NAV.viawarn && NAV.viawarn[x.v]) || '';
 }
 /* 便の経由の札。prev は同じ区間を前に走った便（経由が変わるときに知らせる） */
+/* 中型限定（2026-11-20）。大型バスでは走れない系統（58系統 三松ヶ丘経由 など）が今日の行程にあれば、
+   ダイヤ番号の横に赤字で「中型限定（三松有り）」と出す。どの系統かは行程データの chugata に入っている */
+function navChugataHtml(items){
+  if(!NAV || !NAV.chugata || !items) return '';
+  const w=[];
+  items.forEach(function(x){
+    if(!x || x.k || !x.v) return;
+    const n=NAV.chugata[x.v];
+    if(n!=null && w.indexOf(n)<0) w.push(n);
+  });
+  if(!w.length) return '';
+  return '<span class="nav-chugata">中型限定'+(w.join('・') ? '（'+w.join('・')+'）' : '')+'</span>';
+}
+
 /* 系統の色分け（22系統は赤・26系統は青 など）。行程データの viacolor に色の名前が入っている */
 function navViaColor(x){
   return (x && x.v && !x.k && NAV && NAV.viacolor && NAV.viacolor[x.v]) || '';
@@ -8362,7 +8377,7 @@ function renderNav(){
 
   const dnm = IS_MULTI ? ((ALL_DIAS.find(function(x){ return x.code===CUR_DIA; })||{}).name || '') : '';
   head.innerHTML = '<div class="nav-dial">'+(dnm ? dnm+'　' : '')+(now.getMonth()+1)+'/'+now.getDate()+'（'+dayType(now)+'）　'
-      + pl.label+'</div>'
+      + pl.label+navChugataHtml(pl.items)+'</div>'
     + (pl.varLabels ? kindaiNoteHtml(now, pl.varLabels) : '')
     + (pl.varLabels ? '<div class="nav-alt">'
         + pl.varLabels.map(function(lb,i){
