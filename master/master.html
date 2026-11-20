@@ -2796,6 +2796,37 @@ function isHol(d){return HOLIDAYS.has(toISO(d));}
 let OBON_DAYS=new Set();   // 中身は dia-{{ID}}.json から入れる
 function isObon(d){return OBON_DAYS.has(toISO(d));}
 
+/* 近畿大学（奈良キャンパス）の休み。奈良交通「令和8年度 運行期間一覧」（近畿大学線）より（2026-11-20 乗務員さんより）。
+   授業期間はふだんの形（近大通常）なので入れない。kyuka＝夏・冬休暇中、haru＝春休暇中。
+   日曜・祝日はもともと日祝ダイヤなので、ここでは気にしない */
+const KINDAI_OFF = [
+  ['2026-03-14','2026-04-04','haru'],   // 春休み（改正日から）
+  ['2026-08-05','2026-09-12','kyuka'],  // 夏期休暇（8/13〜15 はお盆で土曜ダイヤ）
+  ['2026-11-05','2026-11-05','kyuka'],  // 創立記念日（近大線は日・祝ダイヤ）
+  ['2026-12-24','2027-01-07','kyuka'],  // 冬期休暇（12/30〜1/3 は近大線は日・祝ダイヤ）
+  ['2027-02-08','2027-04-03','haru']    // 春休み（未定。決まったら直す）
+];
+function kindaiMode(d){
+  const iso=toISO(d);
+  const r=KINDAI_OFF.find(function(x){ return iso>=x[0] && iso<=x[1]; });
+  return r ? r[2] : '';
+}
+/* 近大の休みの日は、形違いのうち「休暇中」「春休」の形を最初から選んでおく（その日に自分で選び直した形があれば、そちらが優先）。
+   春休の形が無いダイヤは休暇中の形。北校・育西・あすか野小などのもう1つの分かれ目は、いちばん上の形（あり）に合わせる。
+   生駒の「近大／それ以外の日」は、休みの日にどちらになるか分からないので今まで通り */
+function kindaiPick(labels, d){
+  const mode=kindaiMode(d);
+  if(!mode || !labels.some(function(l){ return /近大/.test(l); })) return 0;
+  const idx=function(re){ return labels.map(function(l,i){ return re.test(l) ? i : -1; }).filter(function(i){ return i>=0; }); };
+  let c = (mode==='haru') ? idx(/春休/) : [];
+  if(!c.length) c = idx(/休暇/);
+  if(!c.length) return 0;
+  const tail = String(labels[0]).split('・')[1];
+  const key = tail ? tail.replace(/[\uFF08(].*$/,'') : '';
+  const hit = key ? c.find(function(i){ return labels[i].indexOf(key)>=0; }) : undefined;
+  return (hit!=null) ? hit : c[0];
+}
+
 /* 日付の種別（平日／土曜／日祝）を判定する（お盆期間は土曜日ダイヤ扱い） */
 function dayType(d){const w=d.getDay();if(isObon(d))return '土';if(w===0||isHol(d))return '日祝';if(w===6)return '土';return '平';}
 
@@ -8047,8 +8078,9 @@ function navPlan(date, dialOverride){
   }
   /* 形違い（近大通常／休暇中、ふれあいセンター休業日 など）。どれを使うかは日ごとに覚える。
      以前の true（2つ目の形）もそのまま読めるようにしておく */
-  const sv = navStoreGet(navAltKey(iso), 0);
+  const sv = navStoreGet(navAltKey(iso), null);
   let sel = (sv===true) ? 1 : (typeof sv==='number' ? sv : 0);
+  const autoSel = (sv===null);   // その日まだ選んでいなければ、近大の休みに合わせて選ぶ（2026-11-20）
   let varLabels=null, items=[], off=true, io=null, nodata='';
   const forms=[], missing=[];   // 代走で入れた14番などの形の選び直し ／ 行程がまだ無い分
   let holOff=false;              // 祝日で奈良学園が休み（14番）
@@ -8063,7 +8095,10 @@ function navPlan(date, dialOverride){
     /* 代走で入れた分は、ナビからも形を選び直せる（2026-11-04 乗務員さんより）。時間外の記録も一緒に直す */
     if(pc.v && pc.ai!=null && vs.length>1) forms.push({ai:pc.ai, dial:pc.dial, v:pc.v, labels:vs.map(function(z){ return z.label; })});
     if(vi<0){
-      if(vs.length>1 && !varLabels) varLabels = vs.map(function(v,i){ return v.label || ('形'+(i+1)); });
+      if(vs.length>1 && !varLabels){
+        varLabels = vs.map(function(v,i){ return v.label || ('形'+(i+1)); });
+        if(autoSel) sel = kindaiPick(varLabels, date);
+      }
       if(sel>=vs.length) sel=0;
       vi = sel;
     }
