@@ -358,6 +358,26 @@ body {
 .nav-alt button.on { background:#fff3e0; color:#c25e00; border-color:#ff9f1a; }
 .nav-alt-ttl { font-size:calc(11px * var(--fs, 1)); font-weight:800; color:#888; margin:2px 0 4px; }
 .nav-chugata { display:inline-block; white-space:nowrap; color:#d92626; font-weight:900; margin-left:6px; }
+/* 中型限定の小さな札（2026-11-20 見本どおり）。枠の高さや勤務時間の大きさを変えないよう、2行の小さな札にして
+   すでにある行（「◯番ダイヤ ／ 日付」の行、「◯ 番」の行）の右側に置く */
+.cg-stamp { display:inline-flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+  font-family:'Noto Sans JP', sans-serif; font-size:calc(10px * var(--fs, 1)); font-weight:800; line-height:1.2; letter-spacing:0;
+  color:#ff5a5a; background:rgba(255,64,64,.12); border:1.5px solid #ff5a5a; border-radius:8px; padding:2px 6px;
+  white-space:nowrap; text-shadow:none; font-style:normal; }
+.cg-stamp i { display:block; font-style:normal; }
+.cg-stamp[hidden] { display:none !important; }
+body.light .cg-stamp { color:#d92626; border-color:#d92626; background:#fdecec; }
+/* トップの今日の枠：札を枠の上の線に掛ける（枠の上のすき間は10px。文字の大きさを変えても場所を取らないよう、札の文字は1.1倍までしか大きくしない） */
+#todayPreviewBox { position:relative; }
+#todayPreviewBox > .cg-stamp { position:absolute; top:-9px; right:12px; z-index:4; flex-direction:row;
+  font-size:calc(10px * min(var(--fs, 1), 1.1)); line-height:1.2; padding:1px 8px; border-radius:9px; background:#3a1a1f; }   /* 大きくしても 1.1倍まで（すき間に収めるため） */
+#todayPreviewBox > .cg-stamp::before { content:'🚌 '; }
+#todayPreviewBox > .cg-stamp i { display:inline; }
+#todayPreviewBox > .cg-stamp i + i::before { content:'（'; }
+#todayPreviewBox > .cg-stamp i + i::after { content:'）'; }
+body.light #todayPreviewBox > .cg-stamp { background:#fdecec; }
+/* 検索結果のカード：「◯ 番」の右（ダイヤ内容ボタンの左）に2行の小さな札 */
+.day-dial .cg-stamp { align-self:center; margin-left:8px; }
 .nav-kindai { display:inline-block; font-size:calc(12px * var(--fs, 1)); font-weight:800; color:#1f6b45; background:#e6f5ec; border:1px solid #b9e0c8; border-radius:999px; padding:3px 10px; margin:4px 0 4px; }
 .nav-dial { font-size:calc(13px * var(--fs, 1)); font-weight:800; color:#444; margin-bottom:6px; }
 .nav-now { border:2px solid #ff9f1a; background:#fff7ec; border-radius:12px; padding:12px; margin-bottom:10px; }
@@ -3126,7 +3146,7 @@ function _updateTodayPreview(){
     return;
   }
   const noteHtml=slot.n?`<div class="today-note">📌 ${slot.n}</div>`:'';
-  box.innerHTML=`<div class="today-head"><b>${v}番ダイヤ</b> ／ ${m}/${d}（${dtLabel}）</div>
+  box.innerHTML=`${cgStampHtml(toISO(today), v)}<div class="today-head"><b>${v}番ダイヤ</b> ／ ${m}/${d}（${dtLabel}）</div>
     ${timeBoxHtml(slot,'tb-today')}${noteHtml}${dutyCarryHtml()}`;
 }
 
@@ -3826,7 +3846,7 @@ function otTodayHtml(v,m,d,dtLabel,r){
 
   h+='<div class="today-note">⏱ 時間外 '+otFmt(r.min)
     +(r.note?' ／ '+escapeHtml(r.note):'')+'</div>'+dutyCarryHtml();
-  return h+'</div>';
+  return cgStampHtml(toISO(dd0), v) + h+'</div>';   // 中型限定の札は枠の上の線に掛ける（off-wrap の外）
 }
 
 /* ==== 今日の勤務をカード画像にする ====
@@ -4821,7 +4841,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v305';
+const APP_VERSION   = 'v306';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -5043,7 +5063,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.25';
+const APP_LABEL = 'バージョン 4.26';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -7373,7 +7393,7 @@ function dayCardHtml(r){
         <div class="${badgeClass}">${badgeText}</div>
       </div>
       ${NAV_ON
-        ? `<div class="day-dial has-nav">${r.dn}<span> 番</span><button class="dial-nav-btn" data-iso="${r.iso}" data-dial="${r.dn}" data-dt="${r.dt}" data-off="${isOff?1:0}"${navPvAvail(r.iso, r.dn, r.dt, isOff)?'':' style="display:none"'} onclick="openNavPreview('${r.iso}',${r.dn})">🧭 ダイヤ内容</button></div>`
+        ? `<div class="day-dial has-nav">${r.dn}<span> 番</span>${cgStampHtml(r.iso, r.dn)}<button class="dial-nav-btn" data-iso="${r.iso}" data-dial="${r.dn}" data-dt="${r.dt}" data-off="${isOff?1:0}"${navPvAvail(r.iso, r.dn, r.dt, isOff)?'':' style="display:none"'} onclick="openNavPreview('${r.iso}',${r.dn})">🧭 ダイヤ内容</button></div>`
         : `<div class="day-dial">${r.dn}<span> 番</span></div>`}
       ${bodyHtml}
       ${memoBlockHtml(r.iso,r.dn)}
@@ -7944,6 +7964,7 @@ function navRefreshBtn(){
     if(bi.parentNode) bi.parentNode.classList.toggle('has-nav', ok);
   }
   if(w) w.textContent = ok ? '番' : '番ダイヤ';
+  cgRefreshAll();   // 中型限定の札（2026-11-20）
   /* 検索結果の「ダイヤ内容」ボタン。行程の読み込みが検索より後になったときも出るように、ここで合わせ直す */
   document.querySelectorAll('.dial-nav-btn[data-dial]').forEach(function(x){
     x.style.display = navPvAvail(x.getAttribute('data-iso'), x.getAttribute('data-dial'), x.getAttribute('data-dt'),
@@ -7999,15 +8020,45 @@ function navViaWarn(x){
 /* 中型限定（2026-11-20）。大型バスでは走れない系統（58系統 三松ヶ丘経由 など）が今日の行程にあれば、
    ダイヤ番号の横に赤字で「中型限定（三松有り）」と出す。どの系統かは行程データの chugata に入っている */
 function navChugataHtml(items){
-  if(!NAV || !NAV.chugata || !items) return '';
+  const w=navChugataWords(items);
+  if(!w.length) return '';
+  return '<span class="nav-chugata">中型限定'+(w.join('・') ? '（'+w.join('・')+'）' : '')+'</span>';
+}
+
+/* その日の行程（代走の分も含む）に中型限定の系統があれば、かっこの中の言葉（三松有り など）を並べて返す */
+function navChugataWords(items){
   const w=[];
+  if(!NAV || !NAV.chugata || !items) return w;
   items.forEach(function(x){
     if(!x || x.k || !x.v) return;
     const n=NAV.chugata[x.v];
     if(n!=null && w.indexOf(n)<0) w.push(n);
   });
-  if(!w.length) return '';
-  return '<span class="nav-chugata">中型限定'+(w.join('・') ? '（'+w.join('・')+'）' : '')+'</span>';
+  return w;
+}
+/* トップの今日の勤務・検索結果・カレンダーの窓に出す小さな札。
+   行程データは後から読み込まれることがあるので、いったん隠した札を置き、cgRefreshAll() で中身を入れる */
+function cgWordsFor(iso, dial){
+  if(!navRevOk() || !NAV.chugata) return null;
+  try{
+    const pl=navPlan(new Date(iso+'T12:00:00'), String(dial));
+    if(pl.err) return null;
+    const w=navChugataWords(pl.items);
+    return w.length ? w : null;
+  }catch(e){ return null; }
+}
+function cgFill(el){
+  const w=cgWordsFor(el.getAttribute('data-cg-iso'), el.getAttribute('data-cg-dial'));
+  el.innerHTML = w ? '<i>中型限定</i>'+(w.join('・') ? '<i>'+w.join('・')+'</i>' : '') : '';
+  el.hidden = !w;
+}
+function cgStampHtml(iso, dial){
+  const w=cgWordsFor(iso, dial);
+  return '<em class="cg-stamp" data-cg-iso="'+iso+'" data-cg-dial="'+dial+'"'+(w ? '>' : ' hidden>')
+    + (w ? '<i>中型限定</i>'+(w.join('・') ? '<i>'+w.join('・')+'</i>' : '') : '') + '</em>';
+}
+function cgRefreshAll(){
+  document.querySelectorAll('.cg-stamp[data-cg-iso]').forEach(cgFill);
 }
 
 /* 系統の色分け（22系統は赤・26系統は青 など）。行程データの viacolor に色の名前が入っている */
