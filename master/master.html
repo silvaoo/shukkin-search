@@ -357,6 +357,7 @@ body {
   background:#f4f4f8; color:#555; font-size:calc(12px * var(--fs, 1)); font-weight:800; font-family:inherit; cursor:pointer; }
 .nav-alt button.on { background:#fff3e0; color:#c25e00; border-color:#ff9f1a; }
 .nav-alt-ttl { font-size:calc(11px * var(--fs, 1)); font-weight:800; color:#888; margin:2px 0 4px; }
+.nav-kindai { display:inline-block; font-size:calc(12px * var(--fs, 1)); font-weight:800; color:#1f6b45; background:#e6f5ec; border:1px solid #b9e0c8; border-radius:999px; padding:3px 10px; margin:4px 0 4px; }
 .nav-dial { font-size:calc(13px * var(--fs, 1)); font-weight:800; color:#444; margin-bottom:6px; }
 .nav-now { border:2px solid #ff9f1a; background:#fff7ec; border-radius:12px; padding:12px; margin-bottom:10px; }
 .nav-st { font-size:calc(13px * var(--fs, 1)); font-weight:800; color:#c25e00; }
@@ -2790,7 +2791,11 @@ function addMonths(date,n){
 }
 
 /* その日が祝日かどうか判定する */
-function isHol(d){return HOLIDAYS.has(toISO(d));}
+function isHol(d){return HOLIDAYS.has(toISO(d)) || isNenmatsu(d);}
+/* 年末年始（12/30〜1/3）は日祝ダイヤ扱い（2026-11-20 乗務員さんより。毎年同じとして扱う） */
+function isNenmatsu(d){ const m=d.getMonth()+1, x=d.getDate(); return (m===12 && x>=30) || (m===1 && x<=3); }
+/* 祝日の呼び名。年末年始の日（元日以外）は「年末年始」 */
+function holName(d){ return (isNenmatsu(d) && !HOLIDAYS.has(toISO(d))) ? '年末年始' : '祝日'; }
 
 /* お盆期間（土曜日ダイヤ扱いになる日）*/
 let OBON_DAYS=new Set();   // 中身は dia-{{ID}}.json から入れる
@@ -2798,28 +2803,39 @@ function isObon(d){return OBON_DAYS.has(toISO(d));}
 
 /* 近畿大学（奈良キャンパス）の休み。奈良交通「令和8年度 運行期間一覧」（近畿大学線）より（2026-11-20 乗務員さんより）。
    授業期間はふだんの形（近大通常）なので入れない。kyuka＝夏・冬休暇中、haru＝春休暇中。
-   日曜・祝日はもともと日祝ダイヤなので、ここでは気にしない */
+   日曜・祝日はもともと日祝ダイヤなので、ここでは気にしない。
+   [始まり, 終わり, 種類, 呼び名, 1＝日程が未定] */
 const KINDAI_OFF = [
-  ['2026-03-14','2026-04-04','haru'],   // 春休み（改正日から）
-  ['2026-08-05','2026-09-12','kyuka'],  // 夏期休暇（8/13〜15 はお盆で土曜ダイヤ）
-  ['2026-11-05','2026-11-05','kyuka'],  // 創立記念日（近大線は日・祝ダイヤ）
-  ['2026-12-24','2027-01-07','kyuka'],  // 冬期休暇（12/30〜1/3 は近大線は日・祝ダイヤ）
-  ['2027-02-08','2027-04-03','haru']    // 春休み（未定。決まったら直す）
+  ['2026-03-14','2026-04-04','haru',  '春休み'],      // 春休み（改正日から）
+  ['2026-08-05','2026-09-12','kyuka', '夏休み'],      // 夏期休暇（8/13〜15 はお盆で土曜ダイヤ）
+  ['2026-11-05','2026-11-05','kyuka', '創立記念日'],  // 創立記念日（近大線は日・祝ダイヤ）
+  ['2026-12-24','2027-01-07','kyuka', '冬休み'],      // 冬期休暇（12/30〜1/3 は年末年始で日祝ダイヤ）
+  ['2027-02-08','2027-04-03','haru',  '春休み', 1]    // 春休み（未定。決まったら直して、最後の 1 を消す）
 ];
-function kindaiMode(d){
+function kindaiOff(d){
   const iso=toISO(d);
-  const r=KINDAI_OFF.find(function(x){ return iso>=x[0] && iso<=x[1]; });
-  return r ? r[2] : '';
+  return KINDAI_OFF.find(function(x){ return iso>=x[0] && iso<=x[1]; }) || null;
+}
+function kindaiMode(d){ const r=kindaiOff(d); return r ? r[2] : ''; }
+/* 「ダイヤ内容」の形のボタンの上に出す小さな表示（例：🎓 近大は冬休み中（12/24〜1/7）） */
+function kindaiNoteHtml(d, labels){
+  const r=kindaiOff(d);
+  if(!r || !labels || !labels.some(function(l){ return /近大/.test(l); })) return '';
+  const md=function(iso){ return (+iso.slice(5,7))+'/'+(+iso.slice(8,10)); };
+  const span = (r[0]===r[1]) ? md(r[0]) : md(r[0])+'〜'+md(r[1]);
+  const word = (r[3]==='創立記念日') ? '近大は創立記念日で休み' : '近大は'+r[3]+'中';
+  return '<div class="nav-kindai">🎓 '+word+'（'+span+'）'+(r[4] ? '・日程は予定' : '')+'</div>';
 }
 /* 近大の休みの日は、形違いのうち「休暇中」「春休」の形を最初から選んでおく（その日に自分で選び直した形があれば、そちらが優先）。
    春休の形が無いダイヤは休暇中の形。北校・育西・あすか野小などのもう1つの分かれ目は、いちばん上の形（あり）に合わせる。
-   生駒の「近大／それ以外の日」は、休みの日にどちらになるか分からないので今まで通り */
+   生駒の「近大／それ以外の日」は、近大の休みの日は近大の便が走らないので「それ以外の日」（2026-11-20 乗務員さんより） */
 function kindaiPick(labels, d){
   const mode=kindaiMode(d);
   if(!mode || !labels.some(function(l){ return /近大/.test(l); })) return 0;
   const idx=function(re){ return labels.map(function(l,i){ return re.test(l) ? i : -1; }).filter(function(i){ return i>=0; }); };
   let c = (mode==='haru') ? idx(/春休/) : [];
   if(!c.length) c = idx(/休暇/);
+  if(!c.length) c = idx(/それ以外/);
   if(!c.length) return 0;
   const tail = String(labels[0]).split('・')[1];
   const key = tail ? tail.replace(/[\uFF08(].*$/,'') : '';
@@ -3088,7 +3104,7 @@ function _updateTodayPreview(){
   const today=dutyDate();   // 24時過ぎの退勤までは前の日の勤務を出す
   const m=today.getMonth()+1,d=today.getDate();
   const dw=DW[today.getDay()];
-  const dtLabel=isObon(today)?`${dw}（お盆休みで土曜ダイヤ）`:isHol(today)?`${dw}・祝`:dw;
+  const dtLabel=isObon(today)?`${dw}（お盆休みで土曜ダイヤ）`:isHol(today)?(holName(today)==='年末年始'?`${dw}（年末年始で日祝ダイヤ）`:`${dw}・祝`):dw;
   const dt=dayType(today);
   const rec=DB[v];
   if(!rec||!rec[dt]){
@@ -3661,7 +3677,7 @@ function buildRoster(){
 
   const work=rows.filter(r=>r.slot).length;
   const dw=DW[today.getDay()];
-  const extra=isObon(today)?'・お盆':isHol(today)?'・祝':'';
+  const extra=isObon(today)?'・お盆':isHol(today)?(holName(today)==='年末年始'?'・年末年始':'・祝'):'';
 
   box.innerHTML =
     '<div class="roster-sum">'+(today.getMonth()+1)+'月'+today.getDate()+'日（'+dw+extra+'）　'
@@ -3908,7 +3924,7 @@ function buildCard(){
 
   g.textAlign='left';
   const dw=CARD_WD[today.getDay()];
-  const extra=isObon(today)?'・お盆':isHol(today)?'・祝':'';
+  const extra=isObon(today)?'・お盆':isHol(today)?(holName(today)==='年末年始'?'・年末年始':'・祝'):'';
   g.fillStyle='rgba(255,255,255,.82)'; g.font='500 46px sans-serif';
   g.fillText(`${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日（${dw}${extra}）`,80,150);
   g.fillStyle='#fff';
@@ -4019,7 +4035,7 @@ function handleSpeakToday(){
   const m=today.getMonth()+1,d=today.getDate();
   const dw=DW[today.getDay()];
   const dt=dayType(today);
-  const holLabel=isObon(today)?'お盆休みで土曜ダイヤ':isHol(today)?'祝日':'';
+  const holLabel=isObon(today)?'お盆休みで土曜ダイヤ':isHol(today)?(holName(today)==='年末年始'?'年末年始で日祝ダイヤ':'祝日'):'';
   const rec=DB[v];
   let text=`${m}月${d}日、${dw}曜日${holLabel}。`;
 
@@ -4080,7 +4096,7 @@ function handleSpeakResults(){
   let text='';
   rows.forEach(r=>{
     const allKyu=!r.rec||(r.rec&&r.slot===null);
-    const holLabel=r.obon?'お盆休みで土曜ダイヤ':r.hol?'祝日':'';
+    const holLabel=r.obon?'お盆休みで土曜ダイヤ':r.hol?(r.holn==='年末年始'?'年末年始で日祝ダイヤ':'祝日'):'';
     text+=`${r.m}月${r.d}日${r.dw}曜${holLabel}、${r.dn}番ダイヤ。`;
     if(allKyu){text+='公休。';}
     else if(r.slot&&r.slot.o!=='—'){
@@ -5783,7 +5799,7 @@ function otCalc(date, base, adds, forceKyu){
       if(code===OT_RINJI) return {ok:false, msg:'臨時の始まりと終わりの時刻を入れてください'};
       const vs=otVarsFor(code, a.dial, date);
       if(vs.length) return {ok:false, msg:a.dial+'番は 走った形（'+vs[0].k+'〜'+vs[vs.length-1].k+'）を選んでください'};
-      if(isHol(date) && otUndecidedSlot(code, a.dial, date)) return {ok:false, msg:a.dial+'番は 祝日で奈良学園が休みです'};
+      if(isHol(date) && otUndecidedSlot(code, a.dial, date)) return {ok:false, msg:a.dial+'番は '+holName(date)+'で奈良学園が休みです'};
       return {ok:false, msg:(code!=='{{ID}}'?otDiaName(code)+' ':'')
                           +a.dial+'番は この日 公休か、時刻が確定していません'};
     }
@@ -6289,7 +6305,7 @@ function renderOtDayCard(date, slot, dial){
   const box=document.getElementById('otDayCard');
   if(!box) return;
   const dt=dayType(date);
-  const badge = isObon(date) ? 'お盆（土曜ダイヤ）' : isHol(date) ? '祝日（日祝ダイヤ）'
+  const badge = isObon(date) ? 'お盆（土曜ダイヤ）' : isHol(date) ? holName(date)+'（日祝ダイヤ）'
               : dt==='土' ? '土曜' : dt==='日祝' ? '日祝' : '平日';
   if(dial===null){
     box.innerHTML='<div class="ot-day-sub">今日のダイヤ番号を保存すると、この日の勤務が出ます</div>';
@@ -6514,7 +6530,7 @@ function otPreview(){
     hint.textContent =
         (otKind==='kyu' && dataSlot) ? '指定公休として扱います。出たダイヤの拘束時間×0.8で計算します。'
       : isLeave ? '年休として記録します。この日は勤務時間を出さず、次の出勤を表示します。'
-      : (otKind==='work' && undecided && isHol(date)) ? '祝日で奈良学園が休みの日です。代わりに走ったダイヤを入れてください。公出ではなく、時間外も付きません。'
+      : (otKind==='work' && undecided && isHol(date)) ? holName(date)+'で奈良学園が休みの日です。代わりに走ったダイヤを入れてください。公出ではなく、時間外も付きません。'
       : (otKind==='work' && undecided) ? '奈良学園のように当日決まる勤務の日です。代わりに走ったダイヤを入れてください。公出ではなく、時間外も付きません。'
       : '';
   }
@@ -7335,7 +7351,7 @@ function dayCardHtml(r){
 
     let dateClass='day-date',badgeClass='day-badge badge-week',badgeText='平日';
     if(r.dt==='土'){dateClass+=' saturday';badgeClass='day-badge badge-sat';badgeText=r.obon?'お盆休みで土曜ダイヤ':'土曜';}
-    if(r.dt==='日祝'){dateClass+=' holiday';badgeClass='day-badge badge-hday';badgeText=r.hol?'祝日':'日曜';}
+    if(r.dt==='日祝'){dateClass+=' holiday';badgeClass='day-badge badge-hday';badgeText=r.hol?r.holn:'日曜';}
 
 
     let bodyHtml;
@@ -7637,7 +7653,7 @@ function rcMakeRow(date){
   const rec=DB[n];
   const slot=(rec&&rec[dt]&&String(rec[dt].o)!=='—')?rec[dt]:null;
   return {iso:toISO(date), dn:n, rec:rec, slot:slot, dt:dt,
-          hol:isHol(date), obon:isObon(date),
+          hol:isHol(date), holn:holName(date), obon:isObon(date),
           m:date.getMonth()+1, d:date.getDate(), dw:DW[date.getDay()]};
 }
 
@@ -8347,6 +8363,7 @@ function renderNav(){
   const dnm = IS_MULTI ? ((ALL_DIAS.find(function(x){ return x.code===CUR_DIA; })||{}).name || '') : '';
   head.innerHTML = '<div class="nav-dial">'+(dnm ? dnm+'　' : '')+(now.getMonth()+1)+'/'+now.getDate()+'（'+dayType(now)+'）　'
       + pl.label+'</div>'
+    + (pl.varLabels ? kindaiNoteHtml(now, pl.varLabels) : '')
     + (pl.varLabels ? '<div class="nav-alt">'
         + pl.varLabels.map(function(lb,i){
             return '<button class="'+(i===pl.sel?'on':'')+'" onclick="navSetAlt('+i+')">'+lb+'</button>'; }).join('')
@@ -8360,7 +8377,7 @@ function renderNav(){
 
   const trips=pl.items.filter(function(x){ return x.k!=='休'; });
   if(pl.holOff && !trips.length){
-    st.innerHTML='<div class="nav-msg">祝日は奈良学園が休みです。<br>代わりに走るダイヤは「時間外・代走」で入れてください</div>';
+    st.innerHTML='<div class="nav-msg">'+holName(now)+'は奈良学園が休みです。<br>代わりに走るダイヤは「時間外・代走」で入れてください</div>';
     lb.innerHTML=''; return;
   }
   if(pl.nodata && !trips.length){
@@ -8600,7 +8617,7 @@ function openRcDetail(iso){
   // 曜日区分のラベル
   let badge='', bcls='hei';
   if(r.obon){ badge='お盆(土曜ダイヤ)'; bcls='bon'; }
-  else if(r.hol){ badge='祝日(日祝ダイヤ)'; bcls='dosun'; }
+  else if(r.hol){ badge=r.holn+'(日祝ダイヤ)'; bcls='dosun'; }
   else if(r.dt==='土'){ badge='土曜'; bcls='dosun'; }
   else if(r.dt==='日祝'){ badge='日祝'; bcls='dosun'; }
   else { badge='平日'; bcls='hei'; }
@@ -8712,7 +8729,7 @@ function buildRows(dial,from,to){
     const hol=isHol(cur);
     const obon=isObon(cur);
     const rec=DB[dn];
-    rows.push({iso:toISO(cur),m:cur.getMonth()+1,d:cur.getDate(),dw:DW[cur.getDay()],dt,hol,obon,dn,rec,slot:rec?rec[dt]:null});
+    rows.push({iso:toISO(cur),m:cur.getMonth()+1,d:cur.getDate(),dw:DW[cur.getDay()],dt,hol,holn:holName(cur),obon,dn,rec,slot:rec?rec[dt]:null});
     cur.setDate(cur.getDate()+1);
   }
   return rows;
