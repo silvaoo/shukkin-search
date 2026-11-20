@@ -425,6 +425,25 @@ MANUAL_VARS = {'a': {'14': [
         _t('18:05', 'な', '18:38', '北')]},
 ]}}
 
+# 回送のうち、ダイヤ表では「業務」になっているもの（2026-11-20 乗務員さんより「業務でいい」）。
+# (番号, 曜日 or None, 発車, 発, 着) → 業務の名前。行程データでは k='回送' のまま g に名前を入れる
+GYOMU = {
+    'yobi': {('10', None, '5:20', '', '西'): '朝予備'},              # 業務5:20〜8:30 朝予備 → 大和西大寺駅へ回送
+    'ikoma': {('30', '平', '16:25', '東', '営'): '東生駒駅ゴミ回収',   # 帝大の形
+              ('30', '平', '13:52', '東', '営'): '東生駒駅ゴミ回収'},  # 大学休校日の形
+}
+
+
+def apply_gyomu(code, data):
+    for (n, dt, d, f, t), name in GYOMU.get(code, {}).items():
+        for day, ent in data['dials'].get(n, {}).items():
+            if dt and day != dt: continue
+            for var in ent.get('vars', [ent] if 'list' in ent else []):
+                for x in var['list']:
+                    if x.get('k') == '回送' and x.get('d') == d and x.get('f', '') == f and x.get('t', '').split('_')[0] == t:
+                        x['g'] = name
+
+
 def apply_manual(code, data):
     """MANUAL_VARS の番号を、勤務系統表から読んだものと置きかえる"""
     for n, vars_ in MANUAL_VARS.get(code, {}).items():
@@ -533,6 +552,7 @@ if __name__ == '__main__':
         for (n, d), v in left.items():
             print('    見分けられない %s番 %s: %s' % (n, d, ' '.join(v)))
         unknown = sorted(set(unknown) - {'北', '南'} | ({'北', '南'} if left else set()))
+    apply_gyomu(code, data)
     vc = apply_via(code, data)
     if vc:
         print('  経由を付けた便', dict(vc))

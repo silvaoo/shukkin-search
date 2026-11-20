@@ -8112,7 +8112,7 @@ function navTravel(a, b){
           if(!y.d || !y.f || !y.t || [y.f,y.t].sort().join('|')!==key) return;
           const m=navMin(y.a)-navMin(y.d);
           if(!(m>0)) return;
-          if(y.k==='回送'){ if(m>=2 && m<=30) ks.push(m); }
+          if(y.k==='回送'){ if(!y.g && m>=2 && m<=30) ks.push(m); }   // 業務を含む回送（g）は回送の分に入れない
           else trip[m]=(trip[m]||0)+1;
         });
       });
@@ -8477,6 +8477,9 @@ function renderNav(){
   const first=trips[0], last=trips[trips.length-1];
   /* 回送で発着が同じ場所のものは、その場での待機を含むので「回送・待機」と呼ぶ */
   const ksName=function(x){
+    /* 業務（朝予備・ゴミ回収 など）。行程データの g に業務の名前。そのあとの回送もまとめて1行（2026-11-20） */
+    if(x.g) return '業務（'+escapeHtml(x.g)+'）'
+      + (x.t==='営' ? ' → 営業所へ戻る' : (x.t && x.t!==x.f ? ' → '+navPlaceName(x.t)+'へ回送' : ''));
     if(x.f && x.f===x.t) return '回送・待機（'+navPlaceName(x.f)+'）';
     if(x.t==='営') return (x.f ? '営業所へ戻る（'+navPlaceName(x.f)+'から）' : '営業所へ戻る') + (x.syn ? '<small>（時刻は目安）</small>' : '');
     if(x.f==='営' && x.syn) return '営業所から出庫（→ '+navPlaceName(x.t)+'）<small>（時刻は目安）</small>';
@@ -8540,9 +8543,9 @@ function renderNav(){
     nextTrip = trips.find(function(x){ return navMin(x.d)>nm; }) || null;
     const prev = trips.filter(function(x){ return navMin(x.a)<=nm; }).pop() || null;
     if(curTrip){
-      h+='<div class="nav-run'+(curTrip.k==='回送'?' ks':'')+'">'+(curTrip.k==='回送'?'🚌 回送中':'🚌 運行中')+'</div>'
-       +'<div class="nav-safe">⚠ 気をつけて運転してください</div>'
-       +'<div class="nav-next"><small>'+navRoute(curTrip.f,curTrip.t)+'　'+curTrip.a+'着予定</small></div>';
+      h+='<div class="nav-run'+(curTrip.k==='回送'?' ks':'')+'">'+(curTrip.g?'🧰 業務中':(curTrip.k==='回送'?'🚌 回送中':'🚌 運行中'))+'</div>'
+       +(curTrip.g ? '' : '<div class="nav-safe">⚠ 気をつけて運転してください</div>')
+       +'<div class="nav-next"><small>'+(curTrip.g ? ksName(curTrip)+'　'+curTrip.a+'まで' : navRoute(curTrip.f,curTrip.t)+'　'+curTrip.a+'着予定')+'</small></div>';
       place='';
     }else if(prev && pl.io && pl.io.in.length>1 && nm>=navMin(pl.io.out[0]) && nm<navMin(pl.io.in[1])){
       /* 中間解放の間 */
