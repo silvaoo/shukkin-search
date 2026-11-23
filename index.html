@@ -1456,6 +1456,15 @@ html.xt-lock, html.xt-lock body{ overscroll-behavior-y:none; }
 .xt-bar button{ display:block; width:100%; margin-top:8px; padding:12px; border-radius:10px; border:none; cursor:pointer;
   background:linear-gradient(90deg,#ff8a00,#ff5f00); color:#fff; font-weight:900; font-size:calc(16px * var(--fs, 1)); font-family:'Noto Sans JP',sans-serif; }
 .xt-bar button:disabled{ opacity:.45; }
+/* 助役さんが送ったあと・終わる時の画面（アプリの中は見せない） */
+.xt-end{ padding:34px 6px 10px; text-align:center; }
+.xt-end-big{ font-size:calc(30px * var(--fs, 1)); font-weight:900; color:#1a2442; }
+.xt-end-sub{ margin-top:8px; font-size:calc(17px * var(--fs, 1)); font-weight:900; color:#111; line-height:1.6; }
+.xt-end-list{ margin:16px auto 0; max-width:420px; text-align:left; padding:12px 14px; border-radius:12px; background:#fffdf6;
+  border:1.5px solid #e8a317; font-weight:900; font-size:calc(16px * var(--fs, 1)); line-height:1.8; color:#111; font-variant-numeric:tabular-nums; }
+.xt-end-note{ margin-top:14px; font-size:calc(14px * var(--fs, 1)); color:#4b4f5e; line-height:1.7; }
+.xt-end-back{ margin-top:18px; padding:11px 18px; border-radius:10px; border:1.5px solid #c9a75a; background:rgba(255,255,255,.6);
+  color:#1f2a4d; font-weight:900; font-size:calc(14px * var(--fs, 1)); cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
 .xt-open{ display:block; width:100%; margin:0 0 12px; padding:13px; border-radius:12px; cursor:pointer;
   border:1.5px solid #a8823a; background:linear-gradient(180deg,#f7e4a6,#dcb85e 55%,#c39a3f); color:#2b2110;
   font-weight:900; font-size:calc(16px * var(--fs, 1)); box-shadow:0 3px 0 #7d5f22; font-family:'Noto Sans JP',sans-serif; }
@@ -5021,7 +5030,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v317';
+const APP_VERSION   = 'v318';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -5243,7 +5252,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.37';
+const APP_LABEL = 'バージョン 4.38';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -7301,6 +7310,8 @@ function openXt(keep){
     }
   }
   document.getElementById('xtBody').innerHTML=h;
+  const cb=document.querySelector('#xtModal .xt-close');
+  if(cb){ cb.textContent = XT_VIEW ? '✕ 終わる' : '✕ 閉じる'; cb.style.visibility=''; }
   // 札の並びを描き直す（「ほか」を開いた形かどうかを、札の箱に覚えさせるため）
   _xtDays.forEach(function(x,i){ const el=document.getElementById('xtEx'+i); if(el) el.innerHTML=xtExHtml(i, false); });
   xtPaintBar();
@@ -7312,7 +7323,9 @@ function openXt(keep){
 function xtClearHash(){ if(xtUrlParam('xtok')) try{ history.replaceState(null, '', location.pathname); }catch(e){} }
 function closeXt(){
   // リンクで見ている時は、閉じたらその人のアプリ（ふつうの画面）に戻す
-  if(XT_VIEW){ location.replace(location.pathname); return; }
+  /* リンクで見ている時は、アプリの画面には行かない（2026-11-23 乗務員さんより「助役にはアプリをまじまじと見られたくない」）。
+     終わりの画面を出すだけ。タブはこちらからは閉じられないので、閉じてかまわないと書く */
+  if(XT_VIEW){ xtEndView('close'); return; }
   xtClearHash();
   document.getElementById('xtModal').classList.remove('active');
   document.documentElement.classList.remove('xt-lock');
@@ -7523,7 +7536,38 @@ function xtSendReply(){
     +ks.map(function(iso){ return (Math.round((xtIsoDate(iso)-xtIsoDate(fIso))/86400000)+1).toString(36)+_xtPick[iso].n+_xtPick[iso].p[0]; }).join('-');
   const lines=ks.map(function(iso){ const q=_xtPick[iso];
     return '・'+(q.d.getMonth()+1)+'/'+q.d.getDate()+'（'+WD[q.d.getDay()]+'）'+xtCandText(q.c); }).join('\n');
-  xtShare('時間外のお願いです\n'+lines+'\n（受ける人へ：下のリンクを長押しでコピーして、出退勤検索くんの「時間外先取り検索」→「📥 返事を貼り付け」に貼ると入れられます）', url);
+  const text='時間外のお願いです\n'+lines+'\n（受ける人へ：下のリンクを長押しでコピーして、出退勤検索くんの「時間外先取り検索」→「📥 返事を貼り付け」に貼ると入れられます）';
+  // 送れたら「送信完了」、共有が使えずコピーした時は「コピーしました」。共有をやめた時はそのまま
+  if(navigator.share){
+    navigator.share({text:text+'\n'+url})
+      .then(function(){ xtEndView('sent'); })
+      .catch(function(e){ if(e && e.name==='AbortError') return; xtCopy(text+'\n'+url); xtEndView('copied'); });
+    return;
+  }
+  xtCopy(text+'\n'+url);
+  xtEndView('copied');
+}
+/* 終わりの画面。'sent' 送った / 'copied' コピーした / 'close' 終わる */
+function xtEndView(mode){
+  const WD=['日','月','火','水','木','金','土'];
+  const ks=Object.keys(_xtPick).sort();
+  const list=ks.map(function(iso){ const q=_xtPick[iso];
+    return (q.d.getMonth()+1)+'/'+q.d.getDate()+'（'+WD[q.d.getDay()]+'）'+xtCandText(q.c); });
+  let h='<div class="xt-end">';
+  if(mode==='sent'){
+    h+='<div class="xt-end-big">✅ 送信完了！</div><div class="xt-end-sub">この内容で送りました</div>';
+  }else if(mode==='copied'){
+    h+='<div class="xt-end-big">📋 コピーしました</div><div class="xt-end-sub">LINEのトークに貼り付けて<br>送ってください</div>';
+  }else{
+    h+='<div class="xt-end-big">ありがとうございました</div>';
+  }
+  if(mode!=='close' && list.length) h+='<div class="xt-end-list">'+list.join('<br>')+'</div>';
+  h+='<div class="xt-end-note">このページは閉じてかまいません。</div>'
+    +'<button class="xt-end-back" onclick="openXt()">◀ 一覧に戻る'+(mode==='close'?'':'（選び直す）')+'</button></div>';
+  document.getElementById('xtBody').innerHTML=h;
+  const bar=document.getElementById('xtBar'); if(bar){ bar.classList.remove('on'); bar.innerHTML=''; }
+  const cb=document.querySelector('#xtModal .xt-close'); if(cb) cb.style.visibility='hidden';
+  document.getElementById('xtModal').scrollTop=0;
 }
 /* 返事を読む（自分のアプリで） */
 let _xtReq=null;
