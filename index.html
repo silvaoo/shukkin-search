@@ -1429,6 +1429,26 @@ html.xt-lock, html.xt-lock body{ overscroll-behavior-y:none; }
   -webkit-user-select:none; user-select:none; }
 .xt-chip.on{ background:#e8590c; border-color:#e8590c; color:#fff; }
 .xt-chip.on::before{ content:'✓ '; }
+/* 本人の希望（2026-11-23）。⭐を付けて、ゆっくり光らせる。助役さんが選ぶと ✓ の色が勝つ */
+.xt-chip.want{ background:#fff1c2; border-color:#e8a317; color:#6b3d00; animation:xtWantPulse 2.4s ease-in-out infinite; }
+.xt-chip.want::before{ content:'⭐ '; }
+.xt-chip.want.on{ background:#e8590c; border-color:#e8590c; color:#fff; }
+.xt-chip.want.on::before{ content:'✓⭐ '; }
+@keyframes xtWantPulse{
+  0%,100%{ box-shadow:0 0 0 0 rgba(232,163,23,0), 0 0 11px rgba(232,163,23,.75); }
+  50%    { box-shadow:0 0 0 0 rgba(232,163,23,0), 0 0 0 rgba(232,163,23,0); }
+}
+.xt-modal .rl-day{ display:flex; align-items:center; flex-wrap:wrap; gap:2px 0; }
+.xt-wd{ margin-left:auto; padding:3px 9px; border-radius:8px; border:1.5px solid #e8a317; background:#fff; color:#8a5a00;
+  font-weight:900; font-size:calc(13px * var(--fs, 1)); cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
+.xt-wd.on{ background:#e8a317; color:#fff; }
+.rl-tag.xt-wanttag{ color:#fff; background:#e8a317; border:none; animation:xtWantPulse 2.4s ease-in-out infinite; }
+.xt-body.xt-wantbody{ background:rgba(255,214,102,.22); border-left:4px solid #e8a317; padding:4px 0 10px 9px; border-radius:6px; }
+.xt-wantmode{ display:block; width:100%; margin:6px 0 2px; padding:9px; border-radius:10px; border:1.5px dashed #e8a317;
+  background:rgba(255,255,255,.55); color:#8a5a00; font-weight:900; font-size:calc(14px * var(--fs, 1)); cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
+.xt-wantmode.on{ border-style:solid; background:#fff1c2; }
+.xt-wantstar{ color:#c77700; }
+@media (prefers-reduced-motion: reduce){ .xt-chip.want, .rl-tag.xt-wanttag{ animation:none; } }
 .xt-bar{ display:none; position:sticky; bottom:calc(env(safe-area-inset-bottom, 0px) + 6px); margin-top:10px; padding:10px;
   border-radius:12px; background:#1a2442; color:#f5d27a; box-shadow:0 4px 14px rgba(0,0,0,.35); }
 .xt-bar.on{ display:block; }
@@ -5001,7 +5021,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v314';
+const APP_VERSION   = 'v315';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -5223,7 +5243,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.34';
+const APP_LABEL = 'バージョン 4.35';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -7158,7 +7178,42 @@ function xtMore(i){
   const el=document.getElementById('xtEx'+i);
   if(el) el.innerHTML=xtExHtml(i, true);
 }
-function openXt(){
+/* 本人の希望（2026-11-23 乗務員さんより）。日と勤務に⭐を付けて、リンクで送ると助役さんの画面で光る。
+   自分の端末では、送るまで覚えておく（過ぎた日は消す）。リンクで見ている時は、リンクに入っている希望を使う */
+const XT_WANT_KEY='a-xt-want';
+let _xtWant={d:{}, c:{}}, _xtWantMode=false;
+function xtWantLoad(){
+  if(XT_VIEW){ _xtWant=XT_VIEW.want || {d:{}, c:{}}; return; }
+  try{ _xtWant=JSON.parse(localStorage.getItem(XT_WANT_KEY)||'null') || {d:{}, c:{}}; }catch(e){ _xtWant={d:{}, c:{}}; }
+  if(!_xtWant.d) _xtWant.d={};
+  if(!_xtWant.c) _xtWant.c={};
+  const t=toISO(new Date());
+  Object.keys(_xtWant.d).forEach(function(k){ if(k<t) delete _xtWant.d[k]; });
+  Object.keys(_xtWant.c).forEach(function(k){ if(k.slice(0,10)<t) delete _xtWant.c[k]; });
+}
+function xtWantSave(){ if(XT_VIEW) return; try{ localStorage.setItem(XT_WANT_KEY, JSON.stringify(_xtWant)); }catch(e){} }
+function xtWantKey(iso, c){ return iso+'|'+c.n+'|'+c.p; }
+function xtIsWant(iso, c){ return !!_xtWant.c[xtWantKey(iso, c)]; }
+function xtToggleWantDay(i){
+  const x=_xtDays[i]; if(!x) return;
+  const iso=toISO(x.d);
+  if(_xtWant.d[iso]) delete _xtWant.d[iso]; else _xtWant.d[iso]=1;
+  xtWantSave(); openXt(true);
+}
+function xtToggleWantMode(){ _xtWantMode=!_xtWantMode; openXt(true); }
+function xtToggleWant(i, k){
+  const x=_xtDays[i]; if(!x) return;
+  const el=document.getElementById('xtEx'+i);
+  const full=!!(el && el.getAttribute('data-full'));
+  const c=(full ? x.list : x.list.slice(0,3))[k]; if(!c) return;
+  const key=xtWantKey(toISO(x.d), c);
+  if(_xtWant.c[key]) delete _xtWant.c[key]; else _xtWant.c[key]=1;
+  xtWantSave();
+  if(el) el.innerHTML=xtExHtml(i, full);     // 並べ直すと札が動くので、ここでは並びを変えない
+}
+function openXt(keep){
+  const keepTop = keep ? document.getElementById('xtModal').scrollTop : 0;
+  if(!keep) _xtWantMode=false;
   const t0=new Date(); t0.setHours(0,0,0,0);
   let from=new Date(t0); from.setDate(from.getDate()+1);       // 明日から2週間
   let nDays=XT_DAYS;
@@ -7166,20 +7221,30 @@ function openXt(){
   const all=otLoad();
   _xtDays=[]; _xtPick={};
   for(let i=0;i<nDays;i++){ const d=new Date(from); d.setDate(d.getDate()+i); _xtDays.push(xtFind(d, all)); }
+  xtWantLoad();
+  // 希望の札を先頭に（同じ希望どうしは、長く乗れる順のまま）
+  _xtDays.forEach(function(x){
+    const iso=toISO(x.d);
+    x.list.sort(function(a,b){ return (xtIsWant(iso,b)?1:0)-(xtIsWant(iso,a)?1:0) || b.work-a.work; });
+  });
   if(XT_VIEW) xtPickRestore();     // 選びかけていた札（もし読み込み直しても消えないように）
   const WD=['日','月','火','水','木','金','土'];
   const md=function(d){ return (d.getMonth()+1)+'/'+d.getDate()+'（'+WD[d.getDay()]+'）'; };
   const last=_xtDays[_xtDays.length-1].d;
   let h='<div class="xt-sub">'+md(from)+' 〜 '+md(last)+' に時間外で入れそうな勤務</div>'
     +(XT_VIEW ? '<div class="xt-rule">送ってくれた人の勤務（'+escapeHtml(DIA_NAME_SHORT())+'）から出しています。'
-                +'入れてほしい勤務をタップして選び、下のボタンで送り返せます。</div>' : '')
+                +'入れてほしい勤務をタップして選び、下のボタンで送り返せます。</div>'
+                +((Object.keys(_xtWant.d).length || Object.keys(_xtWant.c).length)
+                   ? '<div class="xt-rule xt-wantstar"><b>⭐が付いて光っている日・勤務は、本人の希望です。</b></div>' : '') : '')
     +'<div class="xt-rule">目安：休み（退勤〜次の出勤）は9時間。前の日に昼4時間以上休んでいれば、昼の休み＋夜の休みで11時間あればよい（夜は4時間以上）。'
     +'1日の拘束は15時間まで。決めるのは助役さんです。</div>';
   if(!XT_VIEW && otBaseDial(from)!==null){
     h+='<div class="xt-acts"><button class="go" onclick="xtSendLink()">🔗 助役さんに<br>リンクを送る</button>'
       +'<button onclick="xtTogglePaste()">📥 助役さんの<br>返事を貼り付け</button></div>'
       +'<div class="xt-paste" id="xtPaste"><textarea id="xtPasteBox" placeholder="助役さんから届いた返事（リンクを長押しでコピー、メッセージごとでも可）を貼り付けてください"></textarea>'
-      +'<button class="xt-pbtn" onclick="xtReadReply()">読み取る</button><div class="xt-req" id="xtReq"></div></div>';
+      +'<button class="xt-pbtn" onclick="xtReadReply()">読み取る</button><div class="xt-req" id="xtReq"></div></div>'
+      +'<button class="xt-wantmode'+(_xtWantMode?' on':'')+'" onclick="xtToggleWantMode()">'
+      +(_xtWantMode ? '⭐ 希望のダイヤを選んでいます（札をタップ）… 終わったらここを押す' : '⭐ 希望のダイヤを選ぶ（リンクで送ると助役さんの画面で光ります）')+'</button>';
   }
   if(otBaseDial(from)===null){
     h+='<div class="xt-empty">今日のダイヤ番号がまだ保存されていません。<br>トップで番号を入れると探せます。</div>';
@@ -7190,7 +7255,11 @@ function openXt(){
     hit.forEach(function(i){
       const x=_xtDays[i], d=x.d;
       const tag = x.type==='off' ? '<span class="rl-tag xt-off">公休</span>' : '<span class="rl-tag xt-work">'+x.me.dn+'番</span>';
-      h+='<div class="rl-day">'+(d.getMonth()+1)+'月'+d.getDate()+'日 '+WD[d.getDay()]+'曜日'+tag+'</div><div class="xt-body">';
+      const wday=!!_xtWant.d[toISO(d)];
+      const wbtn = XT_VIEW ? (wday ? '<span class="rl-tag xt-wanttag">⭐ 本人の希望の日</span>' : '')
+                 : '<button class="xt-wd'+(wday?' on':'')+'" onclick="xtToggleWantDay('+i+')">'+(wday?'⭐ 希望の日':'☆ 希望')+'</button>';
+      h+='<div class="rl-day">'+(d.getMonth()+1)+'月'+d.getDate()+'日 '+WD[d.getDay()]+'曜日'+tag+wbtn+'</div>'
+        +'<div class="xt-body'+(wday?' xt-wantbody':'')+'">';
       h+='<div class="xt-say">'+xtSay(x)+'</div>';
       const why=[];
       if(x.type!=='off') why.push('自分 '+x.me.blocks.map(function(z){ return xtHM(z.s)+'〜'+xtHM(z.e); }).join('／'));
@@ -7225,11 +7294,13 @@ function openXt(){
     }
   }
   document.getElementById('xtBody').innerHTML=h;
+  // 札の並びを描き直す（「ほか」を開いた形かどうかを、札の箱に覚えさせるため）
+  _xtDays.forEach(function(x,i){ const el=document.getElementById('xtEx'+i); if(el) el.innerHTML=xtExHtml(i, false); });
   xtPaintBar();
   const m=document.getElementById('xtModal');
-  m.classList.add('active'); m.scrollTop=0;
+  m.classList.add('active'); m.scrollTop=keepTop;
   document.documentElement.classList.add('xt-lock');
-  if(!XT_VIEW) beep(760,50,0);
+  if(!XT_VIEW && !keep) beep(760,50,0);
 }
 function xtClearHash(){ if(/^#xtok=/.test(location.hash)) try{ history.replaceState(null, '', location.pathname); }catch(e){} }
 function closeXt(){
@@ -7249,11 +7320,22 @@ function xtExHtml(i, full){
   }
   const list=full ? x.list : x.list.slice(0,3);
   const more=(!full && x.list.length>3) ? '<b class="xt-more" onclick="xtMore('+i+')">ほか'+(x.list.length-3)+'件 ▼</b>' : '';
-  if(!XT_VIEW) return '例：'+list.map(xtCand).join('・')+more;
   const iso=toISO(x.d);
+  const el=document.getElementById('xtEx'+i);
+  if(el){ if(full) el.setAttribute('data-full','1'); else el.removeAttribute('data-full'); }
+  if(!XT_VIEW && !_xtWantMode){
+    // ふだんは字だけ（長押しでコピーできる）。希望の札には⭐
+    return '例：'+list.map(function(c){ return (xtIsWant(iso,c)?'<b class="xt-wantstar">⭐</b>':'')+xtCand(c); }).join('・')+more;
+  }
+  if(!XT_VIEW){
+    // 希望を選ぶ時：札をタップで⭐を付け外し
+    return list.map(function(c,k){
+      return '<b class="xt-chip'+(xtIsWant(iso,c)?' want':'')+'" onclick="xtToggleWant('+i+','+k+')">'+xtCandText(c)+'</b>';
+    }).join('')+more;
+  }
   return list.map(function(c,k){
     const on=_xtPick[iso] && _xtPick[iso].n===c.n && _xtPick[iso].p===c.p;
-    return '<b class="xt-chip'+(on?' on':'')+'" onclick="xtPick('+i+','+k+')">'+xtCandText(c)+'</b>';
+    return '<b class="xt-chip'+(xtIsWant(iso,c)?' want':'')+(on?' on':'')+'" onclick="xtPick('+i+','+k+')">'+xtCandText(c)+'</b>';
   }).join('')+more;
 }
 function xtCandText(c){
@@ -7286,7 +7368,12 @@ function xtDecodeView(code){
     const q=o.r[iso];
     recs[iso]={dayKind:q[0], base:q[1], adds:(q[2]||[]).map(function(a){ return {dial:a[0], part:a[1], code:a[2]||undefined, v:a[3]||undefined}; }), min:0};
   });
-  return {base:{dial:o.b[0], iso:o.b[1]}, from:o.f, n:Math.min(Math.max(o.n||14,1),31), recs:recs};
+  const want={d:{}, c:{}};
+  if(o.w){
+    (o.w.d||[]).forEach(function(iso){ want.d[iso]=1; });
+    (o.w.c||[]).forEach(function(q){ want.c[q[0]+'|'+q[1]+'|'+q[2]]=1; });
+  }
+  return {base:{dial:o.b[0], iso:o.b[1]}, from:o.f, n:Math.min(Math.max(o.n||14,1),31), recs:recs, want:want};
 }
 /* 自分の勤務から、助役さんに見せるリンクを作る */
 function xtLinkUrl(){
@@ -7301,7 +7388,14 @@ function xtLinkUrl(){
     const q=all[iso];
     r[iso]=[q.dayKind||'work', q.base||'all', (q.adds||[]).map(function(x){ return [x.dial, x.part||'all', x.code||'', x.v||'']; })];
   });
-  return location.origin+location.pathname+'#xt='+xtB64({v:1, b:[saved.dial, saved.iso], f:toISO(from), n:XT_DAYS, r:r});
+  // 自分の希望（この期間のぶんだけ）
+  const fIso=toISO(from), zIso=toISO(z);
+  const wd=Object.keys(_xtWant.d).filter(function(iso){ return iso>=fIso && iso<=zIso; });
+  const wc=Object.keys(_xtWant.c).filter(function(k){ const iso=k.slice(0,10); return iso>=fIso && iso<=zIso; })
+    .map(function(k){ const q=k.split('|'); return [q[0], Number(q[1]), q[2]]; });
+  const o={v:1, b:[saved.dial, saved.iso], f:fIso, n:XT_DAYS, r:r};
+  if(wd.length || wc.length) o.w={d:wd, c:wc};
+  return location.origin+location.pathname+'#xt='+xtB64(o);
 }
 function xtShare(text, url){
   if(navigator.share){
@@ -7324,14 +7418,16 @@ function xtSendLink(){
   const url=xtLinkUrl();
   if(!url){ showToast('今日のダイヤ番号を入れてください'); return; }
   const f=_xtDays[0].d, l=_xtDays[_xtDays.length-1].d;
+  const hasWant=Object.keys(_xtWant.d).length || Object.keys(_xtWant.c).length;
   xtShare('時間外先取り検索（'+(f.getMonth()+1)+'/'+f.getDate()+'〜'+(l.getMonth()+1)+'/'+l.getDate()+'）\n'
-    +'入れそうな勤務の一覧です。タップすると見られます。入れてほしい勤務を選んで送り返すこともできます。', url);
+    +'入れそうな勤務の一覧です。タップすると見られます。入れてほしい勤務を選んで送り返すこともできます。'
+    +(hasWant ? '\n⭐が付いて光っている日・勤務は、私の希望です。' : ''), url);
 }
 /* 助役さんが札をタップ。1日に1つだけ選べる（もう一度タップで外す） */
 function xtPick(i,k){
   const x=_xtDays[i]; if(!x) return;
   const el=document.getElementById('xtEx'+i);
-  const full=el && el.querySelectorAll('.xt-chip').length>3;
+  const full=!!(el && el.getAttribute('data-full'));
   const c=(full ? x.list : x.list.slice(0,3))[k]; if(!c) return;
   const iso=toISO(x.d);
   if(_xtPick[iso] && _xtPick[iso].n===c.n && _xtPick[iso].p===c.p) delete _xtPick[iso];
