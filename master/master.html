@@ -1422,7 +1422,8 @@ html.xt-lock, html.xt-lock body{ overscroll-behavior-y:none; }
 .xt-paste{ display:none; margin:6px 0 4px; padding:10px; border-radius:10px; background:#fffdf6; border:1px solid #d9c38e; }
 .xt-paste.on{ display:block; }
 .xt-paste textarea{ width:100%; box-sizing:border-box; min-height:64px; padding:8px; border-radius:8px; border:1px solid #c9a75a;
-  font-size:calc(14px * var(--fs, 1)); font-family:'Noto Sans JP',sans-serif; background:#fff; color:#111; }
+  font-size:max(16px, calc(14px * var(--fs, 1))); font-family:'Noto Sans JP',sans-serif; background:#fff; color:#111; }
+/* 16px より小さい入力欄にさわると、iPhone が画面を拡大したままになる（2026-11-23 乗務員さんの画面で横が切れていた） */
 .xt-paste .xt-pbtn{ display:block; width:100%; margin-top:6px; padding:10px; border-radius:10px; border:none; cursor:pointer;
   background:linear-gradient(180deg,#26335c,#1a2442); color:#f5d27a; font-weight:900; font-size:calc(15px * var(--fs, 1)); font-family:'Noto Sans JP',sans-serif; }
 .xt-req{ margin-top:8px; }
