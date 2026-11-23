@@ -4901,7 +4901,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v308';
+const APP_VERSION   = 'v309';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -5123,7 +5123,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.28';
+const APP_LABEL = 'バージョン 4.29';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -6393,9 +6393,11 @@ function renderOtDayCard(date, slot, dial){
     return;
   }
   if(!slot){
+    /* 奈良学園のように時刻が当日決まる日は、公休ではない（2026-11-23） */
+    const und = otBaseUndecided(date);
     box.innerHTML='<div class="ot-day-top"><span class="ot-day-dial">'+dial+'番</span>'
       +'<span class="ot-day-badge">'+badge+'</span></div>'
-      +'<div class="ot-day-off">公休</div>';
+      +(und ? '<div class="ot-day-off" style="color:var(--note)">時刻未定</div>' : '<div class="ot-day-off">公休</div>');
     return;
   }
   box.innerHTML='<div class="ot-day-top"><span class="ot-day-dial">'+dial+'番</span>'
@@ -7172,7 +7174,7 @@ function icsListEvent(r, stamp, all){
   const otD = (st && st.min>0) ? '時間外 '+otFmt(st.min) : '';
   if(otIsLeave(st)) return allDay('🚌 '+r.dn+'番 年休', '年休');
 
-  const baseOff = !r.rec || !r.slot;
+  const baseOff = (!r.rec || !r.slot) && !rlUndecided(r);   // 奈良学園の日は公休ではない
   const real=rcRealList(st, dt);
   let segs=[], who=[], word='', desc=[];
   if(real){
@@ -7182,6 +7184,7 @@ function icsListEvent(r, stamp, all){
       if(x.slot) rcSegs(x.slot, x.part).forEach(function(z){ segs.push({s:z.s, e:z.e, who:w}); });
     });
     if(otIsKyu(st) || baseOff){ word='公出'; desc.push('公出（本来 公休）'); }
+    else if(rlOwnForm(r, real)){ desc.push('奈良学園 形'+rlOwnForm(r, real)); }
     else{ word=otSubWord(st); desc.push(word+'（本来 '+r.dn+'番）'); }
   }else if(rlUndecided(r)){
     return allDay('🚌 '+r.dn+'番 時刻未定'+otT, [rlUndecided(r).n, otD].filter(Boolean).join('\n'));
@@ -7201,7 +7204,7 @@ function icsListEvent(r, stamp, all){
   const title=head+' '+tx.join('／')+(word?' '+word:'')+otT;
   if(real || segs.length>1) desc.push(segs.map(function(z,i){ return z.who+' '+tx[i]; }).join('\n'));
   if(!real && r.slot.w) desc.push('労働時間 '+r.slot.w);
-  if(!baseOff && r.slot.n && (!real || otBaseOf(st)!=='none')) desc.push(String(r.slot.n));
+  if(!baseOff && r.slot && r.slot.n && (!real || otBaseOf(st)!=='none')) desc.push(String(r.slot.n));   // 奈良学園の日は r.slot が空
   if(otD) desc.push(otD);
   let endMin=-1, endS=segs[0].e;
   segs.forEach(function(z){ if(rcMin(z.e)>endMin){ endMin=rcMin(z.e); endS=z.e; } });
@@ -7908,11 +7911,13 @@ function renderResultCal(){
     let body='';
     const stRec=otLoad()[iso];
     const real=r ? rcRealList(stRec, dt) : null;     // 代走・公出で実際に出るもの
+    const undB=r ? rlUndecided(r) : null;           // 奈良学園など、時刻が当日決まる日（公休ではない）
+    const ownV=(r && real) ? rlOwnForm(r, real) : null;   // 14番を A〜F の形で走った日
     let dnTxt = (r&&r.dn) ? r.dn+'番' : '';
     if(real){
       /* 番号は実際に乗るものを並べる（例 20+6番） */
       dnTxt = real.map(function(x){ return x.code===OT_RINJI ? '臨時' : x.dial; }).join('+') + '番';
-      const baseOff = !r.rec || !r.slot;
+      const baseOff = (!r.rec || !r.slot) && !undB;
       const isKyu = otIsKyu(stRec) || baseOff;
       let segs=[], unknown=false;
       real.forEach(function(x){
@@ -7920,7 +7925,9 @@ function renderResultCal(){
         rcSegs(x.slot, x.part).forEach(function(s){ segs.push(s); });
       });
       segs.sort(function(a,b){ return rcMin(a.s)-rcMin(b.s); });
-      body = isKyu ? `<div class="rc-subl kyu">公出</div>` : `<div class="rc-subl sub">${otSubWord(stRec)}</div>`;
+      body = isKyu ? `<div class="rc-subl kyu">公出</div>`
+           : ownV ? `<div class="rc-subl">形${escapeHtml(ownV)}</div>`
+           : `<div class="rc-subl sub">${otSubWord(stRec)}</div>`;
       if(segs.length===1){
         body+=`<div class="rc-line"><span>${segs[0].s}</span></div>`
             + `<div class="rc-line"><span>${segs[0].e}</span></div>`;
@@ -7934,14 +7941,15 @@ function renderResultCal(){
       }
       if(unknown || !segs.length) body+=`<div class="rc-note2">時刻を確認</div>`;
     }else if(r){
-      const off = !r.rec || !r.slot;                        // 公休
+      const off = !r.rec || (!r.slot && !undB);             // 公休（奈良学園など時刻が当日決まる日は公休ではない）
+      const rs = r.slot || undB;
       /* 会社の勤務表と同じ並びにする。
          日付とダイヤ番号を上の段に、出勤を左下、退勤を右下に置く。
          中間ダイヤは「中間解放」と書いて、前半後半を2行で出す。 */
       if(off){
         body=`<div class="rc-off">公休</div>`;
       }else{
-        const o=String(r.slot.o), sp=o.split('〜');
+        const o=String(rs.o), sp=o.split('〜');
         const st=sp[0].split('/').map(x=>x.trim());
         const en=(sp[1]||'').split('/').map(x=>x.trim());
         if(st.length===2 && en.length===2){
@@ -7955,7 +7963,7 @@ function renderResultCal(){
         }else{
           body=`<div class="rc-line"><span>要確認</span></div>`;
         }
-        if(r.slot.n) body+=`<div class="rc-note2">${escapeHtml(String(r.slot.n).slice(0,10))}</div>`;
+        if(rs.n) body+=`<div class="rc-note2">${escapeHtml(String(rs.n).slice(0,10))}</div>`;
       }
       // その日にメモ（日付メモ or その日のダイヤ番号のメモ）があれば印を付ける
       const hasTxt = getDateMemo(iso) || (r.dn && getDialMemo(r.dn));
@@ -7964,7 +7972,7 @@ function renderResultCal(){
         body+=`<div class="rc-memo-mark">${hasTxt?'📝 メモ':''}${hasImg?' 📷':''}</div>`;
       }
     }
-    const isSub = !!(real && !otIsKyu(stRec) && r && r.rec && r.slot);
+    const isSub = !!(real && !otIsKyu(stRec) && r && r.rec && (r.slot || undB) && !ownV);
     const stCls = otIsLeave(stRec) ? ' has-leave'
                 : (otIsKyu(stRec) ? ' has-kyu' : (isSub ? ' has-sub' : ''));
     const sh=stampHash(parseInt(iso.replace(/-/g,''),10));
@@ -8047,10 +8055,19 @@ function rlUndecided(r){
            : (r.rec && r.dt && r.rec[r.dt] && String(r.rec[r.dt].o).trim()==='—') ? r.rec[r.dt] : null;
   return sl;
 }
-/* 代走・公出で乗るダイヤの呼び名（例 7番・Ｃ 12番・臨時） */
+/* 当日決まる日（14番 奈良学園）に、自分の14番を A〜F の形で走った（時間外の入力で形を選んだ）なら、その形を返す。
+   このときは振替ではないので「本来 14番」などは出さない */
+function rlOwnForm(r, real){
+  if(!real || !real.length || !rlUndecided(r)) return null;
+  const own = real.every(function(x){
+    return (!x.code || x.code==='a') && String(x.dial)===String(r.dn) && x.v;
+  });
+  return own ? real[0].v : null;
+}
+/* 代走・公出で乗るダイヤの呼び名（例 7番・Ｃ 12番・14番（A）・臨時） */
 function rlName(x){
   if(x.code===OT_RINJI) return '臨時';
-  return ((x.code && x.code!=='a') ? otDiaName(x.code)+' ' : '')+x.dial+'番'+(x.v||'');
+  return ((x.code && x.code!=='a') ? otDiaName(x.code)+' ' : '')+x.dial+'番'+(x.v ? '（'+x.v+'）' : '');
 }
 /* 時刻を「08:30」の形にそろえる。24時を過ぎても「24:21」のまま（翌00:21 にはしない） */
 function rlHM(t){
@@ -8074,8 +8091,8 @@ function rlDayHtml(dt, r, tap, todayIso, all){
   const times=function(segs){
     return segs.map(function(z){ return '<span>'+rlHM(z.s)+'〜'+rlHM(z.e)+'</span>'; }).join('／');
   };
-  const baseOff = !r.rec || !r.slot;          // 本来は公休
-  const und = rlUndecided(r);                 // 奈良学園など、時刻があとで決まる日
+  const und = rlUndecided(r);                 // 奈良学園など、時刻があとで決まる日（公休ではない）
+  const baseOff = (!r.rec || !r.slot) && !und;   // 本来は公休
   let ttl='', bar='', subs=[], useNote=false;
   if(otIsLeave(st)){
     ttl='🚌 '+r.dn+'番 年休'; bar='leave';
@@ -8092,7 +8109,7 @@ function rlDayHtml(dt, r, tap, todayIso, all){
       real.forEach(function(x){ const w=nm(x); if(who.indexOf(w)<0) who.push(w); });
       ttl='🚌 '+who.join('＋')+(segs.length ? ' '+times(segs) : '');
       if(otIsKyu(st) || baseOff){ subs.push('公出（本来 公休）'); bar='kyu'; }
-      else subs.push(otSubWord(st)+'（本来 '+r.dn+'番）');
+      else if(!rlOwnForm(r, real)) subs.push(otSubWord(st)+'（本来 '+r.dn+'番）');   // 自分の14番を形で走った日は何も足さない
       if(unknown || !segs.length) subs.push('時刻を確認してください');
       useNote = !baseOff && otBaseOf(st)!=='none';   // 本来のダイヤに乗る日だけ備考を出す
     }else if(und){
@@ -8966,7 +8983,8 @@ function openRcDetail(iso){
   if(navigator.vibrate)navigator.vibrate(12);
 
   const dt=new Date(iso+'T00:00:00');
-  const off = !r.rec || !r.slot;
+  const und = rlUndecided(r);                 // 奈良学園など。時刻は当日決まる（公休ではない）
+  const off = (!r.rec || !r.slot) && !und;
   // 曜日区分のラベル
   let badge='', bcls='hei';
   if(r.obon){ badge='お盆(土曜ダイヤ)'; bcls='bon'; }
@@ -8982,6 +9000,9 @@ function openRcDetail(iso){
 
   if(off){
     html+='<div class="rcd-off-big">🎉 公休</div>';
+  }else if(und){
+    html+=`<div class="rcd-row"><span class="lbl">出退勤時間</span><span class="val">時刻未定</span></div>`;
+    if(und.n) html+=`<div class="rcd-note">📌 ${escapeHtml(und.n)}</div>`;
   }else{
     html+=`<div class="rcd-row"><span class="lbl">出退勤時間</span><span class="val">${formatDisplayTime(r.slot.o)}</span></div>`;
     html+=`<div class="rcd-row"><span class="lbl">労働時間</span><span class="val">${formatDisplayLabor(r.slot.w)}</span></div>`;
