@@ -1455,9 +1455,6 @@ html.xt-lock, html.xt-lock body{ overscroll-behavior-y:none; }
 .xt-wd.on{ background:#e8a317; color:#fff; }
 .rl-tag.xt-wanttag{ color:#fff; background:#e8a317; border:none; animation:xtWantPulse 2.4s ease-in-out infinite; }
 .xt-body.xt-wantbody{ background:rgba(255,214,102,.22); border-left:4px solid #e8a317; padding:4px 0 10px 9px; border-radius:6px; }
-.xt-wantmode{ display:block; width:100%; margin:6px 0 2px; padding:9px; border-radius:10px; border:1.5px dashed #e8a317;
-  background:rgba(255,255,255,.55); color:#8a5a00; font-weight:900; font-size:calc(14px * var(--fs, 1)); cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
-.xt-wantmode.on{ border-style:solid; background:#fff1c2; }
 .xt-wantstar{ color:#c77700; }
 @media (prefers-reduced-motion: reduce){ .xt-chip.want, .rl-tag.xt-wanttag{ animation:none; } }
 .xt-bar{ display:none; position:sticky; bottom:calc(env(safe-area-inset-bottom, 0px) + 6px); margin-top:10px; padding:10px;
@@ -5046,7 +5043,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v321';
+const APP_VERSION   = 'v322';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -5268,7 +5265,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.41';
+const APP_LABEL = 'バージョン 4.42';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -7215,7 +7212,7 @@ function xtMore(i){
 /* 本人の希望（2026-11-23 乗務員さんより）。日と勤務に⭐を付けて、リンクで送ると助役さんの画面で光る。
    自分の端末では、送るまで覚えておく（過ぎた日は消す）。リンクで見ている時は、リンクに入っている希望を使う */
 const XT_WANT_KEY='a-xt-want';
-let _xtWant={d:{}, c:{}}, _xtWantMode=false;
+let _xtWant={d:{}, c:{}};
 function xtWantLoad(){
   if(XT_VIEW){ _xtWant=XT_VIEW.want || {d:{}, c:{}}; return; }
   try{ _xtWant=JSON.parse(localStorage.getItem(XT_WANT_KEY)||'null') || {d:{}, c:{}}; }catch(e){ _xtWant={d:{}, c:{}}; }
@@ -7234,7 +7231,6 @@ function xtToggleWantDay(i){
   if(_xtWant.d[iso]) delete _xtWant.d[iso]; else _xtWant.d[iso]=1;
   xtWantSave(); openXt(true);
 }
-function xtToggleWantMode(){ _xtWantMode=!_xtWantMode; openXt(true); }
 function xtToggleWant(i, k){
   const x=_xtDays[i]; if(!x) return;
   const el=document.getElementById('xtEx'+i);
@@ -7247,7 +7243,6 @@ function xtToggleWant(i, k){
 }
 function openXt(keep){
   const keepTop = keep ? document.getElementById('xtModal').scrollTop : 0;
-  if(!keep) _xtWantMode=false;
   const t0=new Date(); t0.setHours(0,0,0,0);
   let from=new Date(t0); from.setDate(from.getDate()+1);       // 明日から2週間
   let nDays=XT_DAYS;
@@ -7277,8 +7272,7 @@ function openXt(keep){
       +'<button onclick="xtTogglePaste()">📥 助役さんの<br>返事を貼り付け</button></div>'
       +'<div class="xt-paste" id="xtPaste"><textarea id="xtPasteBox" placeholder="助役さんから届いた返事（リンクを長押しでコピー、メッセージごとでも可）を貼り付けてください"></textarea>'
       +'<button class="xt-pbtn" onclick="xtReadReply()">読み取る</button><div class="xt-req" id="xtReq"></div></div>'
-      +'<button class="xt-wantmode'+(_xtWantMode?' on':'')+'" onclick="xtToggleWantMode()">'
-      +(_xtWantMode ? '⭐ 希望のダイヤを選んでいます（札をタップ）… 終わったらここを押す' : '⭐ 希望のダイヤを選ぶ（リンクで送ると助役さんの画面で光ります）')+'</button>';
+      +'<div class="xt-rule xt-wantstar"><b>札をタップすると⭐（希望）が付きます。</b>リンクで送ると助役さんの画面で光ります。</div>';
   }
   if(otBaseDial(from)===null){
     h+='<div class="xt-empty">今日のダイヤ番号がまだ保存されていません。<br>トップで番号を入れると探せます。</div>';
@@ -7361,12 +7355,9 @@ function xtExHtml(i, full){
   const iso=toISO(x.d);
   const el=document.getElementById('xtEx'+i);
   if(el){ if(full) el.setAttribute('data-full','1'); else el.removeAttribute('data-full'); }
-  if(!XT_VIEW && !_xtWantMode){
-    // ふだんは字だけ（長押しでコピーできる）。希望の札には⭐
-    return '例：'+list.map(function(c){ return (xtIsWant(iso,c)?'<b class="xt-wantstar">⭐</b>':'')+xtCand(c); }).join('・')+more;
-  }
   if(!XT_VIEW){
-    // 希望を選ぶ時：札をタップで⭐を付け外し
+    /* 自分の画面：札をタップで⭐（希望）を付け外し。
+       2026-11-23 までは「希望のダイヤを選ぶ」ボタンで切り替えていたが、要らないと乗務員さんより。いつでもタップで選べる */
     return list.map(function(c,k){
       return '<b class="xt-chip'+(xtIsWant(iso,c)?' want':'')+'" onclick="xtToggleWant('+i+','+k+')">'+xtCandText(c)+'</b>';
     }).join('')+more;
