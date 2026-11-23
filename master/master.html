@@ -1329,14 +1329,15 @@ body.multi .only-multi{ display:block !important; }
    私のカレンダーの「リスト」と、ふりかえりの一覧で同じものを使う。
    紙の色の上に濃い文字なので、ダーク・ライトに関係なく同じ見た目。
    下へスクロールすれば次々見られるので、文字は大きめ（乗務員さんの見せてくれたiPhoneのカレンダーと同じくらい）。 */
-.rl-day{ margin:24px 0 10px; font-weight:900; font-size:calc(20px * var(--fs, 1)); line-height:1.3;
+.rl-day{ margin:0 0 10px; padding-top:16px; border-top:1px solid rgba(110,88,44,.5);   /* 日ごとに行数が違うので薄い線で区切る（2026-11-23 乗務員さんより） */
+  font-weight:900; font-size:calc(20px * var(--fs, 1)); line-height:1.3;
   color:#1a2442; letter-spacing:.02em; font-family:'Noto Sans JP',sans-serif; }
-.rl-day:first-child{ margin-top:12px; }
+.rl-day:first-child{ border-top:none; padding-top:12px; }
 .rl-tag{ display:inline-block; margin-left:7px; padding:1px 7px; border-radius:6px; vertical-align:2px;
   font-size:calc(13px * var(--fs, 1)); font-weight:900; letter-spacing:0; }
 .rl-tag.hol{ color:#c0261f; border:1px solid rgba(192,38,31,.45); }
 .rl-tag.today{ color:#f5d27a; background:#1a2442; }
-.rl-row{ display:flex; align-items:flex-start; gap:11px; padding:5px 4px 7px 0; cursor:pointer; border-radius:8px; }
+.rl-row{ display:flex; align-items:flex-start; gap:11px; padding:4px 4px 16px 0; cursor:pointer; border-radius:8px; }
 .rl-row:active{ background:rgba(201,162,74,.2); }
 .rl-bar{ width:5px; align-self:stretch; min-height:34px; border-radius:3px; background:#3b82f6; flex:none; }
 .rl-bar.off{ background:#2e7d4f; }
@@ -6368,6 +6369,7 @@ function openOt(iso){
   const bb=document.getElementById('otBackBtn');
   if(bb) bb.textContent = otFromMyPage ? '← マイページに戻る' : '✕ 閉じる';
   otFillSaved(otDateVal());
+  otPrefillUndecided();      // 自分の14番（奈良学園）の日は、14番を先に入れておく
   document.getElementById('otModal').classList.add('active');
   document.body.style.overflow='hidden';
 }
@@ -6412,8 +6414,29 @@ function otPickDate(){
   dpOpen(otDateVal(), '⏱ どの日の時間外ですか？', function(iso){
     otSetDateVal(iso);
     otKind=null;            // 日が変われば、公休かどうかも選び直す
+    otPrefillUndecided();
     otPreview();
   });
+}
+/* 自分のダイヤが14番（奈良学園）の日は、付いたダイヤに14番を先に入れて、A〜Fの形をすぐ選べるようにする
+   （2026-11-23 乗務員さんより）。別のダイヤを走った日は、番号を入れ替えればよい。
+   登録がある日・祝日（奈良学園が休み）は何もしない。日付を変えたら、先に入れた14番は消して入れ直す */
+let otPrefilled='';
+function otPrefillUndecided(){
+  if(otPrefilled && otAdds.length===1 && String(otAdds[0].dial)===otPrefilled && !otAdds[0].v){
+    otAdds=[{dial:'',part:'all',code:'{{ID}}'}];
+  }
+  otPrefilled='';
+  const iso=otDateVal();
+  if(!iso || otLoad()[iso]) { otRenderAdds(); return; }
+  const p=iso.split('-').map(Number);
+  const d=new Date(p[0],p[1]-1,p[2]); d.setHours(0,0,0,0);
+  if(otBaseUndecided(d) && !isHol(d) && otAdds.length===1 && !otAdds[0].dial){
+    const bd=otBaseDial(d);
+    if(bd){ otAdds[0]={dial:String(bd), part:'all', code:'{{ID}}'}; otPrefilled=String(bd); }
+  }
+  otRenderAdds();
+  otPreview();
 }
 /* 日付欄は見た目がボタンなので、値は自分で持つ */
 let _otDateIso='';
@@ -6614,7 +6637,7 @@ function otPreview(){
         (otKind==='kyu' && dataSlot) ? '指定公休として扱います。出たダイヤの拘束時間×0.8で計算します。'
       : isLeave ? '年休として記録します。この日は勤務時間を出さず、次の出勤を表示します。'
       : (otKind==='work' && undecided && isHol(date)) ? holName(date)+'で奈良学園が休みの日です。代わりに走ったダイヤを入れてください。公出ではなく、時間外も付きません。'
-      : (otKind==='work' && undecided) ? '奈良学園のように当日決まる勤務の日です。代わりに走ったダイヤを入れてください。公出ではなく、時間外も付きません。'
+      : (otKind==='work' && undecided) ? '奈良学園のように当日決まる勤務の日です。走った形（A〜F）を選んでください。別のダイヤを走った日は、番号を入れ替えてください。公出ではなく、時間外も付きません。'
       : '';
   }
   // 選んだ日の勤務を、日付のすぐ下に大きく出す
@@ -9022,7 +9045,8 @@ function openRcDetail(iso){
       +(otRec.adds||[]).map(x=>otDN(x)+(x.part==='first'?'前半':x.part==='second'?'後半':'')).join('＋')
       +`</div>`;
   }
-  html+=`<button class="rcd-ot" onclick="otFromDetail('${iso}')">⏱ ${otRec?'時間外を直す':'時間外を追加'}</button>`;
+  html+=`<button class="rcd-ot" onclick="otFromDetail('${iso}')">${
+    otRec ? '⏱ 時間外を直す' : (und && !isHol(dt)) ? '🏫 走った形（A〜F）を入れる' : '⏱ 時間外を追加'}</button>`;
   html+=`<button class="rcd-memo" onclick="memoFromDetail('${iso}',${r.dn})">📝 ${
     (getDateMemo(iso)||getDateImgs(iso).length)?'メモを編集':'メモを追加'}</button>`;
   html+='<button class="rcd-close" onclick="closeRcDetail()">閉じる</button>';
