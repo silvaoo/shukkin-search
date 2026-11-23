@@ -1002,6 +1002,15 @@ input[type="date"] {
   border:none; border-radius:0; padding:0; box-shadow:inset 0 0 6px rgba(160,128,64,.16); min-height:var(--rh, 116px); }
 #resCalModal .rescal-grid .cal-day:active{ background:#f1e4c6; }
 #resCalModal .rescal-grid .cal-day.today{ border:none; padding:0; box-shadow:inset 0 0 0 2px var(--gold), inset 0 0 10px rgba(201,162,74,.45); }
+/* 今日のマスは目立つ色にして、枠の光をゆっくり明滅させる（2026-11-23 乗務員さんより）。
+   字は消さない（読めなくならないように、光るのは枠だけ）。動きを減らす設定の端末では止める */
+@keyframes rcTodayPulse{
+  0%,100%{ box-shadow:inset 0 0 0 3px #e8590c, inset 0 0 16px rgba(232,89,12,.55); }
+  50%    { box-shadow:inset 0 0 0 3px rgba(232,89,12,.25), inset 0 0 3px rgba(232,89,12,.08); }
+}
+#resCalModal .rescal-grid .cal-day.today{
+  background:radial-gradient(ellipse at 50% 42%, #fff8dc 0%, #ffeaa6 65%, #ffd978 100%);
+  animation:rcTodayPulse 2.4s ease-in-out infinite; }
 #resCalModal .rescal-grid .cal-day.nodata{ opacity:.4; }
 #resCalModal .rescal-grid .cal-day.has-sub  { background:radial-gradient(ellipse at 50% 55%, #efe4fb 0%, #f4eefa 45%, #f7f0e6 100%); }
 #resCalModal .rescal-grid .cal-day.has-kyu  { background:radial-gradient(ellipse at 50% 55%, #e2edfa 0%, #edf3fa 45%, #f5f1e6 100%); }
@@ -1336,7 +1345,15 @@ body.multi .only-multi{ display:block !important; }
 .rl-tag{ display:inline-block; margin-left:7px; padding:1px 7px; border-radius:6px; vertical-align:2px;
   font-size:calc(13px * var(--fs, 1)); font-weight:900; letter-spacing:0; }
 .rl-tag.hol{ color:#c0261f; border:1px solid rgba(192,38,31,.45); }
-.rl-tag.today{ color:#f5d27a; background:#1a2442; }
+.rl-tag.today{ color:#fff; background:#e8590c; animation:rlTodayPulse 2.4s ease-in-out infinite; }
+/* リストの「今日」の札も、ゆっくり明滅（字は薄くなりきらない） */
+@keyframes rlTodayPulse{
+  0%,100%{ opacity:1;   box-shadow:0 0 0 0 rgba(232,89,12,.0), 0 0 10px rgba(232,89,12,.65); }
+  50%    { opacity:.5;  box-shadow:0 0 0 0 rgba(232,89,12,.0), 0 0 0 rgba(232,89,12,0); }
+}
+@media (prefers-reduced-motion: reduce){
+  .rl-tag.today, #resCalModal .rescal-grid .cal-day.today{ animation:none; }
+}
 .rl-row{ display:flex; align-items:flex-start; gap:11px; padding:4px 4px 16px 0; cursor:pointer; border-radius:8px; }
 .rl-row:active{ background:rgba(201,162,74,.2); }
 .rl-bar{ width:5px; align-self:stretch; min-height:34px; border-radius:3px; background:#3b82f6; flex:none; }
