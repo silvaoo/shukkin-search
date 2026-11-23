@@ -2281,16 +2281,13 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
 <div id="resultsArea"></div>
     <button class="clear-results-btn" onclick="clearRangeResults()">🗑 検索結果を消す</button>
 
-<!-- 隠しスイッチ（時間外先取り検索）は、この注意書きの字を3秒以内に5回たたく（「コチラ」は除く）。2026-11-23 版の表示から移した -->
-<div class="data-source-notice" onclick="xtSecretTap()">
-  このアプリは<span class="source-link" onclick="event.stopPropagation();openSourceModal()">コチラ</span>のデータを元に作成しております。
+<div class="data-source-notice">
+  このアプリは<span class="source-link" onclick="openSourceModal()">コチラ</span>のデータを元に作成しております。
 </div>
 
 <div class="footer">
-  <div onclick="xtSecretTap()">
-    <div>⚠ あくまでも目安としてお使いください。</div>
-    <div>出退勤時間に誤りがあっても当方は責任を負いかねます。</div>
-  </div>
+  <div>⚠ あくまでも目安としてお使いください。</div>
+  <div>出退勤時間に誤りがあっても当方は責任を負いかねます。</div>
   <div style="margin-top:12px;" class="only-single">
     <button class="mypage-btn" onclick="openMemoList()">📝 マイページ<span>時間外・メモ・保存したカレンダー</span></button>
   </div>
@@ -2301,9 +2298,13 @@ try{ if(localStorage.getItem('{{ID}}-theme')==='light') document.body.classList.
     <button class="notify-btn" id="notifyBtn" onclick="toggleNotify()">🔕 更新のお知らせ：オフ</button>
   </div>
   <div id="pushNote" class="push-note only-single"></div>
-  <div class="app-info" id="appInfo"></div>
-  <div class="app-info" id="diaInfo"></div>
-  <div class="credit" style="margin-top:10px;">by AIタケタニ</div>
+  <!-- 隠しスイッチ（時間外先取り検索）は、一番下の3行（版・ダイヤ・by AIタケタニ）のどこかを3秒以内に5回たたく。
+       2026-11-23：注意書きに移したが、下がすっきりしてたたきやすくなったので、乗務員さんの希望でここに戻した -->
+  <div class="ft-bottom" onclick="xtSecretTap()">
+    <div class="app-info" id="appInfo"></div>
+    <div class="app-info" id="diaInfo"></div>
+    <div class="credit" style="margin-top:10px;">by AIタケタニ</div>
+  </div>
 </div>
 
 <!-- メモ一覧 -->
