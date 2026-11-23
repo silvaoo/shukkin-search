@@ -8791,11 +8791,13 @@ function renderResultCal(){
    ふりかえりの「締め日まで一覧表示」が見にくいという声から。
    iPhoneのカレンダーの一覧と同じく、1日ずつ「日付」の下に「🚌 3番 08:30〜19:46」と並べる。
    中身は月カレンダーのマスと同じ決まりで作る（代走・公出は実際に乗るものを出す）。
-   月カレンダーはそのまま。上の切り替えで選んだほうを覚えておく。 */
+   月カレンダーはそのまま。上の切り替えで選んだほうは、アプリを開いている間だけ覚えておく。 */
+/* 選んだほうは、アプリを開いている間だけ覚える。開き直したら月カレンダーに戻す（2026-11-23 乗務員さんより）。
+   前は端末に覚えていたので、その印は消しておく */
 const RC_VIEW_KEY='{{ID}}-cal-view';
-function rcView(){
-  try{ return localStorage.getItem(RC_VIEW_KEY)==='list' ? 'list' : 'cal'; }catch(e){ return 'cal'; }
-}
+let _rcView='cal';
+try{ localStorage.removeItem(RC_VIEW_KEY); }catch(e){}
+function rcView(){ return _rcView==='list' ? 'list' : 'cal'; }
 function rcApplyView(){
   const v=rcView(), md=document.getElementById('resCalModal');
   if(!md) return;
@@ -8806,7 +8808,7 @@ function rcApplyView(){
 }
 function rcSetView(v){
   if(v===rcView()) return;
-  try{ localStorage.setItem(RC_VIEW_KEY, v); }catch(e){}
+  _rcView=v;
   rcApplyView();
   renderResultCal();
   rcFit();
