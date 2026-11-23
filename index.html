@@ -975,6 +975,26 @@ input[type="date"] {
 #resCalModal .cal-dw .sat{ color:#1f4fa8; }
 #resCalModal .rescal-grid{ background:#cdb47a; box-shadow:0 0 0 2px var(--gold), 0 6px 14px rgba(60,40,10,.25);
   border-radius:0 0 12px 12px; overflow:hidden; padding-top:2px; }
+/* 月カレンダー／リストの切り替え（2026-11-23）。選んだほうを覚えておく */
+#resCalModal .rc-view{ display:flex; gap:6px; margin:0 0 10px; }
+#resCalModal .rc-view button{ flex:1; padding:10px 4px; border-radius:10px; border:1.5px solid #c9a75a;
+  background:rgba(255,255,255,.55); color:#1f2a4d; font-weight:900; font-size:calc(15px * var(--fs, 1));
+  cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
+#resCalModal .rc-view button.on{ background:linear-gradient(180deg,#26335c,#1a2442); color:#f5d27a; border-color:#1a2442; }
+#resCalModal .rl-box{ display:none; background:linear-gradient(180deg,#fbf4e3,#f4ead2);
+  box-shadow:0 0 0 2px var(--gold), 0 6px 14px rgba(60,40,10,.25); border-radius:0 0 12px 12px; padding:2px 12px 12px; }
+#resCalModal.list-mode .rl-box{ display:block; }
+#resCalModal.list-mode .cal-dw,
+#resCalModal.list-mode .rescal-grid{ display:none; }
+#resCalModal .rescal-legend .lg-list{ display:none; }
+#resCalModal.list-mode .rescal-legend .lg-list{ display:inline; }
+#resCalModal.list-mode .rescal-legend .lg-cal{ display:none; }
+/* リストの終わりに「次の月を見る」。月の帯の矢印と同じ金のボタン */
+#resCalModal .rl-next{ display:block; width:100%; margin:18px 0 2px; padding:12px; border-radius:10px;
+  border:1.5px solid #a8823a; background:linear-gradient(180deg,#f7e4a6,#dcb85e 55%,#c39a3f); color:#2b2110;
+  font-weight:900; font-size:calc(16px * var(--fs, 1)); cursor:pointer; box-shadow:0 3px 0 #7d5f22;
+  font-family:'Noto Sans JP',sans-serif; }
+#resCalModal .rl-next:active{ transform:translateY(2px); box-shadow:0 1px 0 #7d5f22; }
 /* マス：少し古びた和紙。中は無地のグラデーションだけ（時刻に模様を重ねない） */
 #resCalModal .rescal-grid .cal-day,
 #resCalModal .rescal-grid .cal-day.empty{
@@ -1304,33 +1324,37 @@ body.multi .only-multi{ display:block !important; }
 .rv-more{ width:100%; padding:13px; border-radius:10px; border:1px solid var(--border);
   background:var(--bg-card2); color:var(--note); font-size:calc(14px * var(--fs, 1)); font-weight:800;
   cursor:pointer; margin-bottom:8px; font-family:'Noto Sans JP',sans-serif; }
-.rv-tbl{ width:100%; border-collapse:collapse; font-size:calc(13px * var(--fs, 1)); }
-.rv-tbl tr{ cursor:pointer; }
-.rv-tbl td{ padding:8px 3px; border-bottom:1px solid rgba(128,128,160,.16); vertical-align:top; }
-.rv-d{ white-space:nowrap; color:var(--dim); font-size:calc(12px * var(--fs, 1)); width:66px; }
-.rv-n{ white-space:nowrap; font-weight:800; width:46px; }
-.rv-t{ font-variant-numeric:tabular-nums; }
-.rv-w{ text-align:right; white-space:nowrap; color:var(--dim); font-size:calc(12px * var(--fs, 1)); }
-.rv-mk{ display:inline-block; width:4px; height:14px; border-radius:2px;
-  vertical-align:-2px; margin-right:6px; }
-.rv-pill{ display:inline-block; padding:0 6px; border-radius:4px;
-  font-size:calc(10.5px * var(--fs, 1)); font-weight:800; margin-left:5px; }
-.rv-pill.kyu{ background:#4aa3ff; color:#04182e; }
-.rv-pill.leave{ background:#ff5c72; color:#fff; }
-.rv-pill.sub{ background:var(--orange); color:#231402; }
-.rv-tbl tr.has-ot td{ background:rgba(255,212,121,.07); }
-.rv-ot-t{ font-size:calc(11.5px * var(--fs, 1)); color:var(--note); margin-top:2px; }
-/* 代走・公出で走ったダイヤの出退勤時刻（2026-11-06）。代走＝橙、公出＝青 */
-.rv-add{ margin-top:3px; font-weight:800; line-height:1.35; }
-.rv-add-n{ display:inline-block; padding:0 5px; margin-right:5px; border-radius:4px; border:1px solid currentColor;
-  font-size:calc(11.5px * var(--fs, 1)); }
-.rv-add-t{ font-size:calc(14px * var(--fs, 1)); font-variant-numeric:tabular-nums; }
-.rv-seg{ display:inline-block; white-space:nowrap; margin-right:6px; }
-.rv-add.sub{ color:var(--tm-sub); }
-.rv-add.kyu{ color:var(--tm-kyu); }
-.rv-off{ opacity:.45; }
-.rv-del{ background:none; border:none; color:var(--dim); font-size:calc(15px * var(--fs, 1));
-  cursor:pointer; padding:0 0 0 8px; }
+/* ==== 1日1行の一覧（2026-11-23） ====
+   「締め日まで一覧表示」が見にくいという声から、iPhoneのカレンダーの一覧と同じ並びにした。
+   私のカレンダーの「リスト」と、ふりかえりの一覧で同じものを使う。
+   紙の色の上に濃い文字なので、ダーク・ライトに関係なく同じ見た目。
+   下へスクロールすれば次々見られるので、文字は大きめ（乗務員さんの見せてくれたiPhoneのカレンダーと同じくらい）。 */
+.rl-day{ margin:24px 0 10px; font-weight:900; font-size:calc(20px * var(--fs, 1)); line-height:1.3;
+  color:#1a2442; letter-spacing:.02em; font-family:'Noto Sans JP',sans-serif; }
+.rl-day:first-child{ margin-top:12px; }
+.rl-tag{ display:inline-block; margin-left:7px; padding:1px 7px; border-radius:6px; vertical-align:2px;
+  font-size:calc(13px * var(--fs, 1)); font-weight:900; letter-spacing:0; }
+.rl-tag.hol{ color:#c0261f; border:1px solid rgba(192,38,31,.45); }
+.rl-tag.today{ color:#f5d27a; background:#1a2442; }
+.rl-row{ display:flex; align-items:flex-start; gap:11px; padding:5px 4px 7px 0; cursor:pointer; border-radius:8px; }
+.rl-row:active{ background:rgba(201,162,74,.2); }
+.rl-bar{ width:5px; align-self:stretch; min-height:34px; border-radius:3px; background:#3b82f6; flex:none; }
+.rl-bar.off{ background:#2e7d4f; }
+.rl-bar.leave{ background:#e0455c; }
+.rl-bar.kyu{ background:#d9822b; }
+.rl-main{ flex:1; min-width:0; }
+.rl-ttl{ font-weight:900; font-size:calc(21px * var(--fs, 1)); line-height:1.4; color:#111;
+  font-variant-numeric:tabular-nums; font-family:'Noto Sans JP',sans-serif; }
+.rl-ttl span{ white-space:nowrap; }          /* 時刻の途中では折り返さない（「／」で折り返す） */
+.rl-note{ margin-top:3px; font-size:calc(15px * var(--fs, 1)); line-height:1.5; color:#4b4f5e; font-weight:700; }
+.rl-note div{ padding-left:1.45em; text-indent:-1.45em; }
+.rl-note div.c{ text-indent:0; }
+.rl-sub{ margin-top:3px; font-size:calc(15px * var(--fs, 1)); line-height:1.5; color:#b4560a; font-weight:800; }
+.rl-empty{ padding:26px 4px; text-align:center; color:#4b4f5e; font-weight:700; font-size:calc(15px * var(--fs, 1)); }
+.rl-hint{ padding:14px 2px 4px; text-align:center; color:#5a5f70; font-size:calc(13px * var(--fs, 1)); line-height:1.6; }
+/* ふりかえりの一覧は、暗い画面の中に紙の箱を置く */
+.rl-paper{ background:linear-gradient(180deg,#fbf4e3,#f4ead2); border:1.5px solid #c9a24a; border-radius:12px;
+  padding:2px 12px 10px; margin:4px 0 10px; box-shadow:0 2px 8px rgba(0,0,0,.3); }
 .rv-per-t{ cursor:pointer; }
 .rv-all-t{ flex:1; }
 .rv-allrow{ background:var(--bg-card); border:1px solid var(--border);
@@ -1649,6 +1673,20 @@ body.multi .only-multi{ display:block !important; }
 .share-qr-box svg{ width:min(60vw,240px); height:auto; background:#fff;
   padding:10px; border-radius:10px; }
 .share-qr-cap{ font-size:calc(12px * var(--fs, 1)); color:#dde0ff; margin-top:8px; }
+/* 一括保存の形えらび（2026-11-23）。マイページより手前に出す */
+#icsSheet{ z-index:10050; }
+.ics-q{ font-size:calc(13px * var(--fs, 1)); color:#dde0ff; opacity:.85; margin:-6px 0 6px; line-height:1.5; text-align:center; }
+.ics-opt{ display:block; width:100%; text-align:left; border:1.5px solid rgba(150,170,220,.35); border-radius:12px;
+  padding:11px 12px; margin:8px 0; background:transparent; color:#dde0ff; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
+.ics-opt.on{ border-color:#00f5ff; background:rgba(255,255,255,.06); box-shadow:0 0 0 1px #00f5ff inset; }
+.ics-opt .h{ font-weight:900; font-size:calc(15px * var(--fs, 1)); }
+.ics-dot{ display:inline-block; width:13px; height:13px; border-radius:50%; border:2px solid currentColor;
+  margin-right:8px; vertical-align:-1px; box-sizing:border-box; }
+.ics-opt.on .ics-dot{ background:#00f5ff; border-color:#00f5ff; }
+.ics-opt .e{ margin-top:6px; font-size:calc(12.5px * var(--fs, 1)); opacity:.82; line-height:1.6; font-variant-numeric:tabular-nums; }
+.ics-go{ width:100%; margin-top:8px; padding:14px; border:none; border-radius:12px; cursor:pointer;
+  background:linear-gradient(90deg,#ff8a00,#ff5f00); color:#fff; font-weight:900; font-size:calc(16px * var(--fs, 1));
+  font-family:'Noto Sans JP',sans-serif; }
 .share-close{ width:100%; padding:13px; margin-top:4px; border:none; border-radius:12px;
   background:transparent; color:#dde0ff; font-size:calc(15px * var(--fs, 1)); cursor:pointer; }
 .memo-btn {
@@ -1956,6 +1994,23 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
 <div class="header">
   <a href="#" class="share-btn" onclick="shareApp(); return false;" aria-label="アプリを共有">📤</a>
 <!-- iPhone用の共有画面。iPhoneの共有シートにはLINEが出ないため、こちらを使う -->
+<!-- カレンダーアプリに一括保存：形をえらぶ（2026-11-23） -->
+<div id="icsSheet" class="share-sheet" onclick="if(event.target===this)closeIcsSheet()">
+  <div class="share-card">
+    <div class="share-title">📅 カレンダーアプリに一括保存</div>
+    <div class="ics-q">どちらの形で入れますか？（次からはこの選択を覚えます）</div>
+    <button class="ics-opt" id="icsOptCur" onclick="icsPick('cur')">
+      <div class="h"><span class="ics-dot"></span>いつもの形式</div>
+      <div class="e">件名：🚌2番ダイヤ<br>中間ダイヤは前半・後半の2件／公休は「🚌5番ダイヤ（公休）」</div>
+    </button>
+    <button class="ics-opt" id="icsOptList" onclick="icsPick('list')">
+      <div class="h"><span class="ics-dot"></span>リスト形式（件名に時刻）</div>
+      <div class="e">🚌 2番 15:03〜21:47<br>🚌 7番 16:53〜24:21<br>🚌 5番 公休（終日）<br>代走・振替・公出・年休・時間外も件名に入ります。<br>通知は出勤の1時間前（中間ダイヤは後半の1時間前にも）</div>
+    </button>
+    <button class="ics-go" onclick="icsGo()">この形で書き出す</button>
+    <button class="share-close" onclick="closeIcsSheet()">やめる</button>
+  </div>
+</div>
 <div id="shareSheet" class="share-sheet" onclick="if(event.target===this)closeShareSheet()">
   <div class="share-card">
     <div class="share-title">アプリを共有</div>
@@ -2064,6 +2119,10 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
       <div class="cal-title">📅 検索くん 私のカレンダー</div>
       <button class="cal-x" onclick="closeResultCal()">✕ 閉じる</button>
     </div>
+    <div class="rc-view">
+      <button id="rcViewCal" class="on" onclick="rcSetView('cal')">📅 月カレンダー</button>
+      <button id="rcViewList" onclick="rcSetView('list')">📋 リスト</button>
+    </div>
     <div class="cal-nav">
       <button class="cal-arrow" id="rcPrev" onclick="resCalMove(-1)">‹</button>
       <div class="cal-month" id="resCalMonth" onclick="resCalToday()"></div>
@@ -2073,9 +2132,10 @@ try{ if(localStorage.getItem('a-theme')==='light') document.body.classList.add('
       <div class="sun">日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="sat">土</div>
     </div>
     <div class="cal-grid rescal-grid" id="resCalGrid"></div>
+    <div class="rl-box" id="resCalList"></div>
     <div class="rescal-legend">
-      上段＝ダイヤ番号 ／ 下段＝出退勤時間<br>
-      <span class="rc-legend-off">緑は公休</span>・⭐は表示中の月を保存します
+      <span class="lg-cal">上段＝ダイヤ番号 ／ 下段＝出退勤時間<br>
+      <span class="rc-legend-off">緑は公休</span>・</span><span class="lg-list">行をタップすると、その日の詳しい内容（時間外の入力）が開きます<br></span>⭐は表示中の月を保存します
     </div>
     <button class="rc-save-btn only-single" onclick="saveCurrentCal()">⭐ マイページに保存</button>
   </div>
@@ -4841,7 +4901,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v307';
+const APP_VERSION   = 'v308';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -5063,7 +5123,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.27';
+const APP_LABEL = 'バージョン 4.28';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -6919,55 +6979,20 @@ function revListHtml(now){
     +(revOpenDays?'▲ 一覧を閉じる':'▼ 締め日まで一覧表示（1ヶ月分）')+'</button>';
 
   if(revOpenDays){
-    h+='<table class="rv-tbl">';
-    now.rows.forEach(function(r){
-      let time='公休', w='', col='#4a4f66';
-      if(otIsLeave(r.ot)) time='年休';
-      else if(r.slot){
-        const m=String(r.slot.o).match(/(\d{1,2}):/);
-        col=(m&&parseInt(m[1],10)<12)?'#ff9e4a':'#5b8dff';
-        time=String(r.slot.o); w=(r.slot.w||'')+'h';
-      }
-      let pill='', addTx='';
-      const rvIo = function(o, part){   // 中間ダイヤの2つの時間帯は、途中で折り返さないように1つずつ包む
-        const g = rcSegs({o:o}, part||'all');
-        return g.length ? g.map(function(z){ return '<span class="rv-seg">'+z.s+'〜'+z.e+'</span>'; }).join('') : String(o);
-      };
-      if(otIsKyu(r.ot)) pill='<span class="rv-pill kyu">公出</span>';
-      else if(otIsLeave(r.ot)) pill='<span class="rv-pill leave">年休</span>';
-      /* 代走・公出で走ったダイヤも、出退勤時刻を色を変えて出す（2026-11-06 乗務員さんより）。
-         本来のダイヤは、乗った側だけ（乗っていなければ取り消し線） */
-      if(r.ot && r.ot.adds && r.ot.adds.length && !otIsLeave(r.ot)){
-        const kyu = otIsKyu(r.ot), cls = kyu ? 'kyu' : 'sub';
-        const pd = r.iso.split('-').map(Number), dd = new Date(pd[0], pd[1]-1, pd[2]);
-        if(!kyu && r.slot){
-          const bp = otBaseOf(r.ot);
-          if(bp==='none') time='<s class="rv-off">'+time+'</s>';
-          else if(bp==='first' || bp==='second') time=rvIo(r.slot.o, bp);
-        }
-        addTx = r.ot.adds.map(function(x){
-          const rin = (x.code===OT_RINJI);
-          const sl = otSlotOf(x.code||'a', x.dial, dd, x.v);
-          const nm = rin ? '臨時'
-                   : ((x.code && x.code!=='a') ? otDiaName(x.code)+' ' : '')+otDN(x)
-                     +(x.part==='first'?'前半':x.part==='second'?'後半':'');
-          return '<div class="rv-add '+cls+'"><span class="rv-add-n">'+nm+'</span>'
-            +'<span class="rv-add-t">'+(sl ? rvIo(sl.o, rin ? 'all' : x.part) : '—')+'</span></div>';
-        }).join('');
-      }
-      const otT = r.ot ? ('<div class="rv-ot-t">⏱ '+otFmt(r.ot.min)+'</div>') : '';
-      h+='<tr class="'+(r.ot?'has-ot':'')+'">'
-        +'<td class="rv-d" onclick="otFromDetail(\''+r.iso+'\')">'+r.m+'/'+r.d+'（'+r.dw+'）</td>'
-        +'<td class="rv-n" onclick="otFromDetail(\''+r.iso+'\')"><span class="rv-mk" style="background:'+col+'"></span>'+(r.n||'')+'</td>'
-        +'<td class="rv-t" onclick="otFromDetail(\''+r.iso+'\')">'+time+pill+addTx+otT+'</td>'
-        +'<td class="rv-w">'+w
-        +(r.ot?'<button class="rv-del" onclick="event.stopPropagation();otDelete(\''+r.iso+'\')">🗑</button>':'')
-        +'</td></tr>';
+    /* 2026-11-23 見にくいという声から、私のカレンダーの「リスト」と同じ並びにした。
+       行の🗑はなくした（記録を消すのは入力画面の「🗑 この日の記録を消す」で）。
+       1日ごとの労働時間は、上の「この期間の労働時間」にまとめて出ている */
+    const t0=new Date(); t0.setHours(0,0,0,0);
+    const todayIso=toISO(t0), all=otLoad();
+    h+='<div class="rl-paper">';
+    now.rows.forEach(function(x){
+      const dt=new Date(x.iso+'T00:00:00');
+      const r=rcMakeRow(dt);
+      if(r) h+=rlDayHtml(dt, r, 'otFromDetail', todayIso, all);
     });
-    h+='</table><div class="ml-empty" style="padding:10px 4px">'
-      +'行をタップすると、その日の時間外を入れられます。'
+    h+='<div class="rl-hint">行をタップすると、その日の時間外を入れられます。'
       +(revOffset>0?'<br>先の期間なので、これから受ける代走もここで登録できます。':'')
-      +'</div>'
+      +'</div></div>'
       +'<button class="rv-more" onclick="revToggleDays(true)">▲ 一覧を閉じる</button>';
   }
   return h;
@@ -7026,6 +7051,10 @@ function exportCalendarICS(rows){
       count++;
     });
   });
+  icsDownload(ev, count);
+}
+/* 予定をまとめて .ics にして渡す（いつもの形式・リスト形式で共通） */
+function icsDownload(ev, count){
   if(!count){ showToast('登録できる勤務がありません'); return; }
   const ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//出退勤検索くん//JP\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n'+ev+'END:VCALENDAR\r\n';
   try{
@@ -7082,10 +7111,112 @@ function deleteSavedCal(id){
   saveCalList(loadCalList().filter(c=>c.id!==id));
   renderMemoList();
 }
+/* 一括保存は、先に形をえらぶ（2026-11-23）。選んだ形は次から覚えておく。
+   いつもの形式＝これまでと同じ。リスト形式＝件名に時刻（アプリの「リスト」と同じ書き方） */
+const ICS_FORM_KEY='a-ics-form';
+let _icsRows=null, _icsForm='list';
 function exportSavedCal(id){
   const item=loadCalList().find(c=>c.id===id);
   if(!item){ showToast('見つかりませんでした'); return; }
-  exportCalendarICS(item.rows);
+  _icsRows=item.rows;
+  try{ _icsForm = (localStorage.getItem(ICS_FORM_KEY)==='cur') ? 'cur' : 'list'; }catch(e){ _icsForm='list'; }
+  icsPaint();
+  document.getElementById('icsSheet').classList.add('active');
+}
+function icsPick(v){ _icsForm=v; icsPaint(); }
+function icsPaint(){
+  const a=document.getElementById('icsOptCur'), b=document.getElementById('icsOptList');
+  if(a) a.classList.toggle('on', _icsForm==='cur');
+  if(b) b.classList.toggle('on', _icsForm==='list');
+}
+function closeIcsSheet(){ document.getElementById('icsSheet').classList.remove('active'); }
+function icsGo(){
+  try{ localStorage.setItem(ICS_FORM_KEY, _icsForm); }catch(e){}
+  closeIcsSheet();
+  if(_icsForm==='list') exportCalendarListICS(_icsRows);
+  else exportCalendarICS(_icsRows);
+}
+
+/* ==== リスト形式で書き出す（2026-11-23） ====
+   件名に時刻を入れて、スマホのカレンダーの一覧で「🚌 3番 08:30〜19:46」と見えるようにする。
+   アプリの「リスト」と同じ書き方（「出勤」は付けない・24時を過ぎても 24:21 のまま）。
+   ・中間ダイヤは1件にまとめる（最初の出勤〜最後の退勤。件名は「06:56〜11:04／15:46〜21:42」）
+   ・通知は出勤の1時間前。中間で間があく日は、後半の出勤の1時間前にもう1つ
+   ・公休・年休は終日の予定
+   ・代走・振替・公出・時間外も件名に入れる（記録はアプリの中で入れる）
+   ・同じ日はいつも同じUIDにする（取り込み直したときの扱いは端末しだい） */
+function exportCalendarListICS(rows){
+  if(!rows||!rows.length){ showToast('データがありません'); return; }
+  const stamp=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+  const all=otLoad();
+  let ev='', count=0;
+  rows.forEach(function(r){
+    const e=icsListEvent(r, stamp, all);
+    if(e){ ev+=e; count++; }
+  });
+  icsDownload(ev, count);
+}
+function icsListEvent(r, stamp, all){
+  if(!r || !r.iso || r.dn==null) return '';
+  const dt=new Date(r.iso+'T00:00:00');
+  const st=all[r.iso];
+  const uid='sk-list-'+r.iso+'-a@shukkin';
+  const p=function(n){ return String(n).padStart(2,'0'); };
+  const ymd=function(d){ return ''+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate()); };
+  const allDay=function(title, desc){
+    const d1=new Date(dt); d1.setDate(d1.getDate()+1);
+    return 'BEGIN:VEVENT\r\nUID:'+uid+'\r\nDTSTAMP:'+stamp+'\r\nDTSTART;VALUE=DATE:'+ymd(dt)+'\r\nDTEND;VALUE=DATE:'+ymd(d1)+'\r\n'
+      +'SUMMARY:'+icsEsc(title)+'\r\n'+(desc ? 'DESCRIPTION:'+icsEsc(desc)+'\r\n' : '')+'TRANSP:TRANSPARENT\r\nEND:VEVENT\r\n';
+  };
+  const otT = (st && st.min>0) ? ' ⏱'+Math.floor(st.min/60)+':'+p(Math.round(st.min)%60) : '';
+  const otD = (st && st.min>0) ? '時間外 '+otFmt(st.min) : '';
+  if(otIsLeave(st)) return allDay('🚌 '+r.dn+'番 年休', '年休');
+
+  const baseOff = !r.rec || !r.slot;
+  const real=rcRealList(st, dt);
+  let segs=[], who=[], word='', desc=[];
+  if(real){
+    real.forEach(function(x){
+      const w=rlName(x);
+      if(who.indexOf(w)<0) who.push(w);
+      if(x.slot) rcSegs(x.slot, x.part).forEach(function(z){ segs.push({s:z.s, e:z.e, who:w}); });
+    });
+    if(otIsKyu(st) || baseOff){ word='公出'; desc.push('公出（本来 公休）'); }
+    else{ word=otSubWord(st); desc.push(word+'（本来 '+r.dn+'番）'); }
+  }else if(rlUndecided(r)){
+    return allDay('🚌 '+r.dn+'番 時刻未定'+otT, [rlUndecided(r).n, otD].filter(Boolean).join('\n'));
+  }else if(baseOff){
+    return allDay('🚌 '+r.dn+'番 公休'+otT, ['公休', otD].filter(Boolean).join('\n'));
+  }else{
+    rcSegs(r.slot, 'all').forEach(function(z){ segs.push({s:z.s, e:z.e, who:r.dn+'番'}); });
+    who=[r.dn+'番'];
+  }
+  segs.sort(function(a,b){ return rcMin(a.s)-rcMin(b.s); });
+  const head='🚌 '+who.join('＋');
+  if(!segs.length){
+    // 時刻が分からない日（代走先の時刻が取れない・未定など）は終日で入れておく
+    return allDay(head+(word?' '+word:'')+otT, desc.concat(['時刻を確認してください', otD]).filter(Boolean).join('\n'));
+  }
+  const tx=segs.map(function(z){ return rlHM(z.s)+'〜'+rlHM(z.e); });
+  const title=head+' '+tx.join('／')+(word?' '+word:'')+otT;
+  if(real || segs.length>1) desc.push(segs.map(function(z,i){ return z.who+' '+tx[i]; }).join('\n'));
+  if(!real && r.slot.w) desc.push('労働時間 '+r.slot.w);
+  if(!baseOff && r.slot.n && (!real || otBaseOf(st)!=='none')) desc.push(String(r.slot.n));
+  if(otD) desc.push(otD);
+  let endMin=-1, endS=segs[0].e;
+  segs.forEach(function(z){ if(rcMin(z.e)>endMin){ endMin=rcMin(z.e); endS=z.e; } });
+  // 通知：出勤の1時間前。間があく日は、後半の出勤の1時間前にも
+  let al='BEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER:-PT60M\r\nDESCRIPTION:'+icsEsc('まもなく出勤 '+title)+'\r\nEND:VALARM\r\n';
+  for(let i=1; i<segs.length; i++){
+    const gap=rcMin(segs[i].s)-rcMin(segs[i-1].e);
+    const after=rcMin(segs[i].s)-rcMin(segs[0].s)-60;
+    if(gap>60 && after>0){
+      al+='BEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER:PT'+after+'M\r\nDESCRIPTION:'
+        +icsEsc('まもなく後半の出勤 '+rlHM(segs[i].s))+'\r\nEND:VALARM\r\n';
+    }
+  }
+  return 'BEGIN:VEVENT\r\nUID:'+uid+'\r\nDTSTAMP:'+stamp+'\r\nDTSTART:'+icsDT(r.iso, segs[0].s)+'\r\nDTEND:'+icsDT(r.iso, endS)+'\r\n'
+    +'SUMMARY:'+icsEsc(title)+'\r\nDESCRIPTION:'+icsEsc(desc.join('\n'))+'\r\n'+al+'END:VEVENT\r\n';
 }
 function switchMemoList(which){
   const panes={rev:'mlPaneRev',date:'mlPaneDate',dial:'mlPaneDial',cal:'mlPaneCal'};
@@ -7614,11 +7745,15 @@ function openResultCal(){
   }else{
     const t=new Date(); _rcYM=new Date(t.getFullYear(), t.getMonth(), 1);
   }
+  rcApplyView();    // 月カレンダーかリストか（前に選んだほう）
   renderResultCal();
   attachCalSwipe(document.getElementById('resCalGrid'), resCalMove);   // 横スワイプで月移動
-  document.getElementById('resCalModal').classList.add('active');
+  const md=document.getElementById('resCalModal');
+  md.classList.add('active');
+  md.scrollTop=0;
   document.body.style.overflow='hidden';
   rcFit();          // 表示してからでないと大きさを測れない
+  rlScrollToday();  // リストで今月なら、今日の行から見せる
   beep(880,70,0);   // 開いた時の音
 }
 function closeResultCal(){
@@ -7628,6 +7763,8 @@ function closeResultCal(){
 function resCalMove(n){
   _rcYM=new Date(_rcYM.getFullYear(), _rcYM.getMonth()+n, 1);
   renderResultCal();
+  const md=document.getElementById('resCalModal');
+  if(md && md.classList.contains('list-mode')) md.scrollTop=0;   // リストは月の頭から
   beep(760,50,0);
 }
 /* 今月へ戻る */
@@ -7635,6 +7772,7 @@ function resCalToday(){
   const t=new Date();
   _rcYM=new Date(t.getFullYear(), t.getMonth(), 1);
   renderResultCal();
+  rlScrollToday();
 }
 /* カレンダーに横スワイプで月移動を付ける。
    横に十分動いたら onMove(方向) を呼ぶ。縦スクロールやタップと誤認しないよう、
@@ -7846,6 +7984,151 @@ function renderResultCal(){
   if(tailDeco) html+=`<div class="rc-deco" style="grid-column:span ${tail}"></div>`;
   document.getElementById('resCalGrid').innerHTML=html;
   rcFit();          // 週の数が変わるので測り直す
+  if(rcView()==='list') renderResultList(y, m, byIso, todayIso);
+}
+
+/* ==== 私のカレンダーの「リスト」表示（2026-11-23） ====
+   ふりかえりの「締め日まで一覧表示」が見にくいという声から。
+   iPhoneのカレンダーの一覧と同じく、1日ずつ「日付」の下に「🚌 3番 08:30〜19:46」と並べる。
+   中身は月カレンダーのマスと同じ決まりで作る（代走・公出は実際に乗るものを出す）。
+   月カレンダーはそのまま。上の切り替えで選んだほうを覚えておく。 */
+const RC_VIEW_KEY='a-cal-view';
+function rcView(){
+  try{ return localStorage.getItem(RC_VIEW_KEY)==='list' ? 'list' : 'cal'; }catch(e){ return 'cal'; }
+}
+function rcApplyView(){
+  const v=rcView(), md=document.getElementById('resCalModal');
+  if(!md) return;
+  md.classList.toggle('list-mode', v==='list');
+  const a=document.getElementById('rcViewCal'), b=document.getElementById('rcViewList');
+  if(a) a.classList.toggle('on', v!=='list');
+  if(b) b.classList.toggle('on', v==='list');
+}
+function rcSetView(v){
+  if(v===rcView()) return;
+  try{ localStorage.setItem(RC_VIEW_KEY, v); }catch(e){}
+  rcApplyView();
+  renderResultCal();
+  rcFit();
+  rlScrollToday();
+  beep(760,50,0);
+}
+/* リストで、表示している月に今日があれば、今日の行が上に来るまで送る。
+   前の日は上へ戻せば見られる（iPhoneのカレンダーの一覧と同じ） */
+function rlScrollToday(){
+  const md=document.getElementById('resCalModal');
+  if(!md || !md.classList.contains('list-mode') || !md.classList.contains('active')) return;
+  const el=document.querySelector('#resCalList .rl-day.today');
+  if(!el){ md.scrollTop=0; return; }
+  md.scrollTop += el.getBoundingClientRect().top - md.getBoundingClientRect().top - 12;
+}
+function renderResultList(y, m, byIso, todayIso){
+  const box=document.getElementById('resCalList');
+  if(!box) return;
+  const days=new Date(y,m,0).getDate();
+  const all=otLoad();
+  let h='', n=0;
+  for(let d=1; d<=days; d++){
+    const dt=new Date(y,m-1,d);
+    const r=byIso[toISO(dt)] || rcMakeRow(dt);   // 検索していない日も、覚えた番号から作る
+    if(!r) continue;
+    h+=rlDayHtml(dt, r, 'openRcDetail', todayIso, all);
+    n++;
+  }
+  if(!n) h='<div class="rl-empty">今日のダイヤ番号を入れると、<br>この月の勤務が出ます</div>';
+  const nx=new Date(y, m, 1);
+  h+='<button class="rl-next" onclick="resCalMove(1)">'+(nx.getMonth()+1)+'月を見る ›</button>';
+  box.innerHTML=h;
+}
+/* 時刻があとで決まる日（勤務表で「—」。奈良学園など）なら、その日の勤務を返す。
+   覚えた番号から作った日は slot が空になっているので、元の勤務から見る */
+function rlUndecided(r){
+  const sl = (r.slot && String(r.slot.o).trim()==='—') ? r.slot
+           : (r.rec && r.dt && r.rec[r.dt] && String(r.rec[r.dt].o).trim()==='—') ? r.rec[r.dt] : null;
+  return sl;
+}
+/* 代走・公出で乗るダイヤの呼び名（例 7番・Ｃ 12番・臨時） */
+function rlName(x){
+  if(x.code===OT_RINJI) return '臨時';
+  return ((x.code && x.code!=='a') ? otDiaName(x.code)+' ' : '')+x.dial+'番'+(x.v||'');
+}
+/* 時刻を「08:30」の形にそろえる。24時を過ぎても「24:21」のまま（翌00:21 にはしない） */
+function rlHM(t){
+  const a=String(t).trim().split(':');
+  if(a.length<2 || isNaN(parseInt(a[0],10))) return String(t).trim();
+  return String(parseInt(a[0],10)).padStart(2,'0')+':'+a[1];
+}
+/* 1日ぶん（日付の見出し＋1行）。私のカレンダーのリストと、ふりかえりの一覧で使う。
+   tap はタップしたときに呼ぶ関数の名前（日付を渡す） */
+function rlDayHtml(dt, r, tap, todayIso, all){
+  const iso=toISO(dt);
+  const st=all[iso];
+  let tags='';
+  if(isObon(dt)) tags+='<span class="rl-tag hol">お盆</span>';
+  else if(isHol(dt)) tags+='<span class="rl-tag hol">'+holName(dt)+'</span>';
+  if(iso===todayIso) tags+='<span class="rl-tag today">今日</span>';
+  let h='<div class="rl-day'+(iso===todayIso?' today':'')+'">'
+       +(dt.getMonth()+1)+'月'+dt.getDate()+'日 '+DW[dt.getDay()]+'曜日'+tags+'</div>';
+
+  const nm=rlName;
+  const times=function(segs){
+    return segs.map(function(z){ return '<span>'+rlHM(z.s)+'〜'+rlHM(z.e)+'</span>'; }).join('／');
+  };
+  const baseOff = !r.rec || !r.slot;          // 本来は公休
+  const und = rlUndecided(r);                 // 奈良学園など、時刻があとで決まる日
+  let ttl='', bar='', subs=[], useNote=false;
+  if(otIsLeave(st)){
+    ttl='🚌 '+r.dn+'番 年休'; bar='leave';
+  }else{
+    const real=rcRealList(st, dt);            // 代走・公出で実際に乗るもの
+    if(real){
+      let segs=[], unknown=false;
+      real.forEach(function(x){
+        if(!x.slot){ unknown=true; return; }
+        rcSegs(x.slot, x.part).forEach(function(z){ segs.push({s:z.s, e:z.e}); });
+      });
+      segs.sort(function(a,b){ return rcMin(a.s)-rcMin(b.s); });
+      const who=[];
+      real.forEach(function(x){ const w=nm(x); if(who.indexOf(w)<0) who.push(w); });
+      ttl='🚌 '+who.join('＋')+(segs.length ? ' '+times(segs) : '');
+      if(otIsKyu(st) || baseOff){ subs.push('公出（本来 公休）'); bar='kyu'; }
+      else subs.push(otSubWord(st)+'（本来 '+r.dn+'番）');
+      if(unknown || !segs.length) subs.push('時刻を確認してください');
+      useNote = !baseOff && otBaseOf(st)!=='none';   // 本来のダイヤに乗る日だけ備考を出す
+    }else if(und){
+      ttl='🚌 '+r.dn+'番 時刻未定';
+      useNote=true;
+    }else if(baseOff){
+      ttl='🚌 '+r.dn+'番 公休'; bar='off';
+    }else{
+      const segs=rcSegs(r.slot, 'all');
+      const o=String(r.slot.o||'').trim();
+      ttl='🚌 '+r.dn+'番'+(segs.length ? ' '+times(segs) : (o && o!=='—' ? ' '+escapeHtml(o) : ''));
+      if(!segs.length) subs.push('時刻を確認してください');
+      useNote=true;
+    }
+  }
+  if(st && st.min>0) subs.push('⏱ 時間外 '+otFmt(st.min));
+
+  /* 備考（本社こうのう・カギ開けなど）。「／」で区切ってあるものは1つずつ行を分ける */
+  let note='';
+  const nsl = und || r.slot;
+  if(useNote && nsl && nsl.n){
+    note=String(nsl.n).split(/\s*／\s*/).filter(Boolean).map(function(t,i){
+      return i ? '<div class="c">'+escapeHtml(t)+'</div>' : '<div>📌 '+escapeHtml(t)+'</div>';
+    }).join('');
+  }
+  const hasTxt = getDateMemo(iso) || (r.dn && getDialMemo(r.dn));
+  const hasImg = getDateImgs(iso).length || (r.dn && getDialImgs(r.dn).length);
+  if(hasTxt || hasImg) note+='<div>'+(hasTxt?'📝 メモあり':'')+(hasImg?(hasTxt?'　':'')+'📷 写真あり':'')+'</div>';
+
+  h+='<div class="rl-row" onclick="'+tap+'(\''+iso+'\')">'
+    +'<div class="rl-bar '+bar+'"></div><div class="rl-main">'
+    +'<div class="rl-ttl">'+ttl+'</div>'
+    +(note ? '<div class="rl-note">'+note+'</div>' : '')
+    +(subs.length ? '<div class="rl-sub">'+subs.join('<br>')+'</div>' : '')
+    +'</div></div>';
+  return h;
 }
 
 /* ==== 私のカレンダーを画面に合わせる ====
@@ -7858,6 +8141,7 @@ function rcFit(){
   const modal=document.getElementById('resCalModal');
   const g=document.getElementById('resCalGrid');
   if(!modal || !g || !modal.classList.contains('active')) return;
+  if(modal.classList.contains('list-mode')) return;   // リストの時はマスが隠れていて測れない
   const cells=g.children;
   if(!cells.length) return;
 
