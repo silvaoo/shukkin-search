@@ -5021,7 +5021,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v316';
+const APP_VERSION   = 'v317';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -5243,7 +5243,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.36';
+const APP_LABEL = 'バージョン 4.37';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -5795,7 +5795,7 @@ try{ const _xv=xtUrlParam('xt'); if(_xv) XT_VIEW = xtDecodeView(_xv); }catch(e){
 /* リンクの中身を取り出す。LINE は # の後ろの「=」でリンクを切ってしまうので、2026-11-23 から ?xt=… で送る。
    先に送った #xt=… のリンクも読めるようにしておく。起動のいちばん初めに呼ばれるので let/const を使わない */
 function xtUrlParam(name){
-  var re=new RegExp('[?&#]'+name+'=([A-Za-z0-9_\\-]+)');
+  var re=new RegExp('[?&#]'+name+'[=.]([A-Za-z0-9_.\\-]+)');
   var m=(location.search+location.hash).match(re);
   return m ? m[1] : '';
 }
@@ -7368,6 +7368,7 @@ function xtIsoDate(iso){ const p=String(iso).split('-').map(Number); const d=new
 function DIA_NAME_SHORT(){ return '学園前Ａ'; }
 /* リンクの中身を読み直す。ここは起動のいちばん初めにも呼ばれるので、後ろで宣言した let/const は使わない */
 function xtDecodeView(code){
+  if(/^2\./.test(code)) return xtDecodeV2(code);
   const o=xtUnB64(code);
   if(!o || o.v!==1 || !o.b || !o.f) return null;
   const recs={};
@@ -7382,27 +7383,74 @@ function xtDecodeView(code){
   }
   return {base:{dial:o.b[0], iso:o.b[1]}, from:o.f, n:Math.min(Math.max(o.n||14,1),31), recs:recs, want:want};
 }
-/* 自分の勤務から、助役さんに見せるリンクを作る */
-function xtLinkUrl(){
-  let saved=null; try{ saved=JSON.parse(localStorage.getItem(MYDIAL_KEY)||'null'); }catch(e){}
-  if(!saved || !saved.dial) return '';
-  const from=_xtDays.length ? _xtDays[0].d : new Date();
-  const a=new Date(from); a.setDate(a.getDate()-1);
-  const z=new Date(from); z.setDate(z.getDate()+XT_DAYS);
-  const all=otLoad(), r={};
-  Object.keys(all).forEach(function(iso){
-    const d=xtIsoDate(iso); if(d<a || d>z) return;
-    const q=all[iso];
-    r[iso]=[q.dayKind||'work', q.base||'all', (q.adds||[]).map(function(x){ return [x.dial, x.part||'all', x.code||'', x.v||'']; })];
+/* ==== リンクの書き方 その2（2026-11-23） ====
+   LINE は「=」のところ（# の後ろでも ? の後ろでも）でリンクを切ってしまった。
+   そこで「=」を使わず、短く書く：?xt.2.<最初の日の番号>.<最初の日 YYMMDD>.<日数>.<記録>.<希望の日>.<希望の札>
+   ・日は「最初の日の前の日」を0として36進の1文字（0〜z）
+   ・記録＝ 日＋種類(w勤務/k公休/l年休)＋本来(a/n/f/s)＋付いたもの（_ で区切る）。記録どうしは - で区切る
+   ・付いたもの＝ [ほかのダイヤの印 G学園前Ａ/Cダイヤ/Y予備/B北大和Ｂ/I生駒]番号＋part(a/f/s)＋[形 A〜F]。臨時は入れない
+   ・希望の日＝ 日の1文字を並べる。希望の札＝ 日の1文字＋番号＋part を - で区切る
+   返事は ?xtok.2.<最初の日の番号>.<最初の日 YYMMDD>.<日の1文字＋番号＋part を - で区切る>
+   使う字は英数字と . - _ だけ。起動のいちばん初めにも呼ばれるので、ここの関数では let/const の外の値を使わない */
+function xtYmd(iso){ return String(iso).slice(2,4)+String(iso).slice(5,7)+String(iso).slice(8,10); }
+function xtYmdIso(y){ return '20'+y.slice(0,2)+'-'+y.slice(2,4)+'-'+y.slice(4,6); }
+function xtOffIso(fromIso, off){
+  var p=String(fromIso).split('-').map(Number), d=new Date(p[0],p[1]-1,p[2]+off);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function xtDecodeV2(code){
+  var f=String(code).split('.');
+  if(f[0]!=='2' || !/^\d+$/.test(f[1]||'') || !/^\d{6}$/.test(f[2]||'')) return null;
+  var fromIso=xtYmdIso(f[2]), n=parseInt(f[3],10)||14;
+  var K={w:'work',k:'kyu',l:'leave'}, B={a:'all',n:'none',f:'first',s:'second'}, P={a:'all',f:'first',s:'second'};
+  var CL={G:'a',C:'c',Y:'yobi',B:'ba',I:'ikoma'};
+  var recs={}, want={d:{}, c:{}};
+  (f[4]||'').split('-').forEach(function(r){
+    if(r.length<3) return;
+    var iso=xtOffIso(fromIso, parseInt(r[0],36)-1);
+    var adds=r.slice(3).split('_').filter(Boolean).map(function(a){
+      var m=a.match(/^([GCYBI])?(\d+)([afs])([A-F])?$/); if(!m) return null;
+      return {dial:parseInt(m[2],10), part:P[m[3]], code:(m[1] ? CL[m[1]] : 'a'), v:m[4]||undefined};
+    }).filter(Boolean);
+    recs[iso]={dayKind:K[r[1]]||'work', base:B[r[2]]||'all', adds:adds, min:0};
   });
-  // 自分の希望（この期間のぶんだけ）
-  const fIso=toISO(from), zIso=toISO(z);
-  const wd=Object.keys(_xtWant.d).filter(function(iso){ return iso>=fIso && iso<=zIso; });
-  const wc=Object.keys(_xtWant.c).filter(function(k){ const iso=k.slice(0,10); return iso>=fIso && iso<=zIso; })
-    .map(function(k){ const q=k.split('|'); return [q[0], Number(q[1]), q[2]]; });
-  const o={v:1, b:[saved.dial, saved.iso], f:fIso, n:XT_DAYS, r:r};
-  if(wd.length || wc.length) o.w={d:wd, c:wc};
-  return location.origin+location.pathname+'?xt='+xtB64(o);
+  (f[5]||'').split('').forEach(function(ch){ var o=parseInt(ch,36); if(!isNaN(o)) want.d[xtOffIso(fromIso, o-1)]=1; });
+  (f[6]||'').split('-').forEach(function(q){
+    var m=q.match(/^([0-9a-z])(\d+)([afs])$/); if(!m) return;
+    want.c[xtOffIso(fromIso, parseInt(m[1],36)-1)+'|'+parseInt(m[2],10)+'|'+P[m[3]]]=1;
+  });
+  return {base:{dial:parseInt(f[1],10), iso:fromIso}, from:fromIso, n:Math.min(Math.max(n,1),31), recs:recs, want:want};
+}
+/* 自分の勤務から、助役さんに見せるリンクを作る（その2の書き方） */
+function xtLinkUrl(){
+  const from=_xtDays.length ? _xtDays[0].d : new Date();
+  const d0=otBaseDial(from);
+  if(!d0) return '';
+  const fIso=toISO(from);
+  const off=function(iso){ return (Math.round((xtIsoDate(iso)-xtIsoDate(fIso))/86400000)+1).toString(36); };
+  const lastIso=xtOffIso(fIso, XT_DAYS), prevIso=xtOffIso(fIso, -1);
+  const inR=function(iso){ return iso>=prevIso && iso<=lastIso; };
+  const CL={a:'G', c:'C', yobi:'Y', ba:'B', ikoma:'I'};
+  const all=otLoad();
+  const recs=Object.keys(all).sort().filter(inR).map(function(iso){
+    const q=all[iso];
+    const k={work:'w', kyu:'k', leave:'l'}[q.dayKind||'work']||'w';
+    const b={all:'a', none:'n', first:'f', second:'s'}[q.base||'all']||'a';
+    const adds=(q.adds||[]).map(function(x){
+      if(x.code===OT_RINJI) return '';                       // 臨時は入れない
+      const own=(!x.code || x.code==='a');
+      if(!own && !CL[x.code]) return '';
+      const n=parseInt(x.dial,10); if(!(n>0)) return '';
+      return (own?'':CL[x.code])+n+((x.part||'all')[0])+((x.v && /^[A-F]$/.test(x.v)) ? x.v : '');
+    }).filter(Boolean);
+    return off(iso)+k+b+adds.join('_');
+  }).join('-');
+  const lIso=xtOffIso(fIso, XT_DAYS-1);
+  const wd=Object.keys(_xtWant.d).filter(function(iso){ return iso>=fIso && iso<=lIso; }).sort().map(off).join('');
+  const wc=Object.keys(_xtWant.c).filter(function(k){ const iso=k.slice(0,10); return iso>=fIso && iso<=lIso; }).sort()
+    .map(function(k){ const q=k.split('|'); return off(q[0])+q[1]+q[2][0]; }).join('-');
+  // 後ろの空の欄（..）は付けない。LINE などは最後の「.」をリンクに入れないことがあるため
+  return location.origin+location.pathname+('?xt.2.'+d0+'.'+xtYmd(fIso)+'.'+XT_DAYS+'.'+recs+'.'+wd+'.'+wc).replace(/\.+$/,'');
 }
 function xtShare(text, url){
   if(navigator.share){
@@ -7470,8 +7518,9 @@ function xtPaintBar(){
 function xtSendReply(){
   const ks=Object.keys(_xtPick).sort(); if(!ks.length) return;
   const WD=['日','月','火','水','木','金','土'];
-  const url=location.origin+location.pathname+'?xtok='+xtB64({v:1, b:[XT_VIEW.base.dial, XT_VIEW.base.iso],
-    s:ks.map(function(iso){ return [iso, _xtPick[iso].n, _xtPick[iso].p]; })});
+  const fIso=XT_VIEW.from, d0=otBaseDial(xtIsoDate(fIso));
+  const url=location.origin+location.pathname+'?xtok.2.'+d0+'.'+xtYmd(fIso)+'.'
+    +ks.map(function(iso){ return (Math.round((xtIsoDate(iso)-xtIsoDate(fIso))/86400000)+1).toString(36)+_xtPick[iso].n+_xtPick[iso].p[0]; }).join('-');
   const lines=ks.map(function(iso){ const q=_xtPick[iso];
     return '・'+(q.d.getMonth()+1)+'/'+q.d.getDate()+'（'+WD[q.d.getDay()]+'）'+xtCandText(q.c); }).join('\n');
   xtShare('時間外のお願いです\n'+lines+'\n（受ける人へ：下のリンクを長押しでコピーして、出退勤検索くんの「時間外先取り検索」→「📥 返事を貼り付け」に貼ると入れられます）', url);
@@ -7482,9 +7531,18 @@ function xtTogglePaste(){ const el=document.getElementById('xtPaste'); if(el) el
 function xtReadReply(text){
   const box=document.getElementById('xtReq');
   const t=(text!=null) ? text : (document.getElementById('xtPasteBox')||{}).value||'';
-  const m=String(t).match(/[?&#]xtok=([A-Za-z0-9_\-]+)/);
+  const m=String(t).match(/[?&#]xtok[=.]([A-Za-z0-9_.\-]+)/);
   let o=null;
-  try{ if(m) o=xtUnB64(m[1]); }catch(e){ o=null; }
+  try{
+    if(m && /^2\./.test(m[1])){
+      // その2の書き方：2.<最初の日の番号>.<YYMMDD>.<日＋番号＋part>-…
+      const f=m[1].split('.'), fIso=xtYmdIso(f[2]), P={a:'all',f:'first',s:'second'};
+      o={v:1, b:[parseInt(f[1],10), fIso], s:(f[3]||'').split('-').map(function(q){
+        const mm=q.match(/^([0-9a-z])(\d+)([afs])$/); if(!mm) return null;
+        return [xtOffIso(fIso, parseInt(mm[1],36)-1), parseInt(mm[2],10), P[mm[3]]];
+      }).filter(Boolean)};
+    }else if(m) o=xtUnB64(m[1]);
+  }catch(e){ o=null; }
   if(!o || o.v!==1 || !o.s || !o.s.length){ if(box) box.innerHTML='<div class="xt-warn">返事のリンクが見つかりませんでした。リンクごと貼り付けてください。</div>'; return; }
   _xtReq=o;
   const WD=['日','月','火','水','木','金','土'];
@@ -7541,8 +7599,8 @@ function xtBootHash(){
     const pe=document.getElementById('xtPaste');
     if(pe){
       pe.classList.add('on');
-      document.getElementById('xtPasteBox').value='#xtok='+m[1];
-      xtReadReply('#xtok='+m[1]);
+      document.getElementById('xtPasteBox').value='?xtok.'+m[1];
+      xtReadReply('?xtok.'+m[1]);
     }else{
       // このブラウザにはその人の番号が入っていない（iPhone の Safari など）
       document.getElementById('xtBody').innerHTML='<div class="xt-empty">これは「時間外のお願い」の返事です。<br>'
