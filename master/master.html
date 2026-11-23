@@ -1416,6 +1416,15 @@ html.xt-lock, html.xt-lock body{ overscroll-behavior-y:none; }
 .xt-none{ margin-top:8px; padding-top:8px; border-top:1px solid rgba(110,88,44,.5); font-size:calc(13px * var(--fs, 1)); color:#5a5f70; line-height:1.6; }
 .xt-empty{ padding:30px 6px; text-align:center; color:#4b4f5e; font-weight:700; font-size:calc(15px * var(--fs, 1)); line-height:1.7; }
 .xt-acts{ display:flex; gap:8px; margin:8px 0 4px; }
+/* 期間（始まりの日と長さ） */
+.xt-per{ display:flex; align-items:center; justify-content:center; gap:10px; margin:8px 0 4px; }
+.xt-per span{ font-weight:900; font-size:calc(16px * var(--fs, 1)); color:#1a2442; min-width:7.5em; text-align:center; }
+.xt-per button{ width:40px; height:34px; border-radius:9px; border:1.5px solid #c9a75a; background:rgba(255,255,255,.6);
+  color:#1f2a4d; font-weight:900; font-size:calc(15px * var(--fs, 1)); cursor:pointer; }
+.xt-len{ display:flex; gap:5px; margin:4px 0 6px; }
+.xt-len button{ flex:1; padding:7px 0; border-radius:9px; border:1.5px solid #c9a75a; background:rgba(255,255,255,.6);
+  color:#1f2a4d; font-weight:900; font-size:calc(13px * var(--fs, 1)); cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
+.xt-len button.on{ background:linear-gradient(180deg,#26335c,#1a2442); color:#f5d27a; border-color:#1a2442; }
 .xt-acts button{ flex:1; padding:10px 6px; border-radius:10px; border:1.5px solid #c9a75a; background:rgba(255,255,255,.6);
   color:#1f2a4d; font-weight:900; font-size:calc(14px * var(--fs, 1)); cursor:pointer; font-family:'Noto Sans JP',sans-serif; line-height:1.35; }
 .xt-acts button.go{ background:linear-gradient(180deg,#26335c,#1a2442); color:#f5d27a; border-color:#1a2442; }
@@ -7072,7 +7081,20 @@ function revJump(startIso){
      ・1日の拘束は15時間まで（間に4時間以上休めば超えてよい。穴埋め探しと同じ）
    スクショで送れるように画面いっぱいに詰めて出す。字は長押しでコピーできる。
    LINEに送る文を作る欄は、作る前にやめた（乗務員さんより） */
-const XT_DAYS=14;
+const XT_DAYS=14;   // 最初に開いた時の日数（前に選んだ日数があればそれ）
+/* 期間は自由に変えられる（2026-11-24 乗務員さんより「1日分だけとか2週間分とか」）。
+   始まりは ◀ ▶ で1日ずつ、長さは 1日・3日・1週間・2週間・4週間。長さは覚えておく。
+   リンクの日は36進1文字（0〜z）で数えるので、長さは28日までにしてある */
+const XT_LENS=[1,3,7,14,28], XT_LEN_KEY='{{ID}}-xt-len';
+let _xtFrom=null, _xtN=0;
+function xtLenLoad(){ let n=0; try{ n=parseInt(localStorage.getItem(XT_LEN_KEY),10); }catch(e){} return XT_LENS.indexOf(n)>=0 ? n : XT_DAYS; }
+function xtSetLen(n){ if(XT_LENS.indexOf(n)<0) return; _xtN=n; try{ localStorage.setItem(XT_LEN_KEY, String(n)); }catch(e){} openXt(true); }
+function xtShift(d){
+  const t0=new Date(); t0.setHours(0,0,0,0);
+  const f=new Date(_xtFrom||t0); f.setDate(f.getDate()+d);
+  if(f<t0) return;                          // 今日より前には戻さない
+  _xtFrom=f; openXt(true);
+}
 /* いまは試しに使う人だけ（2026-11-23 乗務員さんより。助役さん1人に見てもらってOKなら、みんなに出す）。
    フッターの版の表示を3秒以内に5回たたくと、オン・オフが切り替わる。
    ホーム画面のアプリの中でたたけるように、リンク（#…）ではなく画面の操作にしてある（iPhone はリンクがアプリに届かないため）。
@@ -7245,8 +7267,11 @@ function xtToggleWant(i, k){
 function openXt(keep){
   const keepTop = keep ? document.getElementById('xtModal').scrollTop : 0;
   const t0=new Date(); t0.setHours(0,0,0,0);
-  let from=new Date(t0); from.setDate(from.getDate()+1);       // 明日から2週間
-  let nDays=XT_DAYS;
+  // 開くたびに「明日から」。長さは前に選んだもの。◀ ▶ や長さを変えた時（keep）はそのまま
+  if(!keep || !_xtFrom){ _xtFrom=new Date(t0); _xtFrom.setDate(_xtFrom.getDate()+1); }
+  if(!keep || !_xtN) _xtN=xtLenLoad();
+  let from=new Date(_xtFrom);
+  let nDays=_xtN;
   if(XT_VIEW){ from=xtIsoDate(XT_VIEW.from); nDays=XT_VIEW.n; }  // リンクで見ている時は、送った人が見た期間
   const all=otLoad();
   _xtDays=[]; _xtPick={};
@@ -7261,7 +7286,12 @@ function openXt(keep){
   const WD=['日','月','火','水','木','金','土'];
   const md=function(d){ return (d.getMonth()+1)+'/'+d.getDate()+'（'+WD[d.getDay()]+'）'; };
   const last=_xtDays[_xtDays.length-1].d;
-  let h='<div class="xt-sub">'+md(from)+' 〜 '+md(last)+' に時間外で入れそうな勤務</div>'
+  let h='<div class="xt-sub">'+md(from)+(nDays>1 ? ' 〜 '+md(last) : '')+' に時間外で入れそうな勤務</div>'
+    +(XT_VIEW ? '' : '<div class="xt-per"><button onclick="xtShift(-1)" aria-label="前の日から">◀</button>'
+        +'<span>'+md(from)+'から</span><button onclick="xtShift(1)" aria-label="次の日から">▶</button></div>'
+        +'<div class="xt-len">'+XT_LENS.map(function(n){
+            return '<button class="'+(n===nDays?'on':'')+'" onclick="xtSetLen('+n+')">'+(n===7?'1週間':n===14?'2週間':n===28?'4週間':n+'日')+'</button>';
+          }).join('')+'</div>')
     +(XT_VIEW ? '<div class="xt-rule">送ってくれた人の勤務（'+escapeHtml(DIA_NAME_SHORT())+'）から出しています。'
                 +'入れてほしい勤務をタップして選び、下のボタンで送り返せます。</div>'
                 +((Object.keys(_xtWant.d).length || Object.keys(_xtWant.c).length)
@@ -7314,7 +7344,7 @@ function openXt(keep){
       h+='</div>';
     });
     h+='</div>';
-    if(!hit.length) h+='<div class="xt-empty">この2週間は、入れそうな勤務が見つかりませんでした。</div>';
+    if(!hit.length) h+='<div class="xt-empty">この期間は、入れそうな勤務が見つかりませんでした。</div>';
     if(none.length){
       h+='<div class="xt-none">入れそうな勤務がない日：'+none.map(function(i){
         const x=_xtDays[i];
@@ -7451,7 +7481,8 @@ function xtLinkUrl(){
   if(!d0) return '';
   const fIso=toISO(from);
   const off=function(iso){ return (Math.round((xtIsoDate(iso)-xtIsoDate(fIso))/86400000)+1).toString(36); };
-  const lastIso=xtOffIso(fIso, XT_DAYS), prevIso=xtOffIso(fIso, -1);
+  const N=_xtDays.length || XT_DAYS;
+  const lastIso=xtOffIso(fIso, N), prevIso=xtOffIso(fIso, -1);
   const inR=function(iso){ return iso>=prevIso && iso<=lastIso; };
   const CL={a:'G', c:'C', yobi:'Y', ba:'B', ikoma:'I'};
   const all=otLoad();
@@ -7468,12 +7499,12 @@ function xtLinkUrl(){
     }).filter(Boolean);
     return off(iso)+k+b+adds.join('_');
   }).join('-');
-  const lIso=xtOffIso(fIso, XT_DAYS-1);
+  const lIso=xtOffIso(fIso, N-1);
   const wd=Object.keys(_xtWant.d).filter(function(iso){ return iso>=fIso && iso<=lIso; }).sort().map(off).join('');
   const wc=Object.keys(_xtWant.c).filter(function(k){ const iso=k.slice(0,10); return iso>=fIso && iso<=lIso; }).sort()
     .map(function(k){ const q=k.split('|'); return off(q[0])+q[1]+q[2][0]; }).join('-');
   // 後ろの空の欄（..）は付けない。LINE などは最後の「.」をリンクに入れないことがあるため
-  return location.origin+location.pathname+('?xt.2.'+d0+'.'+xtYmd(fIso)+'.'+XT_DAYS+'.'+recs+'.'+wd+'.'+wc).replace(/\.+$/,'');
+  return location.origin+location.pathname+('?xt.2.'+d0+'.'+xtYmd(fIso)+'.'+N+'.'+recs+'.'+wd+'.'+wc).replace(/\.+$/,'');
 }
 function xtShare(text, url){
   if(navigator.share){
@@ -7497,7 +7528,7 @@ function xtSendLink(){
   if(!url){ showToast('今日のダイヤ番号を入れてください'); return; }
   const f=_xtDays[0].d, l=_xtDays[_xtDays.length-1].d;
   const hasWant=Object.keys(_xtWant.d).length || Object.keys(_xtWant.c).length;
-  xtShare('時間外先取り検索（'+(f.getMonth()+1)+'/'+f.getDate()+'〜'+(l.getMonth()+1)+'/'+l.getDate()+'）\n'
+  xtShare('時間外先取り検索（'+(f.getMonth()+1)+'/'+f.getDate()+(_xtDays.length>1 ? '〜'+(l.getMonth()+1)+'/'+l.getDate() : '')+'）\n'
     +'入れそうな勤務の一覧です。タップすると見られます。入れてほしい勤務を選んで送り返すこともできます。'
     +(hasWant ? '\n⭐が付いて光っている日・勤務は、私の希望です。' : ''), url);
 }
