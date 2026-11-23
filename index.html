@@ -4999,7 +4999,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v312';
+const APP_VERSION   = 'v313';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -5221,7 +5221,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.32';
+const APP_LABEL = 'バージョン 4.33';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -7139,6 +7139,15 @@ function xtSay(x){
   return xtHM(own[own.length-1].e)+'上がり'+(x.nx.kind==='off'?'（翌日公休）':'')+'なので、'
     +(lim<1e9 ? xtHM(r5(lim,false))+'までに終わる' : 'そのあとの')+'勤務なら入れます';
 }
+/* 分割休息の計算を見せる。「昼の休み 4時間49分 ＋ 夜の休み 6時間11分 ＝ 11時間 → 5:15から入れます（分割休息）」
+   出勤の時刻は大きい字の1行と同じく5分単位に切り上げ、夜の休みはそこから数え直す（数字が食い違わないように） */
+function xtSplitCalc(x){
+  const pe=x.pv.blocks[x.pv.blocks.length-1].e;
+  const start=Math.ceil(x.E/5)*5;                 // 次の日の出勤できる時刻（前の日の0時からではなく、その日の0時から数えた分）
+  const night=start+1440-pe;
+  return '昼の休み '+otFmt(x.pvRest)+' ＋ 夜の休み '+otFmt(night)+' ＝ '+otFmt(x.pvRest+night)
+    +' → '+xtHM(start)+'から入れます（分割休息）';
+}
 function xtCand(c){
   return '<span>'+c.n+'番'+(c.p==='first'?'の前半':c.p==='second'?'の後半':'')+' '
     +c.b.map(function(z){ return xtHM(z.s)+'〜'+xtHM(z.e); }).join('／')+'</span>';
@@ -7161,7 +7170,8 @@ function openXt(){
   let h='<div class="xt-sub">'+md(from)+' 〜 '+md(last)+' に時間外で入れそうな勤務</div>'
     +(XT_VIEW ? '<div class="xt-rule">送ってくれた人の勤務（'+escapeHtml(DIA_NAME_SHORT())+'）から出しています。'
                 +'入れてほしい勤務をタップして選び、下のボタンで送り返せます。</div>' : '')
-    +'<div class="xt-rule">目安：休息9時間（昼に4時間休んだ次の日は合計11時間）・1日の拘束15時間。決めるのは助役さんです。</div>';
+    +'<div class="xt-rule">目安：休み（退勤〜次の出勤）は9時間。前の日に昼4時間以上休んでいれば、昼の休み＋夜の休みで11時間あればよい（夜は4時間以上）。'
+    +'1日の拘束は15時間まで。決めるのは助役さんです。</div>';
   if(!XT_VIEW && otBaseDial(from)!==null){
     h+='<div class="xt-acts"><button class="go" onclick="xtSendLink()">🔗 助役さんに<br>リンクを送る</button>'
       +'<button onclick="xtTogglePaste()">📥 助役さんの<br>返事を貼り付け</button></div>'
@@ -7182,7 +7192,7 @@ function openXt(){
       const why=[];
       if(x.type!=='off') why.push('自分 '+x.me.blocks.map(function(z){ return xtHM(z.s)+'〜'+xtHM(z.e); }).join('／'));
       const pvAdd = x.pv.parts.some(function(q){ return q.add; });
-      if(x.pv.kind==='work' && x.pv.blocks.length && !(x.split||pvAdd)) why.push('前の日 '+xtHM(x.pv.blocks[x.pv.blocks.length-1].e)+' 退勤');
+      if(x.pv.kind==='work' && x.pv.blocks.length && !(x.split||pvAdd)) why.push('前の日 '+xtHM(x.pv.blocks[x.pv.blocks.length-1].e)+' 退勤（9時間あける）');
       else if(x.pv.kind==='off') why.push('前の日 公休');
       else if(x.pv.kind==='leave') why.push('前の日 年休');
       if(x.nx.kind==='work' && x.nx.blocks.length) why.push('次の日 '+xtHM(x.nx.blocks[0].s)+' 出勤');
@@ -7196,7 +7206,7 @@ function openXt(){
             return '<div>'+(q.add?'<b class="xt-dai">代走</b>':'<b class="xt-own">自分</b>')+escapeHtml(q.name)+' '
               +q.b.map(function(z){ return xtHM(z.s)+'〜'+xtHM(z.e); }).join('／')+'</div>';
           }).join('')
-          +(x.split ? '<div class="xt-prev-why">昼に'+otFmt(x.pvRest)+'休んでいるので、夜の休みが短くても朝から入れます（分割休息）</div>' : '')
+          +(x.split ? '<div class="xt-prev-why">'+xtSplitCalc(x)+'</div>' : '')
           +'</div>';
       }
       h+='<div class="xt-ex" id="xtEx'+i+'">'+xtExHtml(i, false)+'</div>';
