@@ -1377,6 +1377,8 @@ body.multi .only-multi{ display:block !important; }
   padding:calc(env(safe-area-inset-top, 0px) + 10px) 14px calc(env(safe-area-inset-bottom, 0px) + 24px);
   -webkit-user-select:text; user-select:text; text-align:left; }
 .xt-modal.active{ display:block; }
+.xt-modal{ overscroll-behavior:contain; }   /* 画面の端で引っ張っても、後ろのページやブラウザに伝えない */
+html.xt-lock, html.xt-lock body{ overscroll-behavior-y:none; }
 .xt-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .xt-head h2{ margin:0; font-size:calc(18px * var(--fs, 1)); font-weight:900; color:#1a2442; }
 .xt-close{ flex:none; padding:8px 12px; border-radius:10px; border:1.5px solid #c9a75a; background:rgba(255,255,255,.6);
@@ -7164,6 +7166,7 @@ function openXt(){
   const all=otLoad();
   _xtDays=[]; _xtPick={};
   for(let i=0;i<nDays;i++){ const d=new Date(from); d.setDate(d.getDate()+i); _xtDays.push(xtFind(d, all)); }
+  if(XT_VIEW) xtPickRestore();     // 選びかけていた札（もし読み込み直しても消えないように）
   const WD=['日','月','火','水','木','金','土'];
   const md=function(d){ return (d.getMonth()+1)+'/'+d.getDate()+'（'+WD[d.getDay()]+'）'; };
   const last=_xtDays[_xtDays.length-1].d;
@@ -7225,6 +7228,7 @@ function openXt(){
   xtPaintBar();
   const m=document.getElementById('xtModal');
   m.classList.add('active'); m.scrollTop=0;
+  document.documentElement.classList.add('xt-lock');
   if(!XT_VIEW) beep(760,50,0);
 }
 function xtClearHash(){ if(/^#xtok=/.test(location.hash)) try{ history.replaceState(null, '', location.pathname); }catch(e){} }
@@ -7233,10 +7237,16 @@ function closeXt(){
   if(XT_VIEW){ location.replace(location.pathname); return; }
   xtClearHash();
   document.getElementById('xtModal').classList.remove('active');
+  document.documentElement.classList.remove('xt-lock');
 }
 /* 例の並び。ふつうは字だけ（長押しでコピーできる）。リンクで見ている時はタップで選べる札 */
 function xtExHtml(i, full){
   const x=_xtDays[i]; if(!x) return '';
+  // 選んである札が「ほか」の中なら、開いた形で出す（読み込み直した時も選んだ札が見えるように）
+  if(!full && XT_VIEW){
+    const q=_xtPick[toISO(x.d)];
+    if(q && x.list.findIndex(function(c){ return c.n===q.n && c.p===q.p; })>=3) full=true;
+  }
   const list=full ? x.list : x.list.slice(0,3);
   const more=(!full && x.list.length>3) ? '<b class="xt-more" onclick="xtMore('+i+')">ほか'+(x.list.length-3)+'件 ▼</b>' : '';
   if(!XT_VIEW) return '例：'+list.map(xtCand).join('・')+more;
@@ -7329,9 +7339,22 @@ function xtPick(i,k){
   if(el) el.innerHTML=xtExHtml(i, full);
   xtPaintBar();
 }
+function xtPickKey(){ return '{{ID}}-xt-pick-'+(location.hash||'').slice(0,80); }
+function xtPickSave(){
+  try{ sessionStorage.setItem(xtPickKey(), JSON.stringify(Object.keys(_xtPick).map(function(iso){ return [iso, _xtPick[iso].n, _xtPick[iso].p]; }))); }catch(e){}
+}
+function xtPickRestore(){
+  let a=[]; try{ a=JSON.parse(sessionStorage.getItem(xtPickKey())||'[]'); }catch(e){}
+  a.forEach(function(q){
+    const x=_xtDays.find(function(y){ return toISO(y.d)===q[0]; }); if(!x) return;
+    const c=x.list.find(function(z){ return z.n===q[1] && z.p===q[2]; }); if(!c) return;
+    _xtPick[q[0]]={n:c.n, p:c.p, c:c, d:x.d};
+  });
+}
 function xtPaintBar(){
   const bar=document.getElementById('xtBar'); if(!bar) return;
   if(!XT_VIEW){ bar.classList.remove('on'); bar.innerHTML=''; return; }
+  xtPickSave();
   const ks=Object.keys(_xtPick).sort();
   const WD=['日','月','火','水','木','金','土'];
   bar.classList.add('on');
@@ -10265,7 +10288,9 @@ function hideLaunchSplash(){var s=document.getElementById('launch-splash');if(!s
   var TH=70, el, txt, startY=0, pulling=false, refreshing=false, armed=false;
   function scTop(){ return window.pageYOffset || (document.scrollingElement||document.documentElement).scrollTop || 0; }
   function atTop(){ return scTop()<=0; }
-  function modalOpen(){ return document.body.style.overflow==='hidden'; }
+  /* 時間外先取り検索の画面は、リンクで開いた時に body を止めていないので、画面が出ているかでも見る（2026-11-23）。
+     選んだ札や貼り付けた返事が、引っ張った拍子に消えないように */
+  function modalOpen(){ return document.body.style.overflow==='hidden' || !!document.querySelector('.xt-modal.active'); }
   function splashOn(){ var s=document.getElementById('launch-splash'); return !!(s && s.style.display!=='none' && !s.classList.contains('hide')); }
   function setY(y,anim){ el.style.transition = anim?'transform .25s ease':'none'; el.style.transform='translate(-50%,'+y+'px)'; }
   function onStart(e){
