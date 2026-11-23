@@ -70,13 +70,15 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(
             fetch(event.request)
                 .then((res) => {
-                    if (res && res.status === 200) {
+                    /* 時間外先取り検索のリンク（?xt=…）のように ? の付いた画面は控えを取らない。
+                       リンクごとに別の控えができて、端末の容量を食うため（2026-11-23） */
+                    if (res && res.status === 200 && !new URL(event.request.url).search) {
                         const c = res.clone();
                         caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, c));
                     }
                     return res;
                 })
-                .catch(() => caches.match(event.request).then((c) => c || caches.match('./index.html')))
+                .catch(() => caches.match(event.request, {ignoreSearch:true}).then((c) => c || caches.match('./index.html')))
         );
         return;
     }

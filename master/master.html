@@ -5537,7 +5537,7 @@ function initSW(){
     if(refreshing)return;
     /* 時間外先取り検索のリンク・返事で開いた時は読み込み直さない（初めて開いた人だと、見ている途中で画面が消えるため）。
        新しい版は次に開いた時に使われる */
-    if(/^#xt(ok)?=/.test(location.hash)) return;
+    if(xtUrlParam('xt') || xtUrlParam('xtok')) return;
     refreshing=true; window.location.reload();
   });
 }
@@ -5791,7 +5791,14 @@ function otSubWord(r){ return otBaseOf(r)==='all' ? '代走' : '振替'; }
    その間は記録も番号も、リンクに入っているものを使い、何も保存しない（見る人の記録を書き換えないため）。
    var にしてあるのは、ここより前で otLoad が呼ばれても止まらないようにするため */
 var XT_VIEW = null;
-try{ if(/^#xt=/.test(location.hash)) XT_VIEW = xtDecodeView(location.hash.slice(4)); }catch(e){ XT_VIEW = null; }
+try{ const _xv=xtUrlParam('xt'); if(_xv) XT_VIEW = xtDecodeView(_xv); }catch(e){ XT_VIEW = null; }
+/* リンクの中身を取り出す。LINE は # の後ろの「=」でリンクを切ってしまうので、2026-11-23 から ?xt=… で送る。
+   先に送った #xt=… のリンクも読めるようにしておく。起動のいちばん初めに呼ばれるので let/const を使わない */
+function xtUrlParam(name){
+  var re=new RegExp('[?&#]'+name+'=([A-Za-z0-9_\\-]+)');
+  var m=(location.search+location.hash).match(re);
+  return m ? m[1] : '';
+}
 function otLoad(){ if(XT_VIEW) return XT_VIEW.recs; try{ return JSON.parse(localStorage.getItem(OT_KEY)||'{}'); }catch(e){ return {}; } }
 function otSave(o){ if(XT_VIEW) return false; try{ localStorage.setItem(OT_KEY,JSON.stringify(o)); return true; }catch(e){ return false; } }
 
@@ -7302,7 +7309,7 @@ function openXt(keep){
   document.documentElement.classList.add('xt-lock');
   if(!XT_VIEW && !keep) beep(760,50,0);
 }
-function xtClearHash(){ if(/^#xtok=/.test(location.hash)) try{ history.replaceState(null, '', location.pathname); }catch(e){} }
+function xtClearHash(){ if(xtUrlParam('xtok')) try{ history.replaceState(null, '', location.pathname); }catch(e){} }
 function closeXt(){
   // リンクで見ている時は、閉じたらその人のアプリ（ふつうの画面）に戻す
   if(XT_VIEW){ location.replace(location.pathname); return; }
@@ -7395,7 +7402,7 @@ function xtLinkUrl(){
     .map(function(k){ const q=k.split('|'); return [q[0], Number(q[1]), q[2]]; });
   const o={v:1, b:[saved.dial, saved.iso], f:fIso, n:XT_DAYS, r:r};
   if(wd.length || wc.length) o.w={d:wd, c:wc};
-  return location.origin+location.pathname+'#xt='+xtB64(o);
+  return location.origin+location.pathname+'?xt='+xtB64(o);
 }
 function xtShare(text, url){
   if(navigator.share){
@@ -7435,7 +7442,7 @@ function xtPick(i,k){
   if(el) el.innerHTML=xtExHtml(i, full);
   xtPaintBar();
 }
-function xtPickKey(){ return '{{ID}}-xt-pick-'+(location.hash||'').slice(0,80); }
+function xtPickKey(){ return '{{ID}}-xt-pick-'+xtUrlParam('xt').slice(0,80); }
 function xtPickSave(){
   try{ sessionStorage.setItem(xtPickKey(), JSON.stringify(Object.keys(_xtPick).map(function(iso){ return [iso, _xtPick[iso].n, _xtPick[iso].p]; }))); }catch(e){}
 }
@@ -7463,7 +7470,7 @@ function xtPaintBar(){
 function xtSendReply(){
   const ks=Object.keys(_xtPick).sort(); if(!ks.length) return;
   const WD=['日','月','火','水','木','金','土'];
-  const url=location.origin+location.pathname+'#xtok='+xtB64({v:1, b:[XT_VIEW.base.dial, XT_VIEW.base.iso],
+  const url=location.origin+location.pathname+'?xtok='+xtB64({v:1, b:[XT_VIEW.base.dial, XT_VIEW.base.iso],
     s:ks.map(function(iso){ return [iso, _xtPick[iso].n, _xtPick[iso].p]; })});
   const lines=ks.map(function(iso){ const q=_xtPick[iso];
     return '・'+(q.d.getMonth()+1)+'/'+q.d.getDate()+'（'+WD[q.d.getDay()]+'）'+xtCandText(q.c); }).join('\n');
@@ -7475,7 +7482,7 @@ function xtTogglePaste(){ const el=document.getElementById('xtPaste'); if(el) el
 function xtReadReply(text){
   const box=document.getElementById('xtReq');
   const t=(text!=null) ? text : (document.getElementById('xtPasteBox')||{}).value||'';
-  const m=String(t).match(/#xtok=([A-Za-z0-9_\-]+)/);
+  const m=String(t).match(/[?&#]xtok=([A-Za-z0-9_\-]+)/);
   let o=null;
   try{ if(m) o=xtUnB64(m[1]); }catch(e){ o=null; }
   if(!o || o.v!==1 || !o.s || !o.s.length){ if(box) box.innerHTML='<div class="xt-warn">返事のリンクが見つかりませんでした。リンクごと貼り付けてください。</div>'; return; }
@@ -7521,13 +7528,13 @@ function xtApplyReq(i){
 }
 /* 起動した時のリンクを見る */
 function xtBootHash(){
-  const hsh=location.hash||'';
-  if(/^#xt=/.test(hsh)){
+  if(xtUrlParam('xt')){
     if(XT_VIEW) openXt();
     else showToast('リンクを読めませんでした');
     return;
   }
-  const m=hsh.match(/^#xtok=([A-Za-z0-9_\-]+)/);
+  const ok=xtUrlParam('xtok');
+  const m=ok ? [null, ok] : null;
   if(m){
     // URLの返事は、閉じる・入れる時に消す（ここで消すと、読み込み直しで返事が消えるため）
     openXt();
