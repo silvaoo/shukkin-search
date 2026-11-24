@@ -1483,6 +1483,8 @@ html.xt-lock, html.xt-lock body{ overscroll-behavior-y:none; }
 .xt-end-sub{ margin-top:8px; font-size:calc(17px * var(--fs, 1)); font-weight:900; color:#111; line-height:1.6; }
 .xt-end-list{ margin:16px auto 0; max-width:420px; text-align:left; padding:12px 14px; border-radius:12px; background:#fffdf6;
   border:1.5px solid #e8a317; font-weight:900; font-size:calc(16px * var(--fs, 1)); line-height:1.8; color:#111; font-variant-numeric:tabular-nums; }
+.xt-end-for{ margin:26px auto 0; max-width:420px; padding-top:12px; border-top:1px dashed rgba(110,88,44,.45); text-align:left;
+  font-size:calc(12.5px * var(--fs, 1)); color:#6b5a35; line-height:1.7; }
 .xt-end-note{ margin-top:14px; font-size:calc(14px * var(--fs, 1)); color:#4b4f5e; line-height:1.7; }
 .xt-end-back{ margin-top:18px; padding:11px 18px; border-radius:10px; border:1.5px solid #c9a75a; background:rgba(255,255,255,.6);
   color:#1f2a4d; font-weight:900; font-size:calc(14px * var(--fs, 1)); cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
@@ -7658,6 +7660,21 @@ function xtPasteClip(){
     setTimeout(function(){ if(pe) pe.scrollIntoView({block:'start', behavior:'smooth'}); }, 0);
   }).catch(function(){ fallback('下の枠に貼り付けて「読み取る」を押してください'); });
 }
+/* 返事の文から中身を取り出す。読めなければ null */
+function xtParseReply(t){
+  const m=String(t||'').match(/[?&#]xtok[=.]([A-Za-z0-9_.\-]+)/);
+  let o=null;
+  try{
+    if(m && /^2\./.test(m[1])){
+      const f=m[1].split('.'), fIso=xtYmdIso(f[2]), P={a:'all',f:'first',s:'second'};
+      o={v:1, b:[parseInt(f[1],10), fIso], s:(f[3]||'').split('-').map(function(q){
+        const mm=q.match(/^([0-9a-z])(\d+)([afs])$/); if(!mm) return null;
+        return [xtOffIso(fIso, parseInt(mm[1],36)-1), parseInt(mm[2],10), P[mm[3]]];
+      }).filter(Boolean)};
+    }else if(m) o=xtUnB64(m[1]);
+  }catch(e){ o=null; }
+  return (o && o.v===1 && o.s && o.s.length) ? o : null;
+}
 function xtReadReply(text){
   const box=document.getElementById('xtReq');
   const t=(text!=null) ? text : (document.getElementById('xtPasteBox')||{}).value||'';
@@ -7773,9 +7790,17 @@ function xtBootHash(){
       document.getElementById('xtPasteBox').value='?xtok.'+m[1];
       xtReadReply('?xtok.'+m[1]);
     }else{
-      // このブラウザにはその人の番号が入っていない（iPhone の Safari など）
-      document.getElementById('xtBody').innerHTML='<div class="xt-empty">これは「時間外のお願い」の返事です。<br>'
-        +'このリンクをコピーしてから、ホーム画面の出退勤検索くんを開き、<br>「時間外先取り検索くん」→「📥 返事を読み取る」を<br>押してください。</div>';
+      /* このブラウザにはその人の番号が入っていない（LINE の中のブラウザ・iPhone の Safari など）。
+         送った助役さん本人が自分の返事をタップしてもここに来るので、まず「送った内容」を見せる（2026-11-24 乗務員さんより）。
+         閉じるとアプリの画面に行くので、閉じるボタンは出さない */
+      const o=xtParseReply('?xtok.'+m[1]);
+      let h='<div class="xt-end"><div class="xt-end-big">📨 時間外のお願い</div>'
+        +'<div class="xt-end-sub">この内容で送ってあります</div>';
+      if(o) h+='<div class="xt-end-list">'+o.s.map(xtReqLine).join('<br>')+'</div>';
+      h+='<div class="xt-end-note">このページは閉じてかまいません。</div>'
+        +'<div class="xt-end-for">受け取った乗務員さんへ：このリンクをコピーしてから、出退勤検索くんの「時間外先取り検索くん」→「📥 返事を読み取る」を押すと入れられます。</div></div>';
+      document.getElementById('xtBody').innerHTML=h;
+      const cb=document.querySelector('#xtModal .xt-close'); if(cb) cb.style.visibility='hidden';
     }
   }
 }
