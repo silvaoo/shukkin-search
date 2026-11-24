@@ -2996,7 +2996,7 @@ function selectDia(code){
   const inp = document.getElementById('todayInput');
   if(inp){
     inp.max = CUR_MAX;
-    inp.placeholder = '1〜' + CUR_MAX;
+    inp.placeholder = '';   // 欄に入りきらず「1〜9」に見えていた。範囲は下の案内に出るので、欄の中は空に（2026-11-25）
     const v = parseInt(inp.value);
     if(v > CUR_MAX) inp.value = '';   // 前のダイヤの番号が上限を超えていたら消す
   }
