@@ -7096,11 +7096,15 @@ function xtShift(d){
   _xtFrom=f; openXt(true);
 }
 /* いまは試しに使う人だけ（2026-11-23 乗務員さんより。助役さん1人に見てもらってOKなら、みんなに出す）。
-   フッターの版の表示を3秒以内に5回たたくと、オン・オフが切り替わる。
+   一番下の3行（版・ダイヤ・by AIタケタニ）を3秒以内に5回たたくと、オン・オフが切り替わる。
    ホーム画面のアプリの中でたたけるように、リンク（#…）ではなく画面の操作にしてある（iPhone はリンクがアプリに届かないため）。
-   リンクを見る側（#xt=…）は、オンにしなくても見られる */
+   リンクを見る側（?xt.…）は、オンにしなくても見られる。
+   オンはアプリを開いている間だけ。開き直したら消える（2026-11-24 乗務員さんより「出したままにする人が出るので」）。
+   前は端末に覚えていたので、その印は消しておく */
 const XT_ON_KEY='{{ID}}-xt-on';
-function xtEnabled(){ try{ return localStorage.getItem(XT_ON_KEY)==='1'; }catch(e){ return false; } }
+let _xtOn=false;
+try{ localStorage.removeItem(XT_ON_KEY); }catch(e){}
+function xtEnabled(){ return _xtOn; }
 let _xtTaps=[];
 function xtSecretTap(){
   if(IS_MULTI || XT_VIEW) return;
@@ -7110,10 +7114,10 @@ function xtSecretTap(){
   if(_xtTaps.length<5) return;
   _xtTaps=[];
   const on=!xtEnabled();
-  try{ if(on) localStorage.setItem(XT_ON_KEY,'1'); else localStorage.removeItem(XT_ON_KEY); }catch(e){}
+  _xtOn=on;
   showToast(on ? '🙋 時間外先取り検索くんをオンにしました（マイページ → ふりかえり）' : '時間外先取り検索くんをオフにしました');
   try{ renderRevPane(); }catch(e){}
-}   // 明日から2週間。休息の決まり（XT_REST など）は穴埋め探しのところで決めてある
+}
 let _xtDays=[];
 function xtHM(m){ return Math.floor(m/60)+':'+String(m%60).padStart(2,'0'); }
 function xtGapMax(b){ let g=0; for(let i=1;i<b.length;i++) g=Math.max(g, b[i].s-b[i-1].e); return g; }
