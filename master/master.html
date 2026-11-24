@@ -7373,9 +7373,9 @@ function openXt(keep){
     }
   }
   document.getElementById('xtBody').innerHTML=h;
-  // 前に貼った返事があれば（時間外の入力から戻ってきた時など）、一覧を出したままにする
+  // 時間外の入力から戻ってきた時は、読み取った返事の一覧を出したままにする
   if(!XT_VIEW){
-    let rq=''; try{ rq=sessionStorage.getItem(XT_REQ_KEY)||''; }catch(e){}
+    const rq=_xtReqText;
     const pe=document.getElementById('xtPaste');
     if(rq && pe){ pe.classList.add('on'); document.getElementById('xtPasteBox').value=rq; xtReadReply(rq); }
   }
@@ -7396,6 +7396,7 @@ function closeXt(){
      終わりの画面を出すだけ。タブはこちらからは閉じられないので、閉じてかまわないと書く */
   if(XT_VIEW){ xtEndView('close'); return; }
   xtClearHash();
+  _xtReqText=''; _xtReq=null;       // 読み取った返事は、閉じたら忘れる（次の返事と混ざらないように）
   document.getElementById('xtModal').classList.remove('active');
   document.documentElement.classList.remove('xt-lock');
 }
@@ -7692,8 +7693,8 @@ function xtReadReply(text){
   }catch(e){ o=null; }
   if(!o || o.v!==1 || !o.s || !o.s.length){ if(box) box.innerHTML='<div class="xt-warn">返事のリンクが見つかりませんでした。リンクごと貼り付けてください。</div>'; return; }
   _xtReq=o;
-  // 時間外の入力から戻ってきた時も一覧が出るように、アプリを開いている間は覚えておく
-  try{ sessionStorage.setItem(XT_REQ_KEY, '?xtok.'+m[1]); }catch(e){}
+  // 時間外の入力から戻ってきた時も一覧が出るように覚えておく（✕ 閉じる・開き直しで消える）
+  _xtReqText='?xtok.'+m[1];
   const WD=['日','月','火','水','木','金','土'];
   // 自分あての返事か（番号の数え方が同じか）
   let mine=true;
@@ -7736,7 +7737,11 @@ function xtReqDone(q){
   }));
 }
 /* 受けたことを助役さんに知らせる（2026-11-24 乗務員さんより）。時間外に入れた勤務だけを文にして、共有メニューを開く */
-var XT_REQ_KEY='{{ID}}-xt-req';
+/* 読み取った返事は、時間外先取り検索くんを閉じるまでだけ覚える。
+   前は sessionStorage に入れていたので、引っ張って読み込み直しても前の返事が残り、次の返事と混ざりそうだった
+   （2026-11-24 乗務員さんより）。その時の残りも消しておく */
+var _xtReqText='';
+try{ sessionStorage.removeItem('{{ID}}-xt-req'); }catch(e){}
 function xtSendAck(){
   if(!_xtReq) return;
   const done=_xtReq.s.filter(xtReqDone);
