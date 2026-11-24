@@ -1430,6 +1430,7 @@ html.xt-lock, html.xt-lock body{ overscroll-behavior-y:none; }
 .xt-acts button.go{ background:linear-gradient(180deg,#26335c,#1a2442); color:#f5d27a; border-color:#1a2442; }
 .xt-paste{ display:none; margin:6px 0 4px; padding:10px; border-radius:10px; background:#fffdf6; border:1px solid #d9c38e; }
 .xt-paste.on{ display:block; }
+.xt-phint{ margin:0 0 4px; font-size:calc(12.5px * var(--fs, 1)); color:#6b5a35; font-weight:700; }
 .xt-paste textarea{ width:100%; box-sizing:border-box; min-height:64px; padding:8px; border-radius:8px; border:1px solid #c9a75a;
   font-size:max(16px, calc(14px * var(--fs, 1))); font-family:'Noto Sans JP',sans-serif; background:#fff; color:#111; }
 /* 16px より小さい入力欄にさわると、iPhone が画面を拡大したままになる（2026-11-23 乗務員さんの画面で横が切れていた） */
@@ -2000,7 +2001,9 @@ a.source-link:visited {
   position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
   background: rgba(15,23,30,0.96); border: 1px solid var(--cyan); color: #ffffff; font-weight: 700;
   padding: 10px 24px; border-radius: 20px; font-size: calc(13px * var(--fs, 1)); z-index: 10010;
-  opacity: 0; transition: opacity 0.3s; white-space: nowrap;
+  opacity: 0; transition: opacity 0.3s;
+  /* 長い文は画面の幅で折り返す（1行に入らないと左右が切れていた） */
+  width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box; text-align: center; white-space: normal;
   pointer-events: none; /* 見えていない時に下のボタン(更新バナー等)のタップを邪魔しないようにする */
 }
 .toast.show { opacity: 1; }
@@ -5056,7 +5059,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v327';
+const APP_VERSION   = 'v328';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -5278,7 +5281,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.47';
+const APP_LABEL = 'バージョン 4.48';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -7314,8 +7317,9 @@ function openXt(keep){
     +'1日の拘束は15時間まで。決めるのは助役さんです。</div>';
   if(!XT_VIEW && otBaseDial(from)!==null){
     h+='<div class="xt-acts"><button class="go" onclick="xtSendLink()">🔗 助役さんに<br>リンクを送る</button>'
-      +'<button onclick="xtTogglePaste()">📥 助役さんの<br>返事を貼り付け</button></div>'
-      +'<div class="xt-paste" id="xtPaste"><textarea id="xtPasteBox" placeholder="助役さんから届いた返事（リンクを長押しでコピー、メッセージごとでも可）を貼り付けてください"></textarea>'
+      +'<button onclick="xtPasteClip()">📥 助役さんの<br>返事を読み取る</button></div>'
+      +'<div class="xt-paste" id="xtPaste"><div class="xt-phint">うまく読めない時は、ここに貼り付けて「読み取る」</div>'
+      +'<textarea id="xtPasteBox" placeholder="助役さんから届いた返事（リンクを長押しでコピー、メッセージごとでも可）を貼り付けてください"></textarea>'
       +'<button class="xt-pbtn" onclick="xtReadReply()">読み取る</button><div class="xt-req" id="xtReq"></div></div>'
       +'<div class="xt-rule xt-wantstar"><b>札をタップすると⭐（希望）が付きます。</b>リンクで送ると助役さんの画面で光ります。</div>';
   }
@@ -7597,7 +7601,7 @@ function xtSendReply(){
     +ks.map(function(iso){ return (Math.round((xtIsoDate(iso)-xtIsoDate(fIso))/86400000)+1).toString(36)+_xtPick[iso].n+_xtPick[iso].p[0]; }).join('-');
   const lines=ks.map(function(iso){ const q=_xtPick[iso];
     return '・'+(q.d.getMonth()+1)+'/'+q.d.getDate()+'（'+WD[q.d.getDay()]+'）'+xtCandText(q.c); }).join('\n');
-  const text='時間外のお願いです\n'+lines+'\n（受ける人へ：下のリンクを長押しでコピーして、出退勤検索くんの「時間外先取り検索くん」→「📥 返事を貼り付け」に貼ると入れられます）';
+  const text='時間外のお願いです\n'+lines+'\n（受ける人へ：下のリンクを長押しでコピーして、出退勤検索くんの「時間外先取り検索くん」→「📥 返事を読み取る」を押すと入れられます）';
   // 送れたら「送信完了」、共有が使えずコピーした時は「コピーしました」。共有をやめた時はそのまま
   if(navigator.share){
     navigator.share({text:text+'\n'+url})
@@ -7633,6 +7637,27 @@ function xtEndView(mode){
 /* 返事を読む（自分のアプリで） */
 let _xtReq=null;
 function xtTogglePaste(){ const el=document.getElementById('xtPaste'); if(el) el.classList.toggle('on'); }
+/* 「📥 返事を読み取る」：コピーしてある返事をそのまま読む（2026-11-24 乗務員さんより「コピー貼り付けがめんどくさい」）。
+   iPhone は「ペースト」の吹き出しをタップした時だけ、Android は初めの1回だけ許可を聞かれる。
+   読めない・断られた時は、これまでどおり枠に貼り付けて「読み取る」 */
+function xtPasteClip(){
+  const pe=document.getElementById('xtPaste'), box=document.getElementById('xtPasteBox');
+  if(pe) pe.classList.add('on');
+  const fallback=function(msg){
+    if(msg) showToast(msg);
+    if(!_xtReq && box) box.focus();
+  };
+  if(!navigator.clipboard || !navigator.clipboard.readText){ fallback('下の枠に貼り付けて「読み取る」を押してください'); return; }
+  let p;
+  try{ p=navigator.clipboard.readText(); }catch(e){ fallback('下の枠に貼り付けて「読み取る」を押してください'); return; }
+  p.then(function(t){
+    const m=String(t||'').match(/[?&#]xtok[=.]([A-Za-z0-9_.\-]+)/);
+    if(!m){ fallback('コピーした中に返事がありません。LINEで返事をコピーしてから押してください'); return; }
+    if(box) box.value='?xtok.'+m[1];
+    xtReadReply('?xtok.'+m[1]);
+    setTimeout(function(){ if(pe) pe.scrollIntoView({block:'start', behavior:'smooth'}); }, 0);
+  }).catch(function(){ fallback('下の枠に貼り付けて「読み取る」を押してください'); });
+}
 function xtReadReply(text){
   const box=document.getElementById('xtReq');
   const t=(text!=null) ? text : (document.getElementById('xtPasteBox')||{}).value||'';
@@ -7750,7 +7775,7 @@ function xtBootHash(){
     }else{
       // このブラウザにはその人の番号が入っていない（iPhone の Safari など）
       document.getElementById('xtBody').innerHTML='<div class="xt-empty">これは「時間外のお願い」の返事です。<br>'
-        +'ホーム画面の出退勤検索くんを開き、<br>「時間外先取り検索くん」→「📥 返事を貼り付け」に<br>このリンクを貼り付けてください。</div>';
+        +'このリンクをコピーしてから、ホーム画面の出退勤検索くんを開き、<br>「時間外先取り検索くん」→「📥 返事を読み取る」を<br>押してください。</div>';
     }
   }
 }
