@@ -7128,8 +7128,11 @@ let _xtOn=false;
 try{ localStorage.removeItem(XT_ON_KEY); }catch(e){}
 function xtEnabled(){ return _xtOn; }
 let _xtTaps=[];
+/* 2026-11-25：しばらくお休み。true の間は隠しコマンドを入れても出ない。
+   また出す時は false にする（助役さんのリンクを開く画面はそのまま） */
+const XT_PAUSED=true;
 function xtSecretTap(){
-  if(IS_MULTI || XT_VIEW) return;
+  if(IS_MULTI || XT_VIEW || XT_PAUSED) return;
   const now=Date.now();
   _xtTaps=_xtTaps.filter(function(t){ return now-t<3000; });
   _xtTaps.push(now);
