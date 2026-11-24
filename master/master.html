@@ -1458,6 +1458,13 @@ html.xt-lock, html.xt-lock body{ overscroll-behavior-y:none; }
 .xt-chip.want::before{ content:'⭐ '; }
 .xt-chip.want.on{ background:#e8590c; border-color:#e8590c; color:#fff; }
 .xt-chip.want.on::before{ content:'✓⭐ '; }
+/* 前後の日に選んだ勤務と続けると休みが足りない札・過ぎた日の札（2026-11-24）。選べない */
+.xt-chip.ng{ background:#efebe2; border:1.5px dashed #b9ad94; color:#8a8170; animation:none; box-shadow:none; }
+.xt-chip.ng .xt-ngw{ margin-left:5px; font-size:calc(11.5px * var(--fs, 1)); color:#b3261e; font-weight:900; }
+.xt-past{ opacity:.5; }
+.xt-past .xt-chip, .xt-past .rl-tag{ animation:none; }
+.rl-tag.xt-pasttag{ color:#fff; background:#8a8170; border:none; }
+.xt-filter{ margin-top:6px; }
 @keyframes xtWantPulse{
   0%,100%{ box-shadow:0 0 0 0 rgba(232,163,23,0), 0 0 11px rgba(232,163,23,.75); }
   50%    { box-shadow:0 0 0 0 rgba(232,163,23,0), 0 0 0 rgba(232,163,23,0); }
@@ -7161,6 +7168,25 @@ function xtDayInfo(dt, all){
   const b=toB(rcSegs(r.slot,'all'));
   return {kind:'work', blocks:b, parts:[{add:false, name:r.dn+'番'+(b.length>1?'（中間）':''), b:b}], dn:r.dn, d:dt};
 }
+/* その日の勤務（me）に、勤務 cb（blocks）を足せるか。前の日（pv）・次の日（nv）との休み、1日の拘束を見る */
+function xtFits(me, pv, nx, cb){
+  const pvEnd = (pv.kind==='work' && pv.blocks.length) ? pv.blocks[pv.blocks.length-1].e : null;
+  const pvRest = pv.kind==='work' ? xtGapMax(pv.blocks) : 0;
+  const nxStart = (nx.kind==='work' && nx.blocks.length) ? nx.blocks[0].s : null;
+  const bl=me.blocks.concat(cb).sort(function(a,b){ return a.s-b.s; });
+  for(let i=1;i<bl.length;i++) if(bl[i].s < bl[i-1].e) return false;          // 自分の勤務と重なる
+  const first=bl[0].s, last=bl[bl.length-1].e, gm=xtGapMax(bl);
+  if(last-first > XT_KOUSOKU && gm < XT_SPLIT) return false;                   // 拘束15時間
+  if(pvEnd!=null){                                                              // 前の日から
+    const gap=first+1440-pvEnd;
+    if(!(gap>=XT_REST || (pvRest>=XT_SPLIT && gap>=XT_SPLIT && pvRest+gap>=XT_TOTAL))) return false;
+  }
+  if(nxStart!=null){                                                            // 次の日へ
+    const gap2=nxStart+1440-last;
+    if(!(gap2>=XT_REST || (gm>=XT_SPLIT && gap2>=XT_SPLIT && gm+gap2>=XT_TOTAL))) return false;
+  }
+  return true;
+}
 /* その日に入れられる勤務（自分のダイヤの全部の番号の、まるごと・前半・後半）を探す */
 function xtFind(d, all){
   const pd=new Date(d); pd.setDate(pd.getDate()-1);
@@ -7182,18 +7208,7 @@ function xtFind(d, all){
     const cands=[{p:'all', b:toB(segs)}];
     if(segs.length===2){ cands.push({p:'first', b:toB([segs[0]])}); cands.push({p:'second', b:toB([segs[1]])}); }
     cands.forEach(function(c){
-      const bl=me.blocks.concat(c.b).sort(function(a,b){ return a.s-b.s; });
-      for(let i=1;i<bl.length;i++) if(bl[i].s < bl[i-1].e) return;              // 自分の勤務と重なる
-      const first=bl[0].s, last=bl[bl.length-1].e, gm=xtGapMax(bl);
-      if(last-first > XT_KOUSOKU && gm < XT_SPLIT) return;                       // 拘束15時間
-      if(pvEnd!=null){                                                            // 前の日から
-        const gap=first+1440-pvEnd;
-        if(!(gap>=XT_REST || (pvRest>=XT_SPLIT && gap>=XT_SPLIT && pvRest+gap>=XT_TOTAL))) return;
-      }
-      if(nxStart!=null){                                                          // 次の日へ
-        const gap2=nxStart+1440-last;
-        if(!(gap2>=XT_REST || (gm>=XT_SPLIT && gap2>=XT_SPLIT && gm+gap2>=XT_TOTAL))) return;
-      }
+      if(!xtFits(me, pv, nx, c.b)) return;
       const pos = !me.blocks.length ? 'day'
         : (c.b[c.b.length-1].e <= me.blocks[0].s ? 'before'
         : (c.b[0].s >= me.blocks[me.blocks.length-1].e ? 'after' : 'mid'));
@@ -7301,7 +7316,10 @@ function openXt(keep){
     const iso=toISO(x.d);
     x.list.sort(function(a,b){ return (xtIsWant(iso,b)?1:0)-(xtIsWant(iso,a)?1:0) || b.work-a.work; });
   });
-  if(XT_VIEW) xtPickRestore();     // 選びかけていた札（もし読み込み直しても消えないように）
+  if(XT_VIEW){
+    xtPickRestore();               // 選びかけていた札（もし読み込み直しても消えないように）
+    _xtDays.forEach(function(x,j){ xtSortList(j); });
+  }
   const WD=['日','月','火','水','木','金','土'];
   const md=function(d){ return (d.getMonth()+1)+'/'+d.getDate()+'（'+WD[d.getDay()]+'）'; };
   const last=_xtDays[_xtDays.length-1].d;
@@ -7314,7 +7332,10 @@ function openXt(keep){
     +(XT_VIEW ? '<div class="xt-rule">送ってくれた人の勤務（'+escapeHtml(DIA_NAME_SHORT())+'）から出しています。'
                 +'入れてほしい勤務をタップして選び、下のボタンで送り返せます。</div>'
                 +((Object.keys(_xtWant.d).length || Object.keys(_xtWant.c).length)
-                   ? '<div class="xt-rule xt-wantstar"><b>⭐が付いて光っている日・勤務は、本人の希望です。</b></div>' : '') : '')
+                   ? '<div class="xt-rule xt-wantstar"><b>⭐が付いて光っている日・勤務は、本人の希望です。</b></div>'
+                     +'<div class="xt-len xt-filter"><button class="'+(_xtOnlyWant?'':'on')+'" onclick="xtSetOnlyWant(false)">すべて見る</button>'
+                     +'<button class="'+(_xtOnlyWant?'on':'')+'" onclick="xtSetOnlyWant(true)">⭐ 希望だけ見る</button></div>' : '')
+                +'<div class="xt-rule">1つ選ぶと、続けて入ると休みが足りなくなる前後の日の札は薄くなり、選べなくなります（休み不足）。</div>' : '')
     +'<div class="xt-rule">目安：休み（退勤〜次の出勤）は9時間。前の日に昼4時間以上休んでいれば、昼の休み＋夜の休みで11時間あればよい（夜は4時間以上）。'
     +'1日の拘束は15時間まで。決めるのは助役さんです。</div>';
   if(!XT_VIEW && otBaseDial(from)!==null){
@@ -7328,17 +7349,20 @@ function openXt(keep){
   if(otBaseDial(from)===null){
     h+='<div class="xt-empty">今日のダイヤ番号がまだ保存されていません。<br>トップで番号を入れると探せます。</div>';
   }else{
-    const hit=[], none=[];
+    let hit=[], none=[];
     _xtDays.forEach(function(x,i){ (x.list.length ? hit : none).push(i); });
+    const onlyWant = XT_VIEW && _xtOnlyWant;
+    if(onlyWant){ hit=hit.filter(function(i){ return xtDayHasWant(_xtDays[i]); }); none=[]; }
     h+='<div class="xt-list">';
     hit.forEach(function(i){
-      const x=_xtDays[i], d=x.d;
-      const tag = x.type==='off' ? '<span class="rl-tag xt-off">公休</span>' : '<span class="rl-tag xt-work">'+x.me.dn+'番</span>';
+      const x=_xtDays[i], d=x.d, past=xtIsPast(d);
+      const tag = (past ? '<span class="rl-tag xt-pasttag">過ぎた日</span>' : '')
+        +(x.type==='off' ? '<span class="rl-tag xt-off">公休</span>' : '<span class="rl-tag xt-work">'+x.me.dn+'番</span>');
       const wday=!!_xtWant.d[toISO(d)];
       const wbtn = XT_VIEW ? (wday ? '<span class="rl-tag xt-wanttag">⭐ 本人の希望の日</span>' : '')
                  : '<button class="xt-wd'+(wday?' on':'')+'" onclick="xtToggleWantDay('+i+')">'+(wday?'⭐ 希望の日':'☆ 希望')+'</button>';
-      h+='<div class="rl-day">'+(d.getMonth()+1)+'月'+d.getDate()+'日 '+WD[d.getDay()]+'曜日'+tag+wbtn+'</div>'
-        +'<div class="xt-body'+(wday?' xt-wantbody':'')+'">';
+      h+='<div class="rl-day'+(past?' xt-past':'')+'">'+(d.getMonth()+1)+'月'+d.getDate()+'日 '+WD[d.getDay()]+'曜日'+tag+wbtn+'</div>'
+        +'<div class="xt-body'+(wday?' xt-wantbody':'')+(past?' xt-past':'')+'">';
       h+='<div class="xt-say">'+xtSay(x)+'</div>';
       const why=[];
       if(x.type!=='off') why.push('自分 '+x.me.blocks.map(function(z){ return xtHM(z.s)+'〜'+xtHM(z.e); }).join('／'));
@@ -7364,7 +7388,7 @@ function openXt(keep){
       h+='</div>';
     });
     h+='</div>';
-    if(!hit.length) h+='<div class="xt-empty">この期間は、入れそうな勤務が見つかりませんでした。</div>';
+    if(!hit.length) h+='<div class="xt-empty">'+(onlyWant ? '希望の日に、入れそうな勤務はありませんでした。' : 'この期間は、入れそうな勤務が見つかりませんでした。')+'</div>';
     if(none.length){
       h+='<div class="xt-none">入れそうな勤務がない日：'+none.map(function(i){
         const x=_xtDays[i];
@@ -7420,9 +7444,12 @@ function xtExHtml(i, full){
       return '<b class="xt-chip'+(xtIsWant(iso,c)?' want':'')+'" onclick="xtToggleWant('+i+','+k+')">'+xtCandText(c)+'</b>';
     }).join('')+more;
   }
+  const past=xtIsPast(x.d), ng=xtNgSet(i);
   return list.map(function(c,k){
     const on=_xtPick[iso] && _xtPick[iso].n===c.n && _xtPick[iso].p===c.p;
-    return '<b class="xt-chip'+(xtIsWant(iso,c)?' want':'')+(on?' on':'')+'" onclick="xtPick('+i+','+k+')">'+xtCandText(c)+'</b>';
+    const no=!on && (past || ng[c.n+'|'+c.p]);
+    return '<b class="xt-chip'+(xtIsWant(iso,c)?' want':'')+(on?' on':'')+(no?' ng':'')+'" onclick="xtPick('+i+','+k+')">'+xtCandText(c)
+      +(!on && !past && ng[c.n+'|'+c.p] ? '<small class="xt-ngw">休み不足</small>' : '')+'</b>';
   }).join('')+more;
 }
 function xtCandText(c){
@@ -7567,9 +7594,55 @@ function xtPick(i,k){
   const c=(full ? x.list : x.list.slice(0,3))[k]; if(!c) return;
   const iso=toISO(x.d);
   if(_xtPick[iso] && _xtPick[iso].n===c.n && _xtPick[iso].p===c.p) delete _xtPick[iso];
-  else _xtPick[iso]={n:c.n, p:c.p, c:c, d:x.d};
-  if(el) el.innerHTML=xtExHtml(i, full);
+  else{
+    if(xtIsPast(x.d)){ showToast('過ぎた日は選べません'); return; }
+    if(xtNgSet(i)[c.n+'|'+c.p]){ showToast('前後の日に選んだ勤務と続けると、休みが足りません'); return; }
+    _xtPick[iso]={n:c.n, p:c.p, c:c, d:x.d};
+  }
+  // 前後の日の札も描き直す（選んだ勤務で休みが足りなくなる札を薄くして、後ろへ回す）
+  xtSortList(i-1); xtSortList(i+1);
+  [i-1, i, i+1].forEach(function(j){
+    const e=document.getElementById('xtEx'+j);
+    if(e) e.innerHTML=xtExHtml(j, !!e.getAttribute('data-full'));
+  });
   xtPaintBar();
+}
+/* 助役さんが開いた日より前の日（リンクを開くのが遅れた時）。選べないようにする（2026-11-24 乗務員さんより） */
+function xtIsPast(d){ if(!XT_VIEW) return false; const t=new Date(); t.setHours(0,0,0,0); return d<t; }
+/* 選んだ勤務を、その日の記録に足した形にする */
+function xtWithPick(all, iso){
+  const q=_xtPick[iso]; if(!q) return all[iso];
+  const st=all[iso], x=_xtDays.find(function(y){ return toISO(y.d)===iso; });
+  const off=!!(x && x.me.kind==='off');
+  return {dayKind:off?'kyu':'work', base:off?'none':((st && st.base) || 'all'),
+          adds:((st && st.adds) || []).concat([{dial:q.n, part:q.p, code:'{{ID}}'}]), min:0};
+}
+/* 前の日・次の日に選んだ勤務があると、休みが足りなくなる札（2026-11-24 乗務員さんより）。{'番号|part':1} */
+function xtNgSet(i){
+  const x=_xtDays[i]; if(!x || !XT_VIEW || !x.list.length) return {};
+  const pIso=toISO(x.pv.d), nIso=toISO(x.nx.d);
+  if(!_xtPick[pIso] && !_xtPick[nIso]) return {};
+  const all=Object.assign({}, otLoad());
+  if(_xtPick[pIso]) all[pIso]=xtWithPick(all, pIso);
+  if(_xtPick[nIso]) all[nIso]=xtWithPick(all, nIso);
+  const pv=xtDayInfo(x.pv.d, all), nx=xtDayInfo(x.nx.d, all), ng={};
+  x.list.forEach(function(c){ if(!xtFits(x.me, pv, nx, c.b)) ng[c.n+'|'+c.p]=1; });
+  return ng;
+}
+/* 札の並び：選べる札が先（休み不足は後ろ）→ 本人の希望 → 長く乗れる順 */
+function xtSortList(j){
+  const x=_xtDays[j]; if(!x || !x.list.length) return;
+  const iso=toISO(x.d), ng=xtNgSet(j);
+  x.list.sort(function(a,b){
+    return (ng[a.n+'|'+a.p]?1:0)-(ng[b.n+'|'+b.p]?1:0) || (xtIsWant(iso,b)?1:0)-(xtIsWant(iso,a)?1:0) || b.work-a.work;
+  });
+}
+/* ⭐ 希望だけ見る（助役さんの画面。2026-11-24 乗務員さんより） */
+let _xtOnlyWant=false;
+function xtSetOnlyWant(v){ _xtOnlyWant=!!v; openXt(true); }
+function xtDayHasWant(x){
+  const iso=toISO(x.d);
+  return !!_xtWant.d[iso] || x.list.some(function(c){ return xtIsWant(iso, c); });
 }
 function xtPickKey(){ return '{{ID}}-xt-pick-'+xtUrlParam('xt').slice(0,80); }
 function xtPickSave(){
@@ -7578,7 +7651,7 @@ function xtPickSave(){
 function xtPickRestore(){
   let a=[]; try{ a=JSON.parse(sessionStorage.getItem(xtPickKey())||'[]'); }catch(e){}
   a.forEach(function(q){
-    const x=_xtDays.find(function(y){ return toISO(y.d)===q[0]; }); if(!x) return;
+    const x=_xtDays.find(function(y){ return toISO(y.d)===q[0]; }); if(!x || xtIsPast(x.d)) return;
     const c=x.list.find(function(z){ return z.n===q[1] && z.p===q[2]; }); if(!c) return;
     _xtPick[q[0]]={n:c.n, p:c.p, c:c, d:x.d};
   });
