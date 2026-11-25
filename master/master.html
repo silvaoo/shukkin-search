@@ -398,7 +398,6 @@ body.light #todayPreviewBox > .cg-stamp { background:#fdecec; }
   font-size:calc(13px * var(--fs, 1)); font-weight:800; }
 .nav-ok { margin-top:8px; padding:8px 10px; border-radius:8px; background:#e8f7ee; color:#1b7a43;
   font-size:calc(13px * var(--fs, 1)); font-weight:700; }
-.nav-late { margin-top:8px; font-size:calc(13px * var(--fs, 1)); font-weight:800; color:#1a1a2e; }
 .nav-acts { display:flex; gap:6px; margin-top:10px; }
 .nav-btn2 { flex:1; padding:9px 6px; border-radius:9px; border:none; background:#ff9f1a; color:#fff;
   font-size:calc(13px * var(--fs, 1)); font-weight:800; font-family:inherit; cursor:pointer; }
@@ -411,7 +410,6 @@ body.light #todayPreviewBox > .cg-stamp { background:#fdecec; }
 .nav-row.cur { background:#fff3e0; border-radius:6px; }
 .nav-row.ks { color:#777; font-style:italic; }
 .nav-row.rest { color:#2a6fb0; font-weight:700; }
-.nav-row .lt { margin-left:auto; font-size:calc(11px * var(--fs, 1)); color:#c62828; font-weight:800; }
 /* 経由（系統）。同じ行き先で経由が2つ以上ある区間は黄色で注意 */
 .nav-via { display:inline-block; margin-top:5px; padding:2px 8px; border-radius:7px; background:#eef3ff; color:#2a4fa0;
   font-size:calc(13px * var(--fs, 1)); font-weight:800; line-height:1.4; }
@@ -9240,7 +9238,6 @@ function rcFit(){
    「いまどこで、次は何時にどこから発車か」を出す。
    ・位置情報は使わない。時刻と行程だけで判断する（2026-10-09 決定）
      ホーム画面のアプリは画面を消すと位置を取れず、確実に動く保証がないため
-   ・遅れは「着いた」を押した時刻で測る
    ・行程データの moves に「この場所からこの場所へ動くときは何分前から準備」を書ける
    ・データが無いアプリ（apps.json の NAV が 0）では、ボタンも出さない
    ===================================================================== */
@@ -9464,7 +9461,14 @@ function navStoreGet(key, def){
 function navStoreSet(key, v){ try{ localStorage.setItem(key, JSON.stringify(v)); }catch(e){} }
 /* スペシャル検索くんでは、ダイヤごとに分けて覚える（番号が同じでも中身が違うため） */
 function navAltKey(iso){ return '{{ID}}-nav-alt-'+(IS_MULTI ? CUR_DIA+'-' : '')+iso; }
-function navArrKey(iso){ return '{{ID}}-nav-arr-'+(IS_MULTI ? CUR_DIA+'-' : '')+iso; }
+/* 「着いた」をやめたので、前に残した着いた時刻は起動の時に消す（2026-11-25） */
+(function(){
+  try{
+    const pre='{{ID}}-nav-arr-', del=[];
+    for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.indexOf(pre)===0) del.push(k); }
+    del.forEach(function(k){ localStorage.removeItem(k); });
+  }catch(e){}
+})();
 
 /* その日、実際に乗る行程を並べる。代走・公出・振替の記録があれば、そちらで組み立てる。
    dialOverride は検索結果の「ダイヤ内容」で、その日の本来のダイヤ番号。
@@ -9801,7 +9805,6 @@ function renderNav(){
     st.innerHTML='<div class="nav-msg">'+m+'</div>';
     lb.innerHTML=''; return;
   }
-  const arr = pv ? {} : navStoreGet(navArrKey(iso), {});
   const first=trips[0], last=trips[trips.length-1];
   /* 回送で発着が同じ場所のものは、その場での待機を含むので「回送・待機」と呼ぶ */
   const ksName=function(x){
@@ -9908,12 +9911,6 @@ function renderNav(){
       }else{
         h+='<div class="nav-st">☕ いま '+navPlaceName(place)+(restMark?'で休憩':'に着いているはず')+'</div>';
       }
-      const got = arr[prev.d];
-      if(got!=null){
-        const late = got - navMin(prev.a);
-        h+='<div class="nav-late">'+prev.a+'着の予定に '+navHm(got)+'着　'
-          +(late>0 ? '<span style="color:#c62828">'+late+'分遅れ</span>' : (late<0 ? (-late)+'分早く着きました' : '定時'))+'</div>';
-      }
     }
     if(nextTrip){
       /* 同じ区間（行き・帰り）を前に走った便。経由が変わるなら知らせる */
@@ -9941,17 +9938,8 @@ function renderNav(){
       }
     }
   }
-  /* 「着いた」は、いちばん最近に発車した便（回送は除く）に付ける。
-     着く予定から20分を過ぎたら出さない。休憩中に押すと、大きな遅れに見えてしまうため */
-  const target = pv ? null : trips.filter(function(x){ return x.k!=='回送' && navMin(x.d)<=nm; }).pop();
-  const tGot = target ? arr[target.d] : null;
-  if(target && (tGot!=null || nm <= navMin(target.a)+20)){
-    h+='<div class="nav-acts">'
-      +(tGot!=null
-        ? '<button class="nav-btn2 sub" onclick="navArrived(\''+target.d+'\')">↩ 着いた時刻を取り消す</button>'
-        : '<button class="nav-btn2" onclick="navArrived(\''+target.d+'\')">✋ 着いた（'+target.a+'着の便）</button>')
-      +'</div>';
-  }
+  /* 「着いた」ボタンは 2026-11-25 にやめた。時間外が出るのは15分遅れからで、
+     遅れを記録してもあまり意味が無く、普段使わないため（乗務員さんより） */
   if(pl.other) h+='<div class="nav-then">※ 他のダイヤで走る分は、行程のデータが無いので出していません</div>';
   /* 代走の14番C など、形の行程がまだ入っていない分（2026-11-04） */
   (pl.missing||[]).forEach(function(pc){
@@ -9971,30 +9959,14 @@ function renderNav(){
   pl.items.forEach(function(x){
     if(x.k==='休'){ L+='<div class="nav-row rest"><span class="tm">☕</span>休憩（'+navPlaceName(x.p)+'）</div>'; return; }
     const past = navMin(x.a)<=nm, cur=(x===curTrip||x===nextTrip);
-    const got = arr[x.d];
-    const late = (got!=null) ? got-navMin(x.a) : null;
     const vcol=navViaColor(x), vmul=navViaMulti(x);
     L+='<div class="nav-row'+(past?' past':'')+(cur?' cur':'')+(x.k==='回送'?' ks':'')+(vcol?' vc-'+vcol:(vmul?' vw':''))+'">'
       +'<span class="tm">'+x.d+'→'+x.a+'</span>'
       +'<span>'+(x.k==='回送' ? ksName(x) : navRoute(x.f,x.t))
         +(x.v && !x.k ? '<br><span class="vt'+(vcol?' vc-'+vcol:(vmul?' w':''))+'">'+navViaMark(x)+navViaName(x.v)+'</span>' : '')+'</span>'
-      +(late>0?'<span class="lt">+'+late+'分</span>':'')+'</div>';
+      +'</div>';
   });
   lb.innerHTML=L+'</div>';
-}
-
-/* 着いた時刻を残す。もう一度押すと取り消す */
-function navArrived(dep){
-  const now=dutyDate(), iso=toISO(now), nm=dutyNowMin();
-  const arr=navStoreGet(navArrKey(iso), {});
-  if(arr[dep]!=null){
-    if(!confirm('着いた時刻を取り消しますか？')) return;
-    delete arr[dep];
-  }else{
-    arr[dep]=nm;
-  }
-  navStoreSet(navArrKey(iso), arr);
-  renderNav();
 }
 
 /* 画面の向きや大きさが変わったら測り直す */
