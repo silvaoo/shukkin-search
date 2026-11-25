@@ -3050,7 +3050,13 @@ function holName(d){ return (isNenmatsu(d) && !HOLIDAYS.has(toISO(d))) ? '年末
 
 /* お盆期間（土曜日ダイヤ扱いになる日）*/
 let OBON_DAYS=new Set();   // 中身は dia-{{ID}}.json から入れる
-function isObon(d){return OBON_DAYS.has(toISO(d));}
+/* お盆：奈良交通は毎年「8月13日～15日の平日は土曜日ダイヤ」（バス停の時刻表に書いてある）。
+   ダイヤのデータの obon に日付があればそれも使う。土日はもともと土・日祝なので平日だけ（2026-11-25） */
+function isObon(d){
+  if(OBON_DAYS.has(toISO(d))) return true;
+  const w=d.getDay();
+  return d.getMonth()===7 && d.getDate()>=13 && d.getDate()<=15 && w>=1 && w<=5;
+}
 
 /* 近畿大学（奈良キャンパス）の休み。奈良交通「令和8年度 運行期間一覧」（近畿大学線）より（2026-11-20 乗務員さんより）。
    授業期間はふだんの形（近大通常）なので入れない。kyuka＝夏・冬休暇中、haru＝春休暇中。
