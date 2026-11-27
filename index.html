@@ -5083,7 +5083,7 @@ const PUSH_BAR_KEY  = 'a-push-bar';     // どの版のときに帯を閉じた�
 const PUSH_FAIL_KEY = 'a-push-fail';    // 預け直しに続けて失敗した回数
 /* 案内を出し分けるための版。sw.js の版と合わせて上げる。
    これが変わると「更新された」とみなして、もう一度だけ案内を出す。 */
-const APP_VERSION   = 'v342';
+const APP_VERSION   = 'v343';
 const PUSH_SYNC_KEY = 'a-push-synced';  // 最後に預け直した日
 
 /* 宛先をサーバーに預ける（すでにあれば上書き） */
@@ -5305,7 +5305,7 @@ async function stopPush(){
 /* 版と端末の様子をフッターに出す。
    「通知が来ない」と言われたときに、入れ方や許可の状態を
    その場で確かめられるようにするため。 */
-const APP_LABEL = 'バージョン 4.62';
+const APP_LABEL = 'バージョン 4.63';
 
 function renderAppInfo(){
   const box = document.getElementById('appInfo');
@@ -9273,6 +9273,75 @@ async function loadNav(){
   }catch(e){}
   navRefreshBtn();
 }
+/* =====================================================================
+   代走で他のダイヤ（予備・生駒・B・C など）を走る日も、そのダイヤの行程を出す（2026-11-27 乗務員さんより）
+   ・他のダイヤの行程（trips-◯.json）は同じサイトの中にあるので読める（スペシャル検索くんと同じやり方）
+   ・必要になった時に読む。読んだものはアプリの中に控えておき、電波が無くても出す
+     控えは次に読めた時に新しいものへ入れ替わる（ダイヤ1つにつき1つだけ）
+   ・場所の略号はダイヤごとに違うことがある（予備の「中」は中菜畑二丁目 など）。
+     名前が同じ場所は自分のダイヤの略号に直し、無い場所は「予備:中」のような略号にして名前を足す
+   ・スペシャル検索くんは今まで通り（このしくみは使わない）
+   ===================================================================== */
+const NAV_OTHER = {};                 // code → 他のダイヤの行程
+const NAV_X = {places:{}, vias:{}, viacolor:{}, viawarn:{}};   // 他のダイヤから足した名前など
+const _navOtherLoading = {};
+function navOtherRepo(code){
+  const d = OTHER_DIAS.find(function(x){ return x.code===code; });
+  const m = d ? String(d.url).match(/\.\.\/([^\/]+)\//) : null;
+  return m ? m[1] : null;
+}
+/* 他のダイヤの行程を返す。そのダイヤのいまの改正のものでなければ使わない */
+function navOtherGet(code){
+  let j = NAV_OTHER[code];
+  if(!j){
+    try{ const c=localStorage.getItem(NAV_KEY+'-o-'+code); if(c) j=NAV_OTHER[code]=JSON.parse(c); }catch(e){}
+  }
+  if(!j) return null;
+  const db = OTHER_DB[code];
+  const rev = db && db.meta && db.meta.revision ? String(db.meta.revision) : '';
+  if(!(j.meta && rev && String(j.meta.revision)===rev)) return null;
+  return j;
+}
+/* 読み込む。読めたら、ナビが開いていれば出し直す */
+function navOtherLoad(code){
+  if(_navOtherLoading[code]) return;
+  const repo = navOtherRepo(code);
+  if(!repo) return;
+  _navOtherLoading[code] = true;
+  fetch('../'+repo+'/trips-'+code+'.json?v='+cacheDay(), {cache:'no-store'})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      if(!j || !j.dials) return;
+      NAV_OTHER[code] = j;
+      try{ localStorage.setItem(NAV_KEY+'-o-'+code, JSON.stringify(j)); }catch(e){}
+      const m=document.getElementById('navModal');
+      if(m && m.classList.contains('active')) renderNav();
+      navRefreshBtn();   // 検索結果の「ダイヤ内容」ボタンも出し直す
+    })
+    .catch(function(){});
+}
+/* 他のダイヤの便1本を、自分のダイヤの略号に直した写しにする */
+function navXlate(code, src, x){
+  const y = Object.assign({}, x);
+  const mp = function(c){
+    if(!c) return c;
+    const sp = src.places && src.places[c];
+    if(!sp) return c;
+    if(NAV.places && NAV.places[c] && NAV.places[c].name===sp.name) return c;   // 同じ略号・同じ場所
+    const own = NAV.places ? Object.keys(NAV.places).find(function(k){ return NAV.places[k].name===sp.name; }) : null;
+    if(own) return own;
+    const nk = (OTHER_DIAS.find(function(d){ return d.code===code; })||{name:code}).name+':'+c;
+    NAV_X.places[nk] = {name:sp.name};
+    return nk;
+  };
+  y.f = mp(x.f); y.t = mp(x.t);
+  if(x.v && !(NAV.vias && NAV.vias[x.v]) && src.vias && src.vias[x.v]){
+    NAV_X.vias[x.v] = src.vias[x.v];
+    if(src.viacolor && src.viacolor[x.v]) NAV_X.viacolor[x.v] = src.viacolor[x.v];
+    if(src.viawarn && src.viawarn[x.v]) NAV_X.viawarn[x.v] = src.viawarn[x.v];
+  }
+  return y;
+}
 /* いまのダイヤ改正と、行程データの改正日が合うときだけ使う */
 function navRevOk(){
   return !!(NAV && NAV.meta && NAV.meta.revision === REVISION_ISO
@@ -9298,7 +9367,9 @@ function navRefreshBtn(){
 }
 /* 場所の名前。名前が分からない略号は「」で囲んでそのまま出す（勤務系統表の書き方） */
 function navPlaceName(c){
-  return (NAV && NAV.places && NAV.places[c]) ? NAV.places[c].name : '「'+c+'」';
+  if(NAV && NAV.places && NAV.places[c]) return NAV.places[c].name;
+  if(NAV_X.places[c]) return NAV_X.places[c].name;   // 代走の他のダイヤの場所
+  return '「'+c+'」';
 }
 /* 「A → B」の形。出庫の回送などで発の場所が系統表に書いていないときは「→ B」だけにする */
 function navRoute(f,t){
@@ -9313,7 +9384,7 @@ function navRoute(f,t){
 function navViaName(v){
   if(!v) return '';
   if(v==='?') return '経由を確認';
-  return (NAV && NAV.vias && NAV.vias[v]) ? NAV.vias[v] : v+'系統';
+  return (NAV && NAV.vias && NAV.vias[v]) ? NAV.vias[v] : (NAV_X.vias[v] || v+'系統');
 }
 /* その区間（行き・帰りどちらも）に経由が2つ以上あるか。あれば経由まちがいに注意を出す */
 function navViaMulti(x){
@@ -9339,7 +9410,7 @@ function navViaMulti(x){
 }
 /* 区間に経由が1つしか無くても必ず知らせる系統（朝だけの快速など）。行程データの viawarn に一言が入っている */
 function navViaWarn(x){
-  return (x && x.v && !x.k && NAV && NAV.viawarn && NAV.viawarn[x.v]) || '';
+  return (x && x.v && !x.k && ((NAV && NAV.viawarn && NAV.viawarn[x.v]) || NAV_X.viawarn[x.v])) || '';
 }
 /* 便の経由の札。prev は同じ区間を前に走った便（経由が変わるときに知らせる） */
 /* 中型限定（2026-11-20）。大型バスでは走れない系統（58系統 三松ヶ丘経由 など）が今日の行程にあれば、
@@ -9388,7 +9459,7 @@ function cgRefreshAll(){
 
 /* 系統の色分け（22系統は赤・26系統は青 など）。行程データの viacolor に色の名前が入っている */
 function navViaColor(x){
-  return (x && x.v && !x.k && NAV && NAV.viacolor && NAV.viacolor[x.v]) || '';
+  return (x && x.v && !x.k && ((NAV && NAV.viacolor && NAV.viacolor[x.v]) || NAV_X.viacolor[x.v])) || '';
 }
 /* ⚠ を付けるか。一言（viawarn）のある系統と、色の決まりが無い注意の便に付ける。
    色分けで青にした系統（26系統など）には付けない（赤の22系統と見分けやすくするため） */
@@ -9481,15 +9552,24 @@ function navPlan(date, dialOverride){
   if(otIsLeave(rec)) return {err:(dialOverride ? 'この日' : '今日')+'は年休です。ゆっくり休んでください'};
   const pieces=[], rinji=[]; let other=false;
   if(rec && ((rec.adds && rec.adds.length) || otIsKyu(rec))){
-    if(otBaseOf(rec)!=='none') pieces.push({dial:v, part:otBaseOf(rec)});
+    if(otBaseOf(rec)!=='none') pieces.push({dial:v, part:otBaseOf(rec), code:'a'});
     (rec.adds||[]).forEach(function(x, ai){
       if(x.code===OT_RINJI){ rinji.push(x); return; }   // 臨時は行程のデータが無い
-      if((x.code||'a')!=='a'){ other=true; return; }
-      pieces.push({dial:parseInt(x.dial,10), part:x.part||'all', v:x.v||'', ai:ai});
+      const xc = x.code||'a';
+      if(xc!=='a'){
+        /* 他のダイヤの代走。行程を読めていればそれで出す（スペシャル検索くんは今まで通り出さない） */
+        const os = IS_MULTI ? null : navOtherGet(xc);
+        if(!os){ other=true; if(!IS_MULTI) navOtherLoad(xc); return; }
+        pieces.push({dial:parseInt(x.dial,10), part:x.part||'all', v:x.v||'', ai:ai, code:xc, src:os});
+        return;
+      }
+      pieces.push({dial:parseInt(x.dial,10), part:x.part||'all', v:x.v||'', ai:ai, code:'a'});
     });
   }else{
-    pieces.push({dial:v, part:'all'});
+    pieces.push({dial:v, part:'all', code:'a'});
   }
+  /* 乗る分ごとに番号を振る（自分の18番と予備の18番のように、番号が同じでも分けるため） */
+  pieces.forEach(function(pc, i){ pc.pk=i; if(!pc.src) pc.src=NAV; });
   /* 形違い（近大通常／休暇中、ふれあいセンター休業日 など）。どれを使うかは日ごとに覚える。
      以前の true（2つ目の形）もそのまま読めるようにしておく */
   const sv = navStoreGet(navAltKey(iso), null);
@@ -9499,8 +9579,9 @@ function navPlan(date, dialOverride){
   const forms=[], missing=[];   // 代走で入れた14番などの形の選び直し ／ 行程がまだ無い分
   let holOff=false;              // 祝日で奈良学園が休み（14番）
   pieces.forEach(function(pc){
-    if(isHol(date) && otUndecidedSlot('a', pc.dial, date)){ holOff=true; off=false; return; }
-    const ent = NAV.dials && NAV.dials[pc.dial] && NAV.dials[pc.dial][dt];
+    if(isHol(date) && otUndecidedSlot(pc.code, pc.dial, date)){ holOff=true; off=false; return; }
+    const SRC = pc.src;
+    const ent = SRC.dials && SRC.dials[pc.dial] && SRC.dials[pc.dial][dt];
     if(!ent) return;
     off=false;
     const vs = ent.vars || [{label:'ふだんの日', list:ent.list, in:ent.in, out:ent.out}].concat(ent.alt ? [{label:ent.alt.label, list:ent.alt.list}] : []);
@@ -9519,9 +9600,9 @@ function navPlan(date, dialOverride){
     let use = vs[vi];
     /* 14番（奈良学園）は曜日に関係なく同じ形で走る（2026-11-04 乗務員さんより）。
        勤務系統表ではこの曜日の行に載っていない形でも、ほかの曜日の行にあればそれを使う */
-    if(use.nodata && use.label && otUndecidedSlot('a', pc.dial, date)){
+    if(use.nodata && use.label && otUndecidedSlot(pc.code, pc.dial, date)){
       const alt = ['平','土','日祝'].filter(function(t){ return t!==dt; }).map(function(t){
-          const e = NAV.dials[pc.dial][t], vv = e && e.vars;
+          const e = SRC.dials[pc.dial][t], vv = e && e.vars;
           return vv ? vv.find(function(z){ return z.label===use.label && !z.nodata && z.list && z.list.length; }) : null;
         }).find(Boolean);
       if(alt) use = Object.assign({}, use, {list:alt.list, nodata:false});
@@ -9534,7 +9615,7 @@ function navPlan(date, dialOverride){
     if(use.nodata){ nodata = use.label || '?'; missing.push(pc); }
     /* 前半だけ・後半だけ乗る日は、出退勤表の解放の時刻で分ける */
     if(pc.part==='first' || pc.part==='second'){
-      const sl = otSlotOf('a', pc.dial, date, pc.v);
+      const sl = otSlotOf(pc.code, pc.dial, date, pc.v);
       const seg = sl ? rcSegs(sl, pc.part)[0] : null;
       if(seg){
         const s=navMin(seg.s), e=navMin(seg.e);
@@ -9547,7 +9628,8 @@ function navPlan(date, dialOverride){
       if(x.k==='回送' && navNear(x.f, x.t)) return;
       const key = (x.k==='休') ? last+0.5 : navMin(x.d);
       if(x.k!=='休') last=navMin(x.a);
-      items.push(Object.assign({dial:pc.dial, key:key}, x));
+      const xx = (pc.src===NAV) ? x : navXlate(pc.code, pc.src, x);   // 他のダイヤは略号を直す
+      items.push(Object.assign({dial:pc.dial, pk:pc.pk, key:key}, xx));
     });
   });
   items.sort(function(a,b){ return a.key-b.key; });
@@ -9570,12 +9652,12 @@ function navPlan(date, dialOverride){
   const starts = [];
   if(pieces.length > 1 && realTrips.length){
     const segEnd = function(pc){
-      const sl = otSlotOf('a', pc.dial, date, pc.v);
+      const sl = otSlotOf(pc.code, pc.dial, date, pc.v);
       const sg = sl ? rcSegs(sl, pc.part) : [];
       return sg.length ? sg[sg.length-1].e : null;
     };
     const byPiece = pieces.map(function(pc){
-      const its = realTrips.filter(function(x){ return x.dial===pc.dial; });
+      const its = realTrips.filter(function(x){ return x.pk===pc.pk; });
       return {pc:pc, first:its[0], last:its[its.length-1]};
     }).filter(function(z){ return z.first; })
       .sort(function(a,b){ return navMin(a.first.d) - navMin(b.first.d); });
@@ -9595,7 +9677,7 @@ function navPlan(date, dialOverride){
     const tr = navTravel('営', fx.f) || 20;
     const a = dep - 5, d = Math.max(navMin(st.after.a) + 15, a - tr);
     if(d >= a) return;
-    items.push({k:'回送', f:'営', t:fx.f, d:navHm(d), a:navHm(a), key:dep - 0.3, syn:true, dial:fx.dial});
+    items.push({k:'回送', f:'営', t:fx.f, d:navHm(d), a:navHm(a), key:dep - 0.3, syn:true, dial:fx.dial, pk:fx.pk});
   });
   ends.forEach(function(e){
     const last = e.x;
@@ -9606,20 +9688,22 @@ function navPlan(date, dialOverride){
     if(!tr) tr = (out!=null) ? Math.max(5, Math.min(30, out - a0 - 10)) : 20;
     let a = a0 + tr;
     if(out!=null && a > out - 10) a = Math.max(a0 + 1, out - 10);   // 営業所に着いてから退勤まで10分はみる
-    items.push({k:'回送', f:last.t, t:'営', d:last.a, a:navHm(a), key:a0 + 0.2, syn:true, dial:last.dial});
+    items.push({k:'回送', f:last.t, t:'営', d:last.a, a:navHm(a), key:a0 + 0.2, syn:true, dial:last.dial, pk:last.pk});
   });
   items.sort(function(a,b){ return a.key-b.key; });
   return {items:items, other:other, off:off, varLabels:varLabels, sel:sel, io:io, nodata:nodata, forms:forms, missing:missing, holOff:holOff,
           dials:pieces.map(function(p){ return p.dial; }),
           /* 「51番前半＋28番」「臨時＋31番」のような呼び名。乗る順（始まりが早い順）に並べる */
           label:pieces.map(function(p){
-              const f=items.find(function(x){ return x.dial===p.dial && x.k!=='休'; });
+              const f=items.find(function(x){ return x.pk===p.pk && x.k!=='休'; });
               let k = f ? f.key : 1e9;
               if(!f){   // 行程がまだ無い形（14番C など）は、出退勤表の出勤時刻で並べる
-                const sl=otSlotOf('a', p.dial, date, p.v), g=sl ? rcSegs(sl, p.part)[0] : null;
+                const sl=otSlotOf(p.code, p.dial, date, p.v), g=sl ? rcSegs(sl, p.part)[0] : null;
                 if(g) k=rcMin(g.s);
               }
-              return {k:k, t:p.dial+'番'+(p.v||'')+(p.part==='first'?'前半':p.part==='second'?'後半':'')};
+              /* 他のダイヤの分は「予備18番」のようにダイヤの名前を付ける */
+              const dn = (p.code!=='a') ? ((OTHER_DIAS.find(function(d){ return d.code===p.code; })||{name:''}).name) : '';
+              return {k:k, t:dn+p.dial+'番'+(p.v||'')+(p.part==='first'?'前半':p.part==='second'?'後半':'')};
             }).concat(rinji.map(function(x){
               const t=otRinjiParse(x.dial);
               return {k:(t ? t.s : 1e9), t:'臨時'};
@@ -9661,7 +9745,13 @@ function navPvAvail(iso, dial, dt, off){
   if(rec && !otIsLeave(rec) && ((rec.adds && rec.adds.length) || otIsKyu(rec))){
     if(otBaseOf(rec)!=='none' && !off && navHasDial(dial, dt)) return true;
     return (rec.adds||[]).some(function(x){
-      return (x.code||'a')==='a' && navHasDial(parseInt(x.dial,10), dt); });
+      const xc = x.code||'a';
+      if(xc==='a') return navHasDial(parseInt(x.dial,10), dt);
+      /* 他のダイヤの代走も、そのダイヤの行程があれば出す（2026-11-27）。まだ読んでいなければ読みに行く */
+      if(IS_MULTI || xc===OT_RINJI) return false;
+      const os = navOtherGet(xc);
+      if(!os){ navOtherLoad(xc); return false; }
+      return !!(os.dials && os.dials[parseInt(x.dial,10)] && os.dials[parseInt(x.dial,10)][dt]); });
   }
   return !off && navHasDial(dial, dt);
 }
@@ -9943,7 +10033,7 @@ function renderNav(){
   if(pl.other) h+='<div class="nav-then">※ 他のダイヤで走る分は、行程のデータが無いので出していません</div>';
   /* 代走の14番C など、形の行程がまだ入っていない分（2026-11-04） */
   (pl.missing||[]).forEach(function(pc){
-    const sl=otSlotOf('a', pc.dial, now, pc.v);
+    const sl=otSlotOf(pc.code||'a', pc.dial, now, pc.v);
     const seg=sl ? rcSegs(sl, pc.part).map(function(g){ return g.s+'〜'+g.e; }).join('・') : '';
     h+='<div class="nav-then">※ '+pc.dial+'番'+(pc.v||'')+(seg?' '+seg:'')+' は、行程がまだ入っていないので一覧に出していません</div>';
   });
